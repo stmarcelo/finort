@@ -34,10 +34,24 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Publish application
-        run: dotnet publish src/aspnet/Finort.csproj -c Release -r win-x64 --self-contained true
+        run: |
+          dotnet publish src/aspnet/Finort.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -o ./publish
 
-      - name: Publish updater
-        run: dotnet publish tools/Updater/Updater.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+
+          New-Item -ItemType Directory -Force -Path releases | Out-Null
+
+          Compress-Archive `
+            -Path "./publish/*" `
+            -DestinationPath "releases/finort-$version-win-x64.zip" `
+            -Force
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress
@@ -47,8 +61,10 @@ jobs:
         run: |
           iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" "installer/finort.iss"
 
-      - name: Upload installer to GitHub Release
+      - name: Upload installer and ZIP to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.workflow_run.head_branch }}
-          files: releases/finort-${{ steps.version.outputs.version }}-win-x64-setup.exe
+          files: |
+            releases/finort-${{ steps.version.outputs.version }}-win-x64-setup.exe
+            releases/finort-${{ steps.version.outputs.version }}-win-x64.zip
