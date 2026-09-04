@@ -1,0 +1,147 @@
+@page "/relatorios/projeto/{ProjetoId:guid}"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject ProjetoService ProjetoService
+@inject ProjetoRelatorioService RelatorioService
+@inject NavigationManager Navigation
+
+<PageTitle>Relatório de projeto</PageTitle>
+
+@if (_relatorio is not null)
+{
+    <MudPaper Class="pa-6 mb-4 mt-4" Style="border-radius:18px;">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/projetos"))" />
+            <MudText Typo="Typo.h5">@_relatorio.ProjetoNome</MudText>
+            <MudSpacer />
+            <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                       Href="@($"/api/relatorios/projeto/{ProjetoId}/pdf")" Target="_blank">
+                Gerar PDF
+            </MudButton>
+        </MudStack>
+        <MudText Typo="Typo.body2" Style="color:var(--mud-palette-grey-default)">@_relatorio.PessoaNome</MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Contratação: @_relatorio.DataContratacao.ToString("dd/MM/yyyy") — Valor contratado: R$ @_relatorio.ValorContratado.ToString("N2")
+            @if (_relatorio.Concluido)
+            {
+                <span> — Conclusão: @( _relatorio.DataConclusao?.ToString("dd/MM/yyyy") ?? "—")</span>
+            }
+        </MudText>
+
+        <MudGrid Spacing="4" Class="mt-3">
+            <MudItem xs="12" sm="3">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-success);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Receitas</MudText>
+                    <MudText Typo="Typo.h6" Style="color:var(--mud-palette-success)">R$ @_relatorio.TotalReceitas.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-error);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Despesas</MudText>
+                    <MudText Typo="Typo.h6" Style="color:var(--mud-palette-error)">R$ @_relatorio.TotalDespesas.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudPaper Class="pa-4" Style="@($"{EstiloResultado()}border-radius:12px;")">
+                    <MudText Typo="Typo.caption" Class="mb-1">Resultado</MudText>
+                    <MudText Typo="Typo.h6" Style="@CorResultadoCss()">R$ @_relatorio.Resultado.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-warning);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Pendente a receber</MudText>
+                    <MudText Typo="Typo.h6" Style="color:var(--mud-palette-warning)">R$ @_relatorio.PendenteReceber.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudGrid>
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Lançamentos</MudText>
+                <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm" T="RelatorioLinha"
+                          Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Data</MudTh><MudTh>Tipo</MudTh><MudTh>Categoria</MudTh>
+                        <MudTh Style="text-align:right">Valor</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                        <MudTd Style="@EstiloCorTipo(context.Tipo)">@context.Tipo</MudTd>
+                        <MudTd>@context.CategoriaSubcategoria</MudTd>
+                        <MudTd Style="@($"text-align:right;{EstiloCorTipo(context.Tipo)}")">
+                            R$ @context.Valor.ToString("N2")
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Despesas por categoria</MudText>
+                @if (_relatorio.DespesasPorCategoria.Count > 0)
+                {
+                    <MudChart ChartType="ChartType.Donut"
+                              ChartSeries="@(_relatorio.DespesasPorCategoria
+                                  .Select(f => new ChartSeries { Name = f.Rotulo, Data = new double[] { Math.Round((double)f.Valor, 2) } })
+                                  .ToList())"
+                              InputData="@(_relatorio.DespesasPorCategoria.Select(f => Math.Round((double)f.Valor, 2)).ToArray())"
+                              InputLabels="@_labelsPizza" Width="100%" Height="220px" />
+                    <MudSimpleTable Dense="true" Class="mt-2">
+                        <tbody>
+                        @foreach (var f in _relatorio.DespesasPorCategoria)
+                        {
+                            <tr>
+                                <td>@f.Rotulo</td>
+                                <td align="right">R$ @f.Valor.ToString("N2")</td>
+                                <td align="right">@f.Percentual.ToString("0.0")%</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="pa-4">Sem despesas registradas.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+
+@code {
+    [Parameter] public Guid ProjetoId { get; set; }
+
+    private ProjetoRelatorio? _relatorio;
+
+    private string[] _labelsPizza => _relatorio?.DespesasPorCategoria.Select(f => f.Rotulo).ToArray() ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ProjetoId != Guid.Empty)
+            _relatorio = await RelatorioService.GerarAsync(ProjetoId);
+    }
+
+    private static string CorTipoCss(string tipo)
+        => tipo == "Receita" ? "var(--mud-palette-success)" : "var(--mud-palette-error)";
+
+    private string EstiloCorTipo(string tipo)
+        => $"color:{CorTipoCss(tipo)}";
+
+    private string ResultadoCor()
+        => _relatorio is not null && _relatorio.Resultado >= 0
+            ? "var(--mud-palette-info)"
+            : "var(--mud-palette-error)";
+
+    private string EstiloResultado()
+        => $"border-left:4px solid {ResultadoCor()}";
+
+    private string CorResultadoCss()
+        => $"color:{ResultadoCor()}";
+}

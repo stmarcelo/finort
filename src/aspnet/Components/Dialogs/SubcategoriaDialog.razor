@@ -1,0 +1,53 @@
+@namespace Finort.Components.Dialogs
+@inject CategoriaService CategoriaService
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">@Titulo</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_nome" Label="Nome" Variant="@GlobalVariant.Value" Required="true"
+                          RequiredError="Informe um nome." />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@GlobalVariant.Value" OnClick="Salvar">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Categoria? Categoria { get; set; }
+    [Parameter] public Subcategoria? Subcategoria { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = null!;
+    private string _nome = string.Empty;
+
+    private bool Editando => Subcategoria is not null;
+
+    private string Titulo => Editando
+        ? $"Editar subcategoria — {Subcategoria!.Categoria.Nome}"
+        : $"Nova subcategoria de {Categoria?.Nome}";
+
+    protected override void OnInitialized()
+    {
+        if (Editando) _nome = Subcategoria!.Nome;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        if (Editando)
+            await CategoriaService.AtualizarSubcategoriaAsync(Subcategoria!, _nome.Trim());
+        else
+            await CategoriaService.AdicionarSubcategoriaAsync(Categoria!.Id, _nome.Trim());
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

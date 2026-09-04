@@ -1,0 +1,77 @@
+@namespace Finort.Components.Lancamentos
+@inherits AppComponentBase
+@inject CartaoCreditoService CartaoCreditoService
+@inject FaturaService FaturaService
+@inject ISnackbar Snackbar
+
+<MudForm @ref="_form">
+    @if (CartaoIdFixo is null)
+    {
+        <CartaoSelect Required="true" RequiredError="Selecione o cartão."
+                      Value="@_cartaoId" ValueChanged="OnCartaoChanged" />
+    }
+    <MudDatePicker Label="Data da compra" Variant="@gVariant"
+                   MinDate="@_minDate" MaxDate="@_maxDate"
+                   Date="@_dataCompra" DateChanged="@OnDataChanged" Required="true"
+                   RequiredError="Informe a data." />
+    <MudMoneyInput Label="Valor total" Variant="@gVariant" @bind-Value="_valor" Required="true" />
+    <CategoriaSelect Required="true" RequiredError="Selecione a categoria."
+                     @bind-Value="_categoriaId" />
+    <SubcategoriaSelect CategoriaId="@_categoriaId" @bind-Value="_subcategoriaId" />
+    <PessoaSelect Placeholder="Opcional" @bind-Value="_pessoaId" />
+    <ProjetoSelect PessoaId="@_pessoaId" @bind-Value="_projetoId" />
+
+    <div class="d-flex align-center flex-wrap">
+        <MudCheckBox @bind-Value="EhEntrada" Label="Entrada na fatura (reembolso/desconto)"
+                     Class="flex-grow-0" />
+    </div>
+    @if (EhEntrada)
+    {
+        <MudText Typo="Typo.caption" Class="mb-2">
+            Gravado como crédito: reduz o total da fatura. Sem parcelamento nem reembolso.
+        </MudText>
+    }
+
+    @if (!EhEntrada)
+    {
+        <div class="d-flex align-center flex-wrap">
+            <MudCheckBox @bind-Value="_parcelado" Label="Parcelado" Class="flex-grow-0" />
+            @if (_parcelado)
+            {
+                <MudNumericField T="int" @bind-Value="_quantidadeParcelas" Label="Parcelas"
+                                 Variant="@gVariant" Min="2" Max="48" Class="ml-4 parcelas-inline" />
+            }
+        </div>
+
+        <MudCheckBox @bind-Value="_comReembolso" Label="Terá reembolso" />
+        @if (_comReembolso)
+        {
+            <MudGrid Class="mt-n2">
+                <MudItem xs="12" sm="6">
+                    <PessoaSelect Label="Pessoa do reembolso" Required="true"
+                                  RequiredError="Informe a pessoa do reembolso."
+                                  @bind-Value="_reembolsoPessoaId" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <ContaSelect Label="Conta do reembolso (crédito)" Placeholder="Opcional"
+                                 @bind-Value="_reembolsoContaId" />
+                </MudItem>
+            </MudGrid>
+        }
+    }
+
+    @if (_previewVencimento is not null)
+    {
+        <div class="d-flex align-center flex-wrap">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                           OnClick="@(() => NavegarVencimento(-1))"
+                           Disabled="@(AnoFatura is not null)" />
+            <MudText Class="mx-2">
+                Vencimento: @_previewVencimento.Value.ToString("MM/yyyy")
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                           OnClick="@(() => NavegarVencimento(1))"
+                           Disabled="@(AnoFatura is not null)" />
+        </div>
+    }
+</MudForm>

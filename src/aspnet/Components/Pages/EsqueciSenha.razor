@@ -1,0 +1,95 @@
+@page "/esqueci-senha"
+@attribute [AllowAnonymous]
+@layout LoginLayout
+@inherits AppComponentBase
+@inject AuthService AuthService
+@inject EmailService EmailService
+@inject TokenService TokenService
+@inject NavigationManager Navigation
+
+<div class="auth-wrap">
+    <div class="tile-dark auth-card pa-6">
+        <MudText Typo="Typo.h5" Align="Align.Center" Class="auth-title">Esqueci minha senha</MudText>
+    @if (_enviado)
+    {
+        <MudText Typo="Typo.body1" Align="Align.Center" Class="my-4">
+            Se o e-mail estiver cadastrado, enviaremos um link de redefinição.
+        </MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                   OnClick="IrLogin">Voltar para o login</MudButton>
+    }
+    else
+    {
+        <MudTextField @bind-Value="_email" Label="E-mail" Variant="@gVariant" T="string" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                   Class="mt-4" Disabled="_processando" OnClick="Enviar">Enviar link</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                   Class="mt-2" OnClick="IrLogin">Voltar</MudButton>
+    }
+    </div>
+</div>
+
+@code {
+    private string _email = string.Empty;
+    private bool _processando;
+    private bool _enviado;
+    private bool _semConfiguracao;
+    private bool _semSmtp;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var configuracao = await AuthService.GetConfiguracaoAsync();
+        if (configuracao is null)
+        {
+            _semConfiguracao = true;
+            return;
+        }
+        if (!await EmailService.IsConfiguredAsync())
+        {
+            _semSmtp = true;
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _semConfiguracao)
+        {
+            Navigation.NavigateTo("/configurar");
+        }
+        else if (firstRender && _semSmtp)
+        {
+            Navigation.NavigateTo("/configurar-smtp");
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task Enviar()
+    {
+        if (_processando) return;
+        _processando = true;
+        try
+        {
+            var configuracao = await AuthService.GetConfiguracaoAsync();
+            if (configuracao is not null &&
+                string.Equals(_email.Trim(), configuracao.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var token = await TokenService.CreateAsync(configuracao);
+                var link = $"{Navigation.BaseUri}redefinir-senha?token={token}";
+                await EmailService.SendAsync(
+                    "Redefinição de senha",
+                    $"Use este link para redefinir sua senha (válido por 30 minutos):\n\n{link}");
+            }
+            _enviado = true;
+        }
+        catch
+        {
+            _enviado = true;
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+
+    private void IrLogin() => Navigation.NavigateTo("/login");
+}

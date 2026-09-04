@@ -1,0 +1,53 @@
+@page "/lancamentos/novo/{Tipo:regex(^receita$|^despesa$|^transferencia$)}"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject NavigationManager Navigation
+@using Finort.Components.Lancamentos
+
+<PageTitle>Novo lançamento</PageTitle>
+
+<MudCard Class="pa-4 mt-4">
+    <MudCardContent>
+        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icone" />
+                <MudText Typo="Typo.h5">@Titulo</MudText>
+            </MudStack>
+            <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                           OnClick="@(() => Navigation.NavigateTo("/lancamentos"))" />
+        </MudStack>
+        <LancamentoForm Tipo="@_tipo" />
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public string? Tipo { get; set; }
+
+    private LancamentoTipo _tipo;
+
+    private string Titulo => _tipo switch
+    {
+        LancamentoTipo.Receita => "Nova receita",
+        LancamentoTipo.Despesa => "Nova despesa",
+        LancamentoTipo.Transferencia => "Nova transferência",
+        _ => "Novo lançamento"
+    };
+
+    private string Icone => _tipo switch
+    {
+        LancamentoTipo.Receita => Icons.Material.Filled.TrendingUp,
+        LancamentoTipo.Despesa => Icons.Material.Filled.TrendingDown,
+        _ => Icons.Material.Filled.SwapHoriz
+    };
+
+    protected override void OnParametersSet()
+    {
+        _tipo = Tipo switch
+        {
+            "receita" => LancamentoTipo.Receita,
+            "despesa" => LancamentoTipo.Despesa,
+            "transferencia" => LancamentoTipo.Transferencia,
+            _ => LancamentoTipo.Despesa
+        };
+    }
+}

@@ -1,0 +1,55 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject ProjetoService ProjetoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Marcar o projeto como concluído em:
+        </MudText>
+        <MudDatePicker Label="Data de conclusão" Variant="@gVariant"
+                       Date="_data" DateChanged="OnDataChanged" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="@gVariant" OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="@gVariant" Color="Color.Primary" OnClick="Salvar">Concluir</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Projeto Projeto { get; set; } = null!;
+
+    private DateTime? _data;
+
+    protected override void OnInitialized()
+        => _data = DateTime.Today;
+
+    private void OnDataChanged(DateTime? data)
+    {
+        _data = data;
+        StateHasChanged();
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        if (_data is null)
+        {
+            Snackbar.Add("Informe a data de conclusão.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await ProjetoService.MarcarConcluidoAsync(Projeto.Id, DateOnly.FromDateTime(_data.Value));
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

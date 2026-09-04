@@ -1,0 +1,401 @@
+@page "/manual"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Manual</PageTitle>
+
+<MudPaper Class="pa-4 mb-4 mt-4">
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                <img src="/img/logo_finort.png" alt="Finort" class="manual-logo" />
+                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Primary" />
+                <MudText Typo="Typo.h5">Manual do sistema</MudText>
+            </MudStack>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudAutocomplete T="string" Label="Acesso rápido" @bind-Text="_textoBusca" Variant="@gVariant" Adornment="Adornment.Start"
+                             AdornmentIcon="@Icons.Material.Filled.Search" CoerceText="false"
+                             SearchFunc="Buscar" MaxHeight="300" Style="max-width:350px;float:right"
+                             ValueChanged="NavegarPara" ResetValueOnEmptyText="true" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudGrid Spacing="4">
+    @foreach (var secao in _secoes)
+    {
+        <MudItem xs="12" Id="@secao.Id">
+            <MudPaper Class="pa-4">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudIcon Icon="@secao.Icone" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">@secao.Titulo</MudText>
+                </MudStack>
+                @foreach (var paragrafo in secao.Paragrafos)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2">@paragrafo</MudText>
+                }
+                @if (secao.Subsecoes.Count > 0)
+                {
+                    @foreach (var sub in secao.Subsecoes)
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">@sub.Titulo</MudText>
+                        @foreach (var item in sub.Itens)
+                        {
+                            <MudText Typo="Typo.body2" Class="ml-2 mb-1">• @item</MudText>
+                        }
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@if (_mostrarBotaoTopo)
+{
+    <div style="position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 1100;">
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small"
+                OnClick="IrParaTopo" />
+    </div>
+}
+
+<script>
+    window.manualScrollInterop = {
+        init: function (dotNetRef) {
+            window.addEventListener('scroll', function () {
+                dotNetRef.invokeMethodAsync('OnScrollChanged', window.scrollY > 100);
+            });
+        }
+    };
+</script>
+
+@code {
+    private bool _mostrarBotaoTopo;
+    private string? _textoBusca;
+
+    private record SubSecao(string Titulo, List<string> Itens);
+    private record SecaoManual(string Id, string Titulo, string Icone, List<string> Paragrafos, List<SubSecao> Subsecoes);
+
+    private readonly List<SecaoManual> _secoes = new()
+    {
+        new("login", "Login e Primeiro Acesso", Icons.Material.Filled.Login, new()
+        {
+            "Quando você abre o sistema pela primeira vez, ele pede para criar seu acesso. Você informa seu nome, email, uma senha com pelo menos 8 caracteres.",
+            "Para entrar no sistema, basta digitar sua senha na tela de login. Se você errar a senha 5 vezes seguidas, o sistema bloqueia aquele endereço de rede por 60 segundos por segurança.",
+            "Se esqueceu sua senha, clique em 'Esqueci minha senha' na tela de login. O sistema enviará um link para seu email (é necessário ter o SMTP configurado). O link expira em 30 minutos."
+        }, new()),
+
+        new("dashboard", "Dashboard", Icons.Material.Filled.Insights, new()
+        {
+            "O dashboard é a tela que aparece quando você clica em 'Dashboard' no menu lateral. Ele mostra um resumo financeiro do mês.",
+            "No topo, você vê gráficos de pizza mostrando para onde seu dinheiro está indo (despesas por categoria) e de onde ele vem (receitas por categoria). Abaixo, há tabelas com as 10 maiores despesas e receitas do mês.",
+            "Se você tem investimentos cadastrados, aparece um gráfico de barras com o patrimônio total.",
+            "Use as setas ao lado do nome do mês para navegar entre meses. Meses futuros são baseados em projeções (provisões), por isso aparece o aviso 'Projeção'."
+        }, new()),
+
+        new("calendario", "Calendário", Icons.Material.Filled.CalendarMonth, new()
+        {
+            "O calendário é a tela principal do sistema. Ele mostra um mês completo, dia por dia, com todos os compromissos financeiros.",
+            "Cada dia pode ter lançamentos reais (coisas que já aconteceram) e provisões (coisas que vão acontecer). Lançamentos reais aparecem com valores exatos, enquanto provisões são estimativas.",
+            "No topo da tela, há três resumos: 'A pagar' (quanto você ainda vai gastar), 'A receber' (quanto ainda vão te pagar) e 'Saldo projetado' (quanto sobra ou falta no mês).",
+            "Ao clicar em um dia, abre um painel lateral com todos os itens daquele dia, detalhados com valor e tipo.",
+            "Além de lançamentos e provisões, o calendário também mostra faturas do cartão (fundo vermelho claro) e lembretes pessoais (fundo azul claro). Faturas e lembretes aparecem sempre no topo da lista do dia, com ícone de sino."
+        }, new()),
+
+        new("lancamentos", "Lista de Lançamentos", Icons.Material.Filled.ReceiptLong, new()
+        {
+            "A lista de lançamentos mostra todas as suas entradas e saídas financeiras. É aqui que você visualiza, edita e confirma seus lançamentos."
+        }, new()
+        {
+            new("Filtros", new()
+            {
+                "No topo da lista, você pode filtrar por: conta bancária, cartão de crédito, pessoa, tipo (receita/despesa/transferência) e mês.",
+                "Use as setas ao lado do mês para navegar rapidamente entre meses."
+            }),
+            new("Confirmação", new()
+            {
+                "Cada lançamento tem um toggle de confirmação. Quando você confere seu extrato bancário e vê que o lançamento bateu com o valor real, marque como confirmado.",
+                "Lançamentos confirmados não podem mais ser editados ou excluídos, para manter a integridade dos dados.",
+                "Lançamentos não confirmados aparecem com uma marca visual diferente."
+            }),
+            new("Subtotais", new()
+            {
+                "Abaixo de cada dia, aparece o subtotal daquele dia (soma dos lançamentos). Isso ajuda a ver quanto foi gasto/recebido por dia."
+            }),
+            new("Ações", new()
+            {
+                "Para criar novo lançamento, use o botão flutuante (ícone +) no canto inferior direito da tela.",
+                "Para editar, clique no ícone de lápis na linha do lançamento.",
+                "Para excluir, clique no ícone de lixeira. Não é possível excluir lançamentos confirmados de meses fechados."
+            })
+        }),
+
+        new("receita", "Receita", Icons.Material.Filled.TrendingUp, new()
+        {
+            "Uma receita é uma entrada de dinheiro: salário, freelances, vendas, reembolsos, etc.",
+            "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou, a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
+            "O campo 'Projeto' só aparece depois que você seleciona uma pessoa. Se a pessoa tem apenas um projeto, ele é selecionado automaticamente.",
+            "Se a receita será dividida em parcelas (ex: parcelas de um serviço), marque 'Parcelado' e configure quantas parcelas e a frequência (mensal, trimestral, semestral, anual)."
+        }, new()),
+
+        new("despesa", "Despesa", Icons.Material.Filled.TrendingDown, new()
+        {
+            "Uma despesa é uma saída de dinheiro: aluguel, supermercado, conta de luz, etc.",
+            "O processo é igual ao da receita: data, valor, conta, categoria, subcategoria (opcional), pessoa (opcional) e projeto (opcional).",
+            "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'."
+        }, new()),
+
+        new("cartaoentrada", "Despesa no Cartão", Icons.Material.Filled.CreditCard, new()
+        {
+            "Quando você faz uma compra no cartão de crédito, registre como 'Despesa de cartão' (não como despesa normal). Isso permite que o sistema gerencie a fatura do cartão corretamente.",
+            "Selecione o cartão, a data da compra, a categoria e o valor. Configure quantas parcelas será dividido.",
+            "Opção 'Entrada': se marcada, o sistema também cria um lançamento na conta bancária vinculada ao cartão, representando o débito que sairá da conta.",
+             "Reembolso: se uma pessoa reembolsa essa despesa, marque como reembolsável. O sistema rastreia isso para relatórios.",
+            "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra."
+        }, new()),
+
+        new("transferencia", "Transferência", Icons.Material.Filled.SwapHoriz, new()
+        {
+            "Uma transferência movimenta dinheiro entre suas contas bancárias. Ex: transferir dochecking poupança.",
+            "Selecione a conta de origem (de onde sai) e a conta de destino (para onde vai). O valor é o mesmo nas duas contas.",
+            "O sistema cria dois lançamentos: um negativo na conta de origem e um positivo na conta de destino."
+        }, new()),
+
+        new("fluxo", "Fluxo Mensal", Icons.Material.Filled.StackedLineChart, new()
+        {
+            "O fluxo mensal mostra um resumo de quanto entrou, quanto saiu e quanto sobrou em cada mês.",
+            "A tela tem três colunas: mês anterior, mês corrente e próximo mês. Use as setas para navegar.",
+            "Em cada mês, você vê: receitas totais, despesas totais, despesas por cartão, saldo do mês anterior, saldo deste mês e saldo acumulado.",
+            "Se uma fatura do cartão foi paga, o valor aparece descontado no fluxo do mês em que foi pago."
+        }, new()
+        {
+            new("Dias de Antecipação", new()
+            {
+                "No topo da página, há um controle deslizante (slider) que permite ajustar de 0 a 15 dias de antecipação.",
+                "Esse recurso define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual.",
+                "Exemplo: com 5 dias de antecipação em setembro, despesas e faturas de cartão com vencimento até 05/10 aparecem no fluxo de setembro. Outubro, por sua vez, começa em 06/10.",
+                "Regra: cada lançamento pertence a apenas um mês. O mês que antecipa inclui os dias extras; o mês seguinte começa depois deles.",
+                "Para despesas de cartão de crédito, a data considerada é o vencimento da fatura (DataVencimentoCartao), não a data da compra."
+            })
+        }),
+
+        new("contas", "Contas Bancárias", Icons.Material.Filled.AccountBalance, new()
+        {
+            "Cadastre aqui suas contas bancárias: nome da conta, banco, agência e número da conta.",
+            "Cada conta mostra dois saldos: o saldo real (só contando lançamentos confirmados) e o saldo projetado (contando todos os lançamentos, inclusive não confirmados).",
+            "O saldo real é o que você deve ver no seu extrato bancário. Se bateu, confirme os lançamentos. Se não bateu, pode ser que algum lançamento esteja faltando ou com valor errado.",
+            "Use o botão de fechar mês para ajustar diferenças entre o saldo do sistema e o saldo real do banco."
+        }, new()),
+
+        new("cartoes", "Cartões de Crédito", Icons.Material.Filled.CreditCard, new()
+        {
+            "Cadastre seus cartões de crédito com: banco, últimas 4 digitos, melhor dia de compra, dia de vencimento, limite e conta vinculada (opcional)."
+        }, new()
+        {
+            new("Fatura – O que é", new()
+            {
+                "Toda compra feita no cartão gera um item na fatura do mês correspondente. A fatura é como uma 'nota' do cartão, listando tudo que foi comprado naquele mês."
+            }),
+            new("Fatura – Conferência", new()
+            {
+                "Acesse a fatura clicando no ícone de fatura ao lado do cartão. Lá você vê todos os lançamentos daquele mês.",
+                "Confira cada item da fatura com o valor que aparece no seu aplicativo do banco. Se bateu, marque o item como confirmado.",
+                "Quando todos os itens estiverem confirmados, o botão 'Fechar fatura' fica disponível. Fechar a fatura significa que você revisou tudo e está tudo certo."
+            }),
+            new("Fatura – Pagamento", new()
+            {
+                "Após fechar a fatura, aparece o botão 'Pagar'. Ao clicar, selecione a conta bancária de onde o dinheiro sairá.",
+                "O pagamento cria um lançamento de transferência na conta selecionada (débito) e um pagamento no cartão (crédito).",
+                "Se a fatura tem valor diferente do que você esperava (ex: anuidade, juros), o sistema cria automaticamente uma parcela no próximo mês para cobrir a diferença.",
+                "Após pagar, a fatura fica com status 'Paga'. Se precisar desfazer o pagamento, use o botão 'Estorno' na lista de faturas históricas."
+            }),
+            new("Fatura – Histórico", new()
+            {
+                "Acesse o histórico clicando no ícone de relatório ao lado do cartão. Lá você vê todas as faturas fechadas, com status (paga ou pendente) e valor."
+            })
+        }),
+
+        new("categorias", "Categorias e Subcategorias", Icons.Material.Filled.Category, new()
+        {
+            "Categorias organizam seus lançamentos por tipo de gasto ou entrada. Exemplos: Moradia, Alimentação, Transporte, Salário.",
+            "Subcategorias detalham ainda mais. Ex: dentro de 'Alimentação', pode ter 'Supermercado', 'Restaurante', 'Delivery'.",
+            "O sistema já vem com 13 categorias e 57 subcategorias pré-cadastradas. Elas têm um ícone de cadeado, indicando que são protegidas e não podem ser excluídas.",
+            "Você pode criar novas categorias e subcategorias. Só não pode excluir uma categoria ou subcategoria que tenha lançamentos vinculados."
+        }, new()),
+
+        new("pessoas", "Pessoas", Icons.Material.Filled.People, new()
+        {
+            "Cadastre aqui as pessoas que participam das suas finanças: quem te paga (devedor) ou quem você paga (credor).",
+            "Cada pessoa tem nome, uma cor para identificação visual e uma observação opcional.",
+            "Pessoas são usadas em lançamentos, provisões e projetos. Ao criar um lançamento, você pode vincular a uma pessoa para saber de quem é aquele gasto ou receita.",
+            "Na página da pessoa você também cadastra lembretes (mensais ou em uma data única). Os lembretes aparecem no calendário, sempre no topo dos compromissos do dia, com fundo azul claro e ícone de sino. Para excluí-los, edite a pessoa e use o ícone de lixeira na seção 'Lembretes'."
+        }, new()),
+
+        new("lembretes", "Lembretes", Icons.Material.Filled.Notifications, new()
+        {
+            "Lembretes são alertas pessoais que aparecem no calendário. Você pode criar lembretes para si mesmo na tela de pessoas.",
+            "Para criar um lembrete, abra o cadastro de uma pessoa e role até a seção 'Lembretes'. Clique em 'Adicionar lembrete'.",
+            "Existem dois tipos de lembrete: Mensal (repete todo mês no dia escolhido) e Único (aparece apenas na data escolhida).",
+            "Lembretes mensais aparecem no calendário todo mês no dia configurado. Lembretes únicos aparecem apenas na data específica.",
+            "No calendário, os lembretes aparecem com fundo azul claro e ícone de sino, para diferencia-los de lançamentos financeiros."
+        }, new()
+        {
+            new("Criar Lembrete", new()
+            {
+                "Na tela de Pessoas, clique no ícone de editar na pessoa desejada.",
+                "Role para baixo até a seção 'Lembretes' e clique em 'Adicionar lembrete'.",
+                "Selecione o tipo (Mensal ou Único), preencha o texto curto do lembrete e informe o dia (para mensal) ou data (para único).",
+                "Clique em 'Salvar'. O lembrete será exibido na lista e no calendário."
+            }),
+            new("Editar ou Excluir", new()
+            {
+                "Na lista de lembretes da pessoa, clique no ícone de lápis para editar ou no ícone de lixeira para excluir.",
+                "Edições e exclusões são refletidas imediatamente no calendário."
+            })
+        }),
+
+        new("provisoes", "Provisões", Icons.Material.Filled.EventRepeat, new()
+        {
+            "Provisões são compromissos recorrentes que você já sabe que vão acontecer, mas ainda não foram registrados como lançamento. Ex: aluguel todo dia 5, academia todo mês, parcela do seguro semestral.",
+            "Ao criar uma provisão, você define: tipo (débito em conta, débito em cartão ou receita), frequência (mensal, trimestral, semestral, anual), dia do mês, valor e categoria.",
+            "O sistema projeta as provisões no calendário e no fluxo, mostrando o que você espera gastar/receber no futuro, sem criar lançamentos reais.",
+            "Quando chega o mês, você pode clicar em 'Sincronizar' para que o sistema crie os lançamentos reais das provisões daquele mês. Isso evita ter que lançar manualmente coisas recorrentes."
+        }, new()),
+
+        new("investimentos", "Investimentos", Icons.Material.Filled.Savings, new()
+        {
+            "Cadastre aqui seus investimentos: ações, fundos imobiliários, criptomoedas, CDB, reserva de emergência, dólar, etc."
+        }, new()
+        {
+            new("Movimentações", new()
+            {
+                "Compra: você comprou cotas de um ativo. Informe quantidade e preço. O sistema cria um lançamento de despesa na conta vinculada.",
+                "Venda: você vendeu cotas. Informe quantidade e preço. O sistema cria um lançamento de receita na conta vinculada.",
+                "Aporte: aplicação na reserva (ex: depositar na poupança). Cria lançamento de despesa.",
+                "Resgate: retirada da reserva (ex: sacar da poupança). Cria lançamento de receita."
+            }),
+            new("Proventos", new()
+            {
+                "Dividendos: rendimentos pagos por ações ou fundos. Cria um lançamento de receita.",
+                "Rendimento: juros de CDB ou rendimentos da reserva. Cria um lançamento de receita."
+            }),
+            new("Cotação e Desfazer", new()
+            {
+                "Você pode atualizar a cotação atual de cada investimento diretamente na tela.",
+                "Se errou uma movimentação, use o botão 'Desfazer' para reverter a última operação. O sistema desfaz em cascata (se comprou e depois recebeu dividendos, desfaz tudo na ordem inversa).",
+                "Ao excluir um investimento, o sistema cria um registro de auditoria para rastreabilidade."
+            })
+        }),
+
+        new("projetos", "Projetos", Icons.Material.Filled.Work, new()
+        {
+            "Projetos permitem agrupar lançamentos por atividade específica. Ex: reforma da casa, evento, obra, consultoria.",
+            "Ao criar um projeto, informe a pessoa associada, uma descrição, a data de contratação e o valor contratado.",
+            "Para vincular um lançamento a um projeto, selecione o projeto no formulário de Receita, Despesa ou Despesa de Cartão. O campo 'Projeto' aparece depois que você seleciona a pessoa.",
+            "Na tela de Projetos, há um botão de relatório em cada linha. Clique para ver o resumo do projeto: receitas, despesas, resultado e quanto ainda falta receber."
+        }, new()
+        {
+            new("Relatório do Projeto", new()
+            {
+                "O relatório mostra quatro cards no topo: Receitas (verde), Despesas (vermelho), Resultado (azul se positivo, vermelho se negativo) e Pendente a receber (valor contratado menos receitas já registradas).",
+                "Abaixo, há uma tabela com todos os lançamentos vinculados ao projeto, com data, tipo, categoria e valor.",
+                "À direita, um gráfico de pizza mostra a distribuição das despesas por categoria.",
+                "Use o botão 'Gerar PDF' para baixar um relatório em PDF com o mesmo layout."
+            })
+        }),
+
+        new("fecharmes", "Fechar Mês", Icons.Material.Filled.EventBusy, new()
+        {
+            "Fechar um mês é como 'trancar' aquele período, garantindo que os dados estão corretos e consistentes.",
+            "Na tela de Fechar Mês, selecione a conta que deseja conferir. O sistema mostra o saldo acumulado (calculado pelo sistema) e o saldo real que você informa do banco.",
+            "Se houver diferença, o sistema sugere criar uma entrada de ajuste (ex: uma despesa de R$ 5 que esqueceu de registrar).",
+            "Ao confirmar, o sistema fecha todos os meses anteriores que ainda estavam abertos, em cascata. Isso bloqueia edição de lançamentos antigos para manter a integridade.",
+            "Não é possível fechar um mês que tenha lançamentos não confirmados. Confirme todos primeiro."
+        }, new()),
+
+        new("configuracoes", "Configurações", Icons.Material.Filled.Settings, new()
+        {
+            "Aqui você configura o banco de dados, backup e senha de backup."
+        }, new()
+        {
+            new("Banco de Dados", new()
+            {
+                "O sistema usa SQLite por padrão (arquivo local). Se preferir, pode trocar para MySQL informando a connection string.",
+                "Ao selecionar SQLite, a connection string fica oculta pois é fixa.",
+                "Antes de trocar, clique em 'Testar conexão' para garantir que está tudo certo.",
+                "Ao trocar, todos os dados são copiados do banco atual para o novo. O banco antigo não é apagado."
+            }),
+            new("Backup", new()
+            {
+                "O backup salva todos os seus dados em um arquivo protegido por senha (AES-256-GCM).",
+                "Para gerar um backup, clique em 'Gerar backup'. Na primeira vez, o sistema pede para criar uma senha de backup. Nas vezes seguintes, pede a senha existente.",
+                "Para restaurar um backup, selecione o arquivo e informe a senha. ATENÇÃO: isso substitui TODOS os dados atuais, inclusive sua senha de login. Você será desconectado.",
+                "A senha de backup é diferente da senha de login e NÃO pode ser recuperada pelo sistema — por segurança, apenas um verificador irreversível (hash) é armazenado. Clique em 'Alterar senha de backup' e autentique com sua senha de login para defini-la novamente.",
+                "Se você alterar a senha de backup, backups antigos gerados com a senha antiga não poderão mais ser restaurados."
+            })
+        }),
+
+        new("perfil", "Perfil", Icons.Material.Filled.Person, new()
+        {
+            "Acesse pelo menu no canto superior direito (clique no seu nome).",
+            "Em 'Dados da conta', você pode editar seu nome e email. Clique em 'Salvar' para confirmar.",
+            "Em 'Alterar senha', digite sua senha atual, a nova senha e confirme. A validação acontece enquanto você digita: o botão fica desabilitado até que tudo esteja preenchido corretamente (mínimo 8 caracteres e senhas coincidem)."
+        }, new()),
+
+        new("acessorapido", "Acesso Rápido", Icons.Material.Filled.Search, new()
+        {
+            "No topo da tela (barra de aplicação), há um campo de busca discreto com fundo dourado e ícone de lupa.",
+            "Digite pelo menos 2 caracteres para ver as páginas disponíveis que correspondem ao que você está digitando.",
+            "Clique em um resultado para navegar diretamente para aquela página. Também é possível usar as setas do teclado e Enter.",
+            "Exemplos: digite 'pessoa' para ir direto para o cadastro de pessoas, 'investimento' para investimentos, 'fluxo' para o fluxo mensal."
+        }, new())
+    };
+
+    private async Task<IEnumerable<string>> Buscar(string texto, CancellationToken _)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return _secoes.Select(s => s.Titulo);
+
+        var termo = texto.Trim();
+        return _secoes
+            .Where(s => s.Titulo.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                        || s.Paragrafos.Any(p => p.Contains(termo, StringComparison.OrdinalIgnoreCase))
+                        || s.Subsecoes.Any(sub => sub.Titulo.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                                                  || sub.Itens.Any(i => i.Contains(termo, StringComparison.OrdinalIgnoreCase))))
+            .Select(s => s.Titulo);
+    }
+
+    private void NavegarPara(string titulo)
+    {
+        _textoBusca = string.Empty;
+        if (string.IsNullOrWhiteSpace(titulo)) return;
+        var secao = _secoes.FirstOrDefault(s => s.Titulo == titulo);
+        if (secao is not null)
+        {
+            Navigation.NavigateTo($"/manual#{secao.Id}", forceLoad: true);
+        }
+    }
+
+    private async Task IrParaTopo()
+    {
+        await JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("manualScrollInterop.init", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnScrollChanged(bool showButton)
+    {
+        _mostrarBotaoTopo = showButton;
+        InvokeAsync(StateHasChanged);
+    }
+}

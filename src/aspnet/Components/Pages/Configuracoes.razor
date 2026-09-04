@@ -1,0 +1,445 @@
+@page "/configuracoes"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Models.Configuration
+@using Finort.Components.Dialogs
+@inject AuthService AuthService
+@inject DatabaseConfigStore DbStore
+@inject DatabaseSwitchService SwitchService
+@inject BackupRestoreService BackupService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ScopedAuthenticationStateProvider Auth
+@inject IJSRuntime JS
+
+<PageTitle>Configurações</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4 mt-4">Configurações</MudText>
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Banco de dados</MudText>
+            <MudRadioGroup T="string" Value="@_provider"
+                           ValueChanged="EventCallback.Factory.Create<string>(this, AoMudarProvider)">
+                <MudRadio T="string" Value="@("Sqlite")">SQLite local (padrão)</MudRadio>
+                <MudRadio T="string" Value="@("MySql")" Disabled="true">MySQL</MudRadio>
+            </MudRadioGroup>
+            @if (_provider == "MySql")
+            {
+                <MudTextField T="string" Label="Connection string" Variant="@gVariant"
+                              Lines="3" @bind-Value="_connectionString" />
+            }
+            @if (_testando || _salvando)
+            {
+                <MudProgressLinear Indeterminate="true" Class="mt-2" />
+            }
+            <MudStack Row Spacing="2" Class="mt-3">
+                <MudButton Variant="@gVariant" OnClick="TestarConexao" Disabled="@(_testando || _salvando)">
+                    @(_testando ? "Testando..." : "Testar conexão")
+                </MudButton>
+                <MudButton Variant="@gVariant" Color="Color.Primary" OnClick="TrocarBanco" Disabled="@(_testando || _salvando)">
+                    @(_salvando ? "Salvando..." : "Salvar e trocar")
+                </MudButton>
+            </MudStack>        </MudPaper>
+    </MudItem>
+
+    @if (_providerCorrente == "Sqlite")
+    {
+        <MudItem xs="12">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Backup</MudText>
+
+                <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
+                           Disabled="@(_gerandoBackup)" OnClick="GerarBackupAsync">
+                    @(_gerandoBackup ? "Gerando..." : "Gerar backup")
+                </MudButton>
+
+                <MudDivider Class="my-3" />
+
+                <MudText Typo="Typo.caption">Restauração substitui TODOS os dados, inclusive a senha de login.</MudText>
+                <MudFileUpload T="IBrowserFile" FilesChanged="ArquivoSelecionado" Disabled="@_restauracaoEmAndamento"
+                               Accept=".cfbak" MaxFileSize="@(200_000_000L)">
+                    <ActivatorContent>
+                        <MudButton Variant="@gVariant" StartIcon="@Icons.Material.Filled.Upload" Disabled="@_restauracaoEmAndamento">
+                            Restaurar backup
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Senha de backup</MudText>
+
+                @if (!_autenticadoBackup)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2 text-muted">
+                        Por segurança, a senha de backup não pode ser recuperada — apenas substituída.
+                        Backups gerados com a senha antiga exigem a própria senha para restauração.
+                    </MudText>
+                    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Key"
+                               OnClick="AutenticarBackup">
+                        Alterar senha de backup
+                    </MudButton>
+                }
+                else
+                {
+                    <MudTextField T="string" Label="Nova senha de backup" InputType="InputType.Password"
+                                  Variant="@gVariant" @bind-Value="_novaSenhaBackup"
+                                  TextChanged="@(() => StateHasChanged())" />
+                    <MudTextField T="string" Label="Confirmar nova senha" InputType="InputType.Password"
+                                  Variant="@gVariant" @bind-Value="_confirmacaoSenhaBackup"
+                                  Error="@(_confirmacaoSenhaBackup.Length > 0 && _novaSenhaBackup != _confirmacaoSenhaBackup)"
+                                  ErrorText="As senhas não conferem."
+                                  TextChanged="@(() => StateHasChanged())" />
+                    <MudAlert Severity="Severity.Warning" Class="mt-2" Dense="true">
+                        Se alterada, backups gerados com a senha antiga não poderão ser restaurados.
+                    </MudAlert>
+                    <MudStack Row Spacing="2" Class="mt-2">
+                        <MudButton Variant="@gVariant" Color="Color.Primary"
+                                   Disabled="@(!_podeSalvarNovaSenha)" OnClick="SalvarSenhaBackup">
+                            Salvar
+                        </MudButton>
+                        <MudButton Variant="@gVariant" OnClick="FecharSenhaBackup">
+                            Cancelar
+                        </MudButton>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    }
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Style="border: 2px solid #e74c3c; border-radius: 8px;">
+            <MudText Typo="Typo.h6" Style="color: #e74c3c;" Class="mb-2">Zona de risco</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="IniciarExclusaoDados">
+                Excluir todos os dados
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_salvando)
+{
+    <div class="switch-overlay">
+        <MudPaper Class="switch-overlay-card" Elevation="8">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Class="mt-3" Style="font-weight:600">Trocando banco de dados...</MudText>
+            <MudText Typo="Typo.caption" Class="mt-1">Migrando schema e copiando todos os dados. Isso pode levar alguns segundos.</MudText>
+        </MudPaper>
+    </div>
+}
+
+@if (_etapaExclusao > 0)
+{
+    <div class="switch-overlay">
+        <MudPaper Class="switch-overlay-card" Elevation="8" Style="border: 2px solid #e74c3c; max-width: 400px;">
+            @if (_etapaExclusao == 1)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">Tem certeza que deseja excluir todos os dados?</MudText>
+                <MudStack Row Spacing="2" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Text" OnClick="CancelarExclusaoDados">Cancelar</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="AvancarEtapaExclusao">Continuar</MudButton>
+                </MudStack>
+            }
+            else if (_etapaExclusao == 2)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">Recomendamos fazer um backup antes</MudText>
+                <MudStack Row Spacing="2" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Text" OnClick="CancelarExclusaoDados">Cancelar</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="AvancarEtapaExclusao">Continuar</MudButton>
+                </MudStack>
+            }
+            else if (_etapaExclusao == 3)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">Todos os dados serão excluídos permanentemente</MudText>
+                <MudStack Row Spacing="2" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Text" OnClick="CancelarExclusaoDados">Cancelar</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@_excluindoDados" OnClick="ConfirmarExclusaoDados">
+                        @(_excluindoDados ? "Excluindo..." : "Excluir tudo")
+                    </MudButton>
+                </MudStack>
+            }
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private string _provider = "Sqlite";
+    private string _providerCorrente = "Sqlite";
+    private string _connectionString = "";
+
+    private bool _testando;
+    private bool _salvando;
+    private bool _gerandoBackup;
+    private byte[]? _arquivoRestauracao;
+    private bool _restauracaoEmAndamento;
+
+    private bool _autenticadoBackup;
+    private string _novaSenhaBackup = "";
+    private string _confirmacaoSenhaBackup = "";
+    private bool _podeSalvarNovaSenha => !string.IsNullOrWhiteSpace(_novaSenhaBackup)
+                                         && _novaSenhaBackup == _confirmacaoSenhaBackup;
+
+    private int _etapaExclusao;
+    private bool _excluindoDados;
+
+    protected override void OnInitialized()
+    {
+        var config = DbStore.Get();
+        _providerCorrente = string.Equals(config.Provider, "MySql", StringComparison.OrdinalIgnoreCase) ? "MySql" : "Sqlite";
+        _provider = _providerCorrente;
+        _connectionString = _provider == "MySql" ? config.MySql.ConnectionString : config.Sqlite.ConnectionString;
+    }
+
+    private void AoMudarProvider(string provider)
+    {
+        _provider = provider;
+        var config = DbStore.Get();
+        _connectionString = provider == "MySql" ? config.MySql.ConnectionString : config.Sqlite.ConnectionString;
+    }
+
+    private DatabaseConfig MontarConfigDestino() => new()
+    {
+        Provider = _provider,
+        Sqlite = new() { ConnectionString = _provider == "Sqlite" ? _connectionString : DbStore.Get().Sqlite.ConnectionString },
+        MySql = new() { ConnectionString = _provider == "MySql" ? _connectionString : DbStore.Get().MySql.ConnectionString }
+    };
+
+    private async Task TestarConexao()
+    {
+        if (_testando || _salvando) return;
+        _testando = true;
+        try
+        {
+            await SwitchService.TestarConexaoAsync(MontarConfigDestino());
+            Snackbar.Add("Conexão OK.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _testando = false; }
+    }
+
+    private async Task AutenticarBackup()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<SenhaLoginDialog>("Autenticar", options);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: string senha }) return;
+
+        var config = await AuthService.GetConfiguracaoAsync();
+        if (config is null || !AuthService.VerificarSenha(config, senha))
+        {
+            Snackbar.Add("Senha de login incorreta.", Severity.Error);
+            return;
+        }
+
+        _autenticadoBackup = true;
+        _novaSenhaBackup = "";
+        _confirmacaoSenhaBackup = "";
+    }
+
+    private void FecharSenhaBackup()
+    {
+        _autenticadoBackup = false;
+        _novaSenhaBackup = "";
+        _confirmacaoSenhaBackup = "";
+    }
+
+    private async Task SalvarSenhaBackup()
+    {
+        var config = await AuthService.GetConfiguracaoAsync();
+        if (config is null) return;
+        try
+        {
+            await AuthService.DefinirSenhaBackupAsync(config, _novaSenhaBackup);
+            Snackbar.Add("Senha de backup atualizada.", Severity.Success);
+            FecharSenhaBackup();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task TrocarBanco()
+    {
+        if (_testando || _salvando) return;
+        var destino = MontarConfigDestino();
+        var atual = DbStore.Get();
+        var semMudanca = destino.Provider == atual.Provider &&
+            (destino.Provider != "Sqlite"
+                ? destino.MySql.ConnectionString == atual.MySql.ConnectionString
+                : destino.Sqlite.ConnectionString == atual.Sqlite.ConnectionString);
+        if (semMudanca)
+        {
+            Snackbar.Add("Nenhuma alteração para aplicar.", Severity.Warning);
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox("Trocar banco de dados",
+            "ATENÇÃO: todas as tabelas do banco de DESTINO serão removidas e recriadas, e os dados " +
+            "atuais copiados para ele. O banco de ORIGEM (atual) não será alterado. Continuar?",
+            "Copiar e trocar");
+        if (confirm != true) return;
+
+        _salvando = true;
+        StateHasChanged();
+        try
+        {
+            await SwitchService.TestarConexaoAsync(destino);
+            await SwitchService.ExecutarAsync(destino);
+            Snackbar.Add($"Banco trocado para {_provider}.", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally
+        {
+            _salvando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<string?> PedirSenhaBackupAsync(bool modoCadastro)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<SenhaBackupDialog> { { x => x.ModoCadastro, modoCadastro } };
+        var dialog = await DialogService.ShowAsync<SenhaBackupDialog>(
+            modoCadastro ? "Cadastrar senha de backup" : "Senha de backup", parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false, Data: string s } && !string.IsNullOrEmpty(s) ? s : null;
+    }
+
+    private async Task GerarBackupAsync()
+    {
+        _gerandoBackup = true;
+        try
+        {
+            if (!await BackupService.PossuiSenhaBackupAsync())
+            {
+                var nova = await PedirSenhaBackupAsync(modoCadastro: true);
+                if (nova is null) return;
+                var config = await AuthService.GetConfiguracaoAsync();
+                if (config is null) return;
+                await AuthService.DefinirSenhaBackupAsync(config, nova);
+                Snackbar.Add("Senha de backup cadastrada.", Severity.Success);
+                await BaixarBackupAsync(nova);
+                return;
+            }
+
+            var senha = await PedirSenhaBackupAsync(modoCadastro: false);
+            if (senha is not null)
+                await BaixarBackupAsync(senha);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _gerandoBackup = false; }
+    }
+
+    private async Task BaixarBackupAsync(string senha)
+    {
+        using var ms = new MemoryStream();
+        var resultado = await BackupService.GerarBackupAsync(ms, senha);
+        if (!resultado.Ok)
+        {
+            Snackbar.Add(resultado.Erro!, Severity.Error);
+            return;
+        }
+        await JS.InvokeVoidAsync("backupHelpers.download",
+            BackupCrypto.NomeArquivo(DateTime.Now), Convert.ToBase64String(ms.ToArray()));
+        Snackbar.Add("Backup gerado.", Severity.Success);
+    }
+
+    private async Task ArquivoSelecionado(IBrowserFile arquivo)
+    {
+        if (!arquivo.Name.EndsWith(".cfbak", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Selecione um arquivo .cfbak válido.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await using var stream = arquivo.OpenReadStream(200_000_000L);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _arquivoRestauracao = ms.ToArray();
+        }
+        catch
+        {
+            Snackbar.Add("Arquivo muito grande ou ilegível.", Severity.Error);
+            _arquivoRestauracao = null;
+            return;
+        }
+
+        var senha = await PedirSenhaBackupAsync(modoCadastro: false);
+        if (senha is null) { _arquivoRestauracao = null; return; }
+
+        var validacao = await BackupService.ValidarBackupAsync(_arquivoRestauracao, senha);
+        if (!validacao.Ok)
+        {
+            Snackbar.Add(validacao.Erro!, Severity.Error);
+            _arquivoRestauracao = null;
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox("Confirmar restauração",
+            "ATENÇÃO: tudo será substituído pelos dados do backup, inclusive a senha de login. Você será desconectado. Continuar?",
+            "Restaurar agora");
+        if (confirm != true) { _arquivoRestauracao = null; return; }
+
+        _restauracaoEmAndamento = true;
+        var resultado = await BackupService.RestaurarAsync(_arquivoRestauracao, senha);
+        if (resultado.Ok)
+        {
+            Snackbar.Add("Backup restaurado. Faça login novamente.", Severity.Success);
+            try { await JS.InvokeVoidAsync("authHelpers.logout"); } catch { }
+            Auth.SignOut();
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        else
+        {
+            Snackbar.Add(resultado.Erro!, Severity.Error);
+            _restauracaoEmAndamento = false;
+            _arquivoRestauracao = null;
+        }
+    }
+
+    private void IniciarExclusaoDados()
+    {
+        _etapaExclusao = 1;
+    }
+
+    private void AvancarEtapaExclusao()
+    {
+        _etapaExclusao++;
+    }
+
+    private void CancelarExclusaoDados()
+    {
+        _etapaExclusao = 0;
+    }
+
+    private async Task ConfirmarExclusaoDados()
+    {
+        _excluindoDados = true;
+        StateHasChanged();
+        try
+        {
+            var resultado = await BackupService.ExcluirTodosDadosAsync();
+            if (!resultado.Ok)
+            {
+                Snackbar.Add(resultado.Erro ?? "Falha ao excluir dados.", Severity.Error);
+                _excluindoDados = false;
+                _etapaExclusao = 0;
+                return;
+            }
+            Snackbar.Add("Todos os dados foram excluídos.", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _excluindoDados = false;
+            _etapaExclusao = 0;
+        }
+    }
+}

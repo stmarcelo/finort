@@ -1,0 +1,166 @@
+@page "/fechar-mes"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@inject FechamentoService FechamentoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Fechar mês</PageTitle>
+
+<div class="d-flex align-center flex-wrap mb-2">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Class="mr-2" /> Fechar mês
+    </MudText>
+    <span class="flex-grow-1"></span>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit"
+                   OnClick="MesAnterior" />
+    <MudText Class="mx-2">@RotuloMes</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit"
+                   OnClick="ProximoMes" />
+</div>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="4">
+        <ContaSelect Label="Conta" Placeholder="Selecione" PermitirNovo="false"
+                     Value="_contaId" ValueChanged="ContaAlterada" />
+    </MudItem>
+</MudGrid>
+
+@if (_contaId is null)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Selecione uma conta para conferir o saldo.</MudAlert>
+}
+else if (_conferencia is null)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-4" />
+}
+else if (_conferencia.MesFechado)
+{
+    <MudAlert Severity="Severity.Success" Class="mt-2">Este mês já está fechado.</MudAlert>
+}
+else if (_conferencia.TemPendencias)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-2">
+        Existem lançamentos não confirmados neste mês. Confira tudo antes de fechar.
+    </MudAlert>
+    <MudButton Variant="@gVariant" Class="mt-2" OnClick="IrParaLancamentos">Ver lançamentos</MudButton>
+}
+else
+{
+    <div class="surface-card pa-4 mt-2" style="max-width:480px;">
+        <div class="fluxo-linha">
+            <span class="fluxo-label">Saldo acumulado (confirmados)</span>
+            <span class="fluxo-valor @ClasseAcumulado">@_conferencia.SaldoAcumulado.ToString("N2")</span>
+        </div>
+        <div class="d-flex align-center gap-2 mt-2">
+            <MudMoneyInput Label="Saldo real no banco" Variant="@gVariant" @bind-Value="_saldoReal" Class="flex-grow-1" Required="true" />
+            <MudSwitch @bind-Value="_saldoNegativo" Label="Negativo" Color="Color.Error" />
+        </div>
+        @if (_saldoReal is not null && Diferenca != 0)
+        {
+            <div class="fluxo-linha mt-2">
+                <span class="fluxo-label">Acerto</span>
+                <span class="fluxo-valor @(Diferenca > 0 ? "pos" : "neg")">@Diferenca.ToString("N2")</span>
+            </div>
+        }
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4"
+                   Disabled="@(_saldoReal is null)" OnClick="FecharMesAgora">Fechar mês</MudButton>
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private DateOnly Hoje => DateOnly.FromDateTime(DateTime.Today);
+
+    private Guid? _contaId;
+    private int _ano;
+    private int _mes;
+    private decimal? _saldoReal;
+    private bool _saldoNegativo;
+    private ConferenciaMes? _conferencia;
+
+    private string RotuloMes => new DateTime(_ano, _mes, 1).ToString("MMMM yyyy", CulturaPtBr);
+
+    private decimal SaldoRealCalculado => _saldoNegativo ? -Math.Abs(_saldoReal ?? 0m) : (_saldoReal ?? 0m);
+
+    private decimal Diferenca => _conferencia is null ? 0m : SaldoRealCalculado - _conferencia.SaldoAcumulado;
+
+    private string ClasseAcumulado
+        => _conferencia!.SaldoAcumulado > 0 ? "pos" : _conferencia.SaldoAcumulado < 0 ? "neg" : "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ano = Hoje.Year;
+        _mes = Hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task ContaAlterada(Guid? contaId)
+    {
+        _contaId = contaId;
+        _saldoReal = null;
+        _saldoNegativo = false;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        try
+        {
+            _conferencia = _contaId is null
+                ? null
+                : await FechamentoService.ObterConferenciaAsync(_contaId.Value, _ano, _mes);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task MesAnterior() => await Navegar(-1);
+
+    private async Task ProximoMes() => await Navegar(1);
+
+    private async Task Navegar(int delta)
+    {
+        var destino = new DateOnly(_ano, _mes, 1).AddMonths(delta);
+        _ano = destino.Year;
+        _mes = destino.Month;
+        _saldoReal = null;
+        _saldoNegativo = false;
+        await CarregarAsync();
+    }
+
+    private void IrParaLancamentos()
+        => Navigation.NavigateTo($"/lancamentos?mes={_mes}&ano={_ano}");
+
+    private async Task FecharMesAgora()
+    {
+        if (_conferencia is null || _saldoReal is null || _contaId is null) return;
+
+        var textoAcerto = Diferenca == 0
+            ? "Sem diferença a lançar."
+            : $"Será lançado um acerto de {Diferenca:N2} na categoria \"Acerto de saldo\".";
+        var confirmar = await DialogService.ShowMessageBox(
+            "Fechar mês",
+            $"O mês {_mes:D2}/{_ano} e todos os anteriores abertos serão bloqueados permanentemente. {textoAcerto}",
+            "Fechar mês", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (confirmar != true) return;
+
+        try
+        {
+            await FechamentoService.FecharAsync(_contaId.Value, _ano, _mes, SaldoRealCalculado);
+            Snackbar.Add("Mês fechado com sucesso.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+
+        await CarregarAsync();
+    }
+}

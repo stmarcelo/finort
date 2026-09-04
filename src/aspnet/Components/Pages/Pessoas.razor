@@ -1,0 +1,116 @@
+@page "/pessoas"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject PessoaService PessoaService
+@inject LembreteService LembreteService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Pessoas</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" /> Pessoas
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => AbrirDialog(null)">Nova pessoa</MudButton>
+        </MudToolBar>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTable Items="@_pessoas" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Nome</MudTh>
+                <MudTh>Cor</MudTh>
+                <MudTh>Observação</MudTh>
+                <MudTh>Lembretes</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Nome</MudTd>
+                <MudTd>
+                    @if (!string.IsNullOrEmpty(context.CorDeExibicao))
+                    {
+                        var hex = context.CorDeExibicao.StartsWith("#") ? context.CorDeExibicao : "#" + context.CorDeExibicao;
+                        <div style="width:24px;height:24px;border-radius:4px;background:@hex;"></div>
+                    }
+                </MudTd>
+                <MudTd>@context.Observacao</MudTd>
+                <MudTd>
+                    @if (_contagemLembretes.TryGetValue(context.Id, out var count) && count > 0)
+                    {
+                        <MudTooltip Text="@ObterTextosLembretes(context.Id)">
+                            <MudBadge Content="@count" Color="Color.Primary" Overlap="true" Bordered="true">
+                                <MudIcon Icon="@Icons.Material.Filled.Notifications" Color="Color.Primary" />
+                            </MudBadge>
+                        </MudTooltip>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="() => AbrirDialog(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => Excluir(context)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<Pessoa> _pessoas = new();
+    private Dictionary<Guid, int> _contagemLembretes = new();
+    private Dictionary<Guid, List<Lembrete>> _lembretesPorPessoa = new();
+
+    protected override async Task OnInitializedAsync()
+        => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _pessoas = await PessoaService.ListarAsync();
+        var ids = _pessoas.Select(p => p.Id).ToList();
+        _contagemLembretes = await LembreteService.ContarPorPessoasAsync(ids);
+        
+        // Load lembretes for tooltip
+        _lembretesPorPessoa = new();
+        foreach (var id in ids.Where(id => _contagemLembretes.GetValueOrDefault(id) > 0))
+        {
+            _lembretesPorPessoa[id] = await LembreteService.ListarPorPessoaAsync(id);
+        }
+    }
+
+    private string ObterTextosLembretes(Guid pessoaId)
+    {
+        if (!_lembretesPorPessoa.TryGetValue(pessoaId, out var lembretes)) return "";
+        return string.Join("\n", lembretes.Select(l => l.Texto));
+    }
+
+    private async Task AbrirDialog(Pessoa? pessoa)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<PessoaDialog> { { x => x.Pessoa, pessoa } };
+        var dialog = await DialogService.ShowAsync<PessoaDialog>("Pessoa", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task Excluir(Pessoa pessoa)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var confirm = await DialogService.ShowMessageBox("Excluir pessoa",
+            $"Excluir \"{pessoa.Nome}\"?", "Excluir", null, null, options);
+        if (confirm != true) return;
+
+        try
+        {
+            await PessoaService.ExcluirAsync(pessoa.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

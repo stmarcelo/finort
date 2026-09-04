@@ -1,0 +1,143 @@
+@page "/configurar-smtp"
+@attribute [AllowAnonymous]
+@layout LoginLayout
+@inherits AppComponentBase
+@inject AuthService AuthService
+@inject EmailService EmailService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="2" Class="pa-6" Style="max-width: 480px; margin: 0 auto; margin-top: 8vh;">
+    <MudText Typo="Typo.h5" Align="Align.Center">Configurar e-mail (SMTP)</MudText>
+    <MudTextField @bind-Value="_host" Label="Servidor (host)" Variant="@gVariant" T="string" />
+    <MudTextField @bind-Value="_porta" Label="Porta" Variant="@gVariant" T="int?" />
+    <MudTextField @bind-Value="_usuario" Label="Usuário" Variant="@gVariant" T="string" />
+    <MudTextField @bind-Value="_senha" Label="Senha do e-mail" Variant="@gVariant"
+                  InputType="InputType.Password" T="string" />
+    <MudTextField @bind-Value="_from" Label="Remetente (From)" Variant="@gVariant" T="string" />
+    @if (_exigeSenhaAtual)
+    {
+        <MudTextField @bind-Value="_senhaAtual" Label="Senha atual" Variant="@gVariant"
+                      InputType="InputType.Password" T="string" />
+    }
+    <div class="d-flex justify-space-between mt-4">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                   Disabled="_processando" OnClick="Testar">Testar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="_processando" OnClick="Salvar">Salvar</MudButton>
+    </div>
+    <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+               Class="mt-2" OnClick="IrLogin">Voltar para o login</MudButton>
+</MudPaper>
+
+@code {
+    private const string OrigemGuard = "configurar-smtp";
+
+    private string _host = string.Empty;
+    private int? _porta;
+    private string _usuario = string.Empty;
+    private string _senha = string.Empty;
+    private string _from = string.Empty;
+    private string _senhaAtual = string.Empty;
+    private bool _exigeSenhaAtual;
+    private bool _processando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var configuracao = await AuthService.GetConfiguracaoAsync();
+        _exigeSenhaAtual = configuracao is not null;
+        if (configuracao is null) return;
+        _host = configuracao.SmtpHost ?? string.Empty;
+        _porta = configuracao.SmtpPort;
+        _usuario = configuracao.SmtpUser ?? string.Empty;
+        _from = configuracao.SmtpFrom ?? string.Empty;
+    }
+
+    private async Task<bool> ValidarSenhaAtualAsync()
+    {
+        if (!_exigeSenhaAtual) return true;
+        if (LoginAttemptGuard.IsLocked(OrigemGuard))
+        {
+            Snackbar.Add("Muitas tentativas. Aguarde um minuto.", Severity.Error);
+            return false;
+        }
+        var configuracao = await AuthService.GetConfiguracaoAsync();
+        if (configuracao is null) return true;
+        if (string.IsNullOrWhiteSpace(_senhaAtual) ||
+            !AuthService.VerificarSenha(configuracao, _senhaAtual))
+        {
+            LoginAttemptGuard.RecordFailure(OrigemGuard);
+            Snackbar.Add("Senha atual incorreta", Severity.Error);
+            return false;
+        }
+        LoginAttemptGuard.Reset(OrigemGuard);
+        return true;
+    }
+
+    private void IrLogin() => Navigation.NavigateTo("/login");
+
+    private SmtpSettings BuildSettings()
+        => new(
+            string.IsNullOrWhiteSpace(_host) ? null : _host.Trim(),
+            _porta,
+            string.IsNullOrWhiteSpace(_usuario) ? null : _usuario.Trim(),
+            string.IsNullOrWhiteSpace(_senha) ? null : _senha,
+            string.IsNullOrWhiteSpace(_from) ? null : _from.Trim());
+
+    private async Task Testar()
+    {
+        if (_processando) return;
+        if (!await ValidarSenhaAtualAsync()) return;
+        if (string.IsNullOrWhiteSpace(_host) || _porta is null)
+        {
+            Snackbar.Add("Informe servidor e porta", Severity.Error);
+            return;
+        }
+        _processando = true;
+        try
+        {
+            var settings = BuildSettings();
+            var para = (await AuthService.GetConfiguracaoAsync())?.Email ?? settings.From ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(para))
+            {
+                Snackbar.Add("Informe o remetente para o e-mail de teste", Severity.Error);
+                return;
+            }
+            await EmailService.SendTestAsync(settings, para, "E-mail de teste",
+                "Este é um e-mail de teste. Sua configuração de SMTP está funcionando.");
+            Snackbar.Add("E-mail de teste enviado com sucesso", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha ao enviar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+
+    private async Task Salvar()
+    {
+        if (_processando) return;
+        if (!await ValidarSenhaAtualAsync()) return;
+        var configuracao = await AuthService.GetConfiguracaoAsync();
+        if (configuracao is null)
+        {
+            Snackbar.Add("Complete o primeiro acesso antes de configurar o e-mail", Severity.Error);
+            Navigation.NavigateTo("/configurar");
+            return;
+        }
+        _processando = true;
+        try
+        {
+            await AuthService.AtualizarSmtpAsync(configuracao, BuildSettings());
+            Snackbar.Add("Configuração de SMTP salva", Severity.Success);
+            Navigation.NavigateTo("/esqueci-senha");
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+}

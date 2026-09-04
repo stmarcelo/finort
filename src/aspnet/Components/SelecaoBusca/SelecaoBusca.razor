@@ -1,0 +1,97 @@
+@namespace Finort.Components
+@inherits AppComponentBase
+
+<div style="display:flex; align-items:flex-start;">
+    <div style="flex:1 1 auto;">
+        <MudAutocomplete T="KeyValuePair<Guid, string>"
+                         Value="@_selecionado"
+                         ValueChanged="OnSelecionadoChanged"
+                         SearchFunc="@Buscar"
+                         ToStringFunc="@(k => k.Value)"
+                         Label="@Label"
+                         Variant="@gVariant"
+                         Placeholder="@Placeholder"
+                         Required="@Required"
+                         RequiredError="@RequiredError"
+                         HelperText="@HelperText"
+                         Class="@Class"
+                         MaxHeight="320"
+                         ResetValueOnEmptyText="false"
+                         CoerceText="true"
+                         DebounceInterval="150" />
+    </div>
+    @if (_temCadastro)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                       Title="@TituloNovo" Class="mt-3 ml-1 flex-grow-0"
+                       OnClick="AbrirCadastroAsync" />
+    }
+</div>
+
+@code {
+    private IReadOnlyList<KeyValuePair<Guid, string>> _opcoes = Array.Empty<KeyValuePair<Guid, string>>();
+    private KeyValuePair<Guid, string> _selecionado;
+    private bool _temCadastro;
+
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? RequiredError { get; set; }
+
+    /// <summary>Lista completa carregada pelo pai (id -> texto exibido).</summary>
+    [Parameter]
+    public IReadOnlyList<KeyValuePair<Guid, string>> Opcoes
+    {
+        get => _opcoes;
+        set => _opcoes = value ?? Array.Empty<KeyValuePair<Guid, string>>();
+    }
+
+    /// <summary>Título do botão "+". Exibir o botão exige @PermitirNovo e fornecer @Adicionar.</summary>
+    [Parameter] public string TituloNovo { get; set; } = "Adicionar novo";
+
+    [Parameter] public bool PermitirNovo { get; set; } = true;
+
+    /// <summary>Callback para abrir o cadastro. O pai recarrega as opções e define Value.</summary>
+    [Parameter] public EventCallback Adicionar { get; set; }
+
+    [Parameter] public Guid? Value { get; set; }
+    [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _temCadastro = Adicionar.HasDelegate && PermitirNovo;
+        ResolverSelecionado();
+    }
+
+    private void ResolverSelecionado()
+    {
+        _selecionado = Value.HasValue
+            ? _opcoes.FirstOrDefault(o => o.Key == Value.Value)
+            : default;
+    }
+
+    private Task<IEnumerable<KeyValuePair<Guid, string>>> Buscar(string texto, CancellationToken _)
+    {
+        IEnumerable<KeyValuePair<Guid, string>> resultado = _opcoes;
+
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var termo = texto.Trim();
+            resultado = _opcoes.Where(o => o.Value.Contains(termo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        IEnumerable<KeyValuePair<Guid, string>> ordenado = resultado.OrderBy(o => o.Value, StringComparer.CurrentCulture);
+        return Task.FromResult(ordenado);
+    }
+
+    private async Task OnSelecionadoChanged(KeyValuePair<Guid, string> item)
+    {
+        _selecionado = item;
+        await ValueChanged.InvokeAsync(item.Key);
+    }
+
+    private async Task AbrirCadastroAsync()
+        => await Adicionar.InvokeAsync();
+}

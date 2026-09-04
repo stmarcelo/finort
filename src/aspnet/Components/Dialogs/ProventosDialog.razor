@@ -1,0 +1,74 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject InvestimentoService InvestimentoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Proventos — @Nome</MudText></TitleContent>
+    <DialogContent>
+        @if (_proventos.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Nenhum provento registrado.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_proventos" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Tipo</MudTh>
+                    <MudTh>Valor</MudTh>
+                    <MudTh>Ações</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@(context.Tipo == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
+                    <MudTd>@context.Valor.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => ExcluirProvento(context)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            <div class="fluxo-linha mt-2">
+                <span class="fluxo-label">Total</span>
+                <span class="fluxo-valor pos">@_proventos.Sum(p => p.Valor).ToString("N2")</span>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@( () => MudDialog.Cancel() )">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid InvestimentoId { get; set; }
+    [Parameter] public string Nome { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<InvestimentoProvento> _proventos = new();
+
+    protected override async Task OnInitializedAsync()
+        => _proventos = await InvestimentoService.ListarProventosAsync(InvestimentoId);
+
+    private async Task ExcluirProvento(InvestimentoProvento provento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir provento",
+            $"Excluir este provento de {provento.Valor:N2}?", "Excluir", null, "Cancelar");
+        if (confirm != true) return;
+
+        try
+        {
+            await InvestimentoService.ExcluirProventoAsync(provento.Id);
+            _proventos.Remove(provento);
+            StateHasChanged();
+            Snackbar.Add("Provento excluído.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

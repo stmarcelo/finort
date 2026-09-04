@@ -1,0 +1,185 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@layout LoginLayout
+@inherits AppComponentBase
+@using System.Security.Claims
+@inject AuthService AuthService
+@inject ScopedAuthenticationStateProvider Auth
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ProvisaoService ProvisaoService
+
+<div class="login-split">
+    <div class="login-image">
+        <img src="/img/img-login.png" alt="Finort - Finanças Norteadas" />
+    </div>
+    <div class="login-form">
+        <div class="login-form-inner">
+            <img src="/img/logo_finort.png" class="login-logo"
+                 alt="Finort - Finanças Norteadas" />
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4">Digite sua senha para entrar</MudText>
+            @if (_erroBanco)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">Erro ao conectar ao banco de dados. Verifique a configuração.</MudAlert>
+            }
+            <MudTextField @bind-Value="_senha" Label="Senha" Variant="@gVariant"
+                          InputType="InputType.Password" T="string"
+                          Immediate="true" OnKeyDown="@OnSenhaKeyDown" />
+            @if (_requireTurnstile)
+            {
+                <div class="mb-3">
+                    <div id="finort-turnstile"></div>
+                    @if (_falhaWidget)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">
+                            Não foi possível carregar o desafio. Recarregue a página.
+                        </MudText>
+                    }
+                </div>
+            }
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Class="mt-4" Disabled="_processando" OnClick="Entrar">Entrar</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                       Class="mt-2" OnClick="IrEsqueciSenha">Esqueci minha senha?</MudButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _senha = string.Empty;
+    private bool _processando;
+    private bool _semConfiguracao;
+    private bool _erroBanco;
+    private const string TurnstileElId = "finort-turnstile";
+    private bool _requireTurnstile;
+    private bool _widgetRenderizado;
+    private bool _falhaWidget;
+    private string? _siteKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var configuracao = await AuthService.GetConfiguracaoAsync();
+            _semConfiguracao = configuracao is null;
+        }
+        catch
+        {
+            _erroBanco = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _semConfiguracao)
+        {
+            Navigation.NavigateTo("/configurar");
+            return;
+        }
+
+        if (_requireTurnstile && !_widgetRenderizado && !string.IsNullOrEmpty(_siteKey))
+        {
+            _widgetRenderizado = true;
+            try
+            {
+                await JS.InvokeVoidAsync("turnstileHelpers.render", TurnstileElId, _siteKey);
+            }
+            catch
+            {
+                _falhaWidget = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnSenhaKeyDown(KeyboardEventArgs e)
+    {
+        if (e is null) return;
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_senha))
+            await Entrar();
+    }
+
+    private async Task Entrar()
+    {
+        if (_processando) return;
+        _processando = true;
+        try
+        {
+            string? token = null;
+            if (_requireTurnstile)
+            {
+                try
+                {
+                    token = await JS.InvokeAsync<string?>("turnstileHelpers.getToken", TurnstileElId);
+                }
+                catch
+                {
+                    token = null;
+                }
+            }
+
+            var response = await JS.InvokeAsync<LoginResponse>("authHelpers.login", _senha, token);
+
+            if (response.RequireTurnstile && _siteKey is null && response.SiteKey is not null)
+            {
+                _siteKey = response.SiteKey;
+                _requireTurnstile = true;
+            }
+
+            if (_requireTurnstile)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("turnstileHelpers.reset", TurnstileElId);
+                }
+                catch
+                {
+                    // widget ainda não renderizado ou indisponível: token virá null na próxima tentativa.
+                }
+            }
+
+            if (response.Status == 200 && response.Nome is not null)
+            {
+                var identity = new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.Name, response.Nome) }, "app");
+                Auth.SignIn(new ClaimsPrincipal(identity));
+                try
+                {
+                    await ProvisaoService.SincronizarAsync();
+                }
+                catch
+                {
+                    // Falha de sincronismo não deve impedir a entrada.
+                }
+                Navigation.NavigateTo("/");
+            }
+            else if (response.Status == 423)
+            {
+                Snackbar.Add("Muitas tentativas. Aguarde um minuto.", Severity.Error);
+            }
+            else if (response.Status == 503)
+            {
+                Snackbar.Add("Falha na verificação de segurança. Tente novamente.", Severity.Error);
+            }
+            else if (response.RequireTurnstile)
+            {
+                Snackbar.Add("Complete o desafio de segurança.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add("Senha incorreta", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Erro ao entrar. Tente novamente.", Severity.Error);
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+
+    private void IrEsqueciSenha() => Navigation.NavigateTo("/esqueci-senha");
+}

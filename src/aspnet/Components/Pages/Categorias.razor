@@ -1,0 +1,140 @@
+@page "/categorias"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject CategoriaService CategoriaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Categorias</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Category" Class="mr-2" /> Categorias
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => DialogCategoria(null)">Nova categoria</MudButton>
+        </MudToolBar>
+    </MudItem>
+
+    @foreach (var categoria in _categorias)
+    {
+        <MudItem xs="12" md="6" lg="4">
+            <MudPaper Class="pa-3 d-flex flex-column" Style="height:100%;">
+                <div class="d-flex align-center">
+                    <MudText Typo="Typo.h6">@categoria.Nome</MudText>
+                    @if (categoria.IsProtected)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-2">Protegida</MudChip>
+                    }
+                    <MudSpacer />
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                     OnClick="() => DialogCategoria(categoria)">Editar</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                     OnClick="() => ExcluirCategoria(categoria)">Excluir</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Add"
+                                     OnClick="() => DialogSubcategoria(categoria, null)">Nova subcategoria</MudMenuItem>
+                    </MudMenu>
+                </div>
+
+                <MudSimpleTable Hover="true" Dense="true" Class="mt-2 flex-grow-1">
+                    <tbody>
+                    @foreach (var sub in categoria.Subcategorias.OrderBy(s => s.Nome))
+                    {
+                        <tr>
+                            <td>@sub.Nome @(sub.IsProtected ? "(protegida)" : "")</td>
+                            <td Style="width:40px;text-align:right;">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                 OnClick="() => DialogSubcategoria(categoria, sub)">Editar</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                                 Disabled="@sub.IsProtected"
+                                                 OnClick="() => ExcluirSubcategoria(sub)">Excluir</MudMenuItem>
+                                </MudMenu>
+                            </td>
+                        </tr>
+                    }
+                    @if (!categoria.Subcategorias.Any())
+                    {
+                        <tr><td><MudText Typo="Typo.body2" Color="Color.Secondary">Sem subcategorias</MudText></td><td></td></tr>
+                    }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private List<Categoria> _categorias = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync() => _categorias = await CategoriaService.ListarAsync();
+
+    private async Task DialogCategoria(Categoria? categoria)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters { ["Categoria"] = categoria };
+        var dialog = await DialogService.ShowAsync<CategoriaDialog>("Categoria", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task DialogSubcategoria(Categoria categoria, Subcategoria? subcategoria)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<SubcategoriaDialog>
+        {
+            { x => x.Categoria, categoria },
+            { x => x.Subcategoria, subcategoria }
+        };
+        var dialog = await DialogService.ShowAsync<SubcategoriaDialog>(
+            subcategoria is null ? "Nova subcategoria" : "Editar subcategoria", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task ExcluirCategoria(Categoria categoria)
+    {
+        if (categoria.IsProtected) return;
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var confirm = await DialogService.ShowMessageBox("Excluir categoria",
+            $"Excluir \"{categoria.Nome}\" e suas subcategorias?", "Excluir", null, "Cancelar", options);
+        if (confirm != true) return;
+
+        try
+        {
+            await CategoriaService.ExcluirCategoriaAsync(categoria.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ExcluirSubcategoria(Subcategoria subcategoria)
+    {
+        if (subcategoria.IsProtected) return;
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var confirm = await DialogService.ShowMessageBox("Excluir subcategoria",
+            $"Excluir a subcategoria \"{subcategoria.Nome}\"?", "Excluir", null, "Cancelar", options);
+        if (confirm != true) return;
+
+        try
+        {
+            await CategoriaService.ExcluirSubcategoriaAsync(subcategoria.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

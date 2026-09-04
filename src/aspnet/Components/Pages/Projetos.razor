@@ -1,0 +1,143 @@
+@page "/projetos"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject ProjetoService ProjetoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Projetos</PageTitle>
+
+<MudToolBar Class="mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.FolderSpecial" Class="mr-2" /> Projetos
+    </MudText>
+    <MudSpacer />
+    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => AbrirDialog(null)">Novo projeto</MudButton>
+</MudToolBar>
+
+@if (_projetos.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Nenhum projeto cadastrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var p in _projetos)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4" Style="border-radius:16px;">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600">@p.Descricao</MudText>
+                        </MudStack>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                         OnClick="() => AbrirDialog(p)">Editar</MudMenuItem>
+                            @if (p.Concluido)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Replay"
+                                             OnClick="() => Reabrir(p)">Reabrir projeto</MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle"
+                                             OnClick="() => Concluir(p)">Marcar como concluído</MudMenuItem>
+                            }
+                            <MudMenuItem Icon="@Icons.Material.Filled.Assessment"
+                                         Href="@($"/relatorios/projeto/{p.Id}")">Relatório</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                         OnClick="() => Excluir(p)">Excluir</MudMenuItem>
+                        </MudMenu>
+                    </MudStack>
+
+                    <MudDivider Class="my-2" />
+
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Class="text-muted">Pessoa</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@(p.Pessoa?.Nome ?? "—")</MudText>
+                    </MudStack>
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Class="text-muted">Valor contratado</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">R$ @p.ValorContratado.ToString("N2")</MudText>
+                    </MudStack>
+                    <MudStack Row Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Class="text-muted">Data contratação</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600">@p.DataContratacao.ToString("dd/MM/yyyy")</MudText>
+                    </MudStack>
+                    @if (p.Concluido)
+                    {
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mt-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Concluído em</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;color:var(--mud-palette-success)">
+                                @(p.DataConclusao?.ToString("dd/MM/yyyy") ?? "—")
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<Projeto> _projetos = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+        => _projetos = await ProjetoService.ListarAsync();
+
+    private async Task AbrirDialog(Projeto? projeto)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<ProjetoDialog> { { x => x.Projeto, projeto } };
+        var dialog = await DialogService.ShowAsync<ProjetoDialog>(
+            projeto is null ? "Novo projeto" : "Editar projeto", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task Excluir(Projeto projeto)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var confirm = await DialogService.ShowMessageBox("Excluir projeto",
+            $"Excluir \"{projeto.Descricao}\"?", "Excluir", null, null, options);
+        if (confirm != true) return;
+
+        try
+        {
+            await ProjetoService.ExcluirAsync(projeto.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task Concluir(Projeto projeto)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<ConclusaoProjetoDialog> { { x => x.Projeto, projeto } };
+        var dialog = await DialogService.ShowAsync<ConclusaoProjetoDialog>("Marcar como concluído", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task Reabrir(Projeto projeto)
+    {
+        try
+        {
+            await ProjetoService.ReabrirAsync(projeto.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

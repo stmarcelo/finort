@@ -1,0 +1,37 @@
+@using Finort.Models.Financeiro
+@using System.Globalization
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@MudDialog.Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Patrimonios is not null && Patrimonios.Count > 0)
+        {
+            <MudList T="InvestimentoPatrimonio" Dense="true">
+                @foreach (var p in Patrimonios)
+                {
+                    var pct = Total == 0m ? 0m : p.Valor / Total * 100m;
+                    <MudListItem T="InvestimentoPatrimonio" Value="p">
+                        <div class="d-flex justify-space-between align-center" style="width: 100%">
+                            <span style="font-size: 0.85em; opacity:0.7">@p.Nome</span>
+                            <span><b>R$ @p.Valor.ToString("N2", CulturaPtBr)</b> <span style="opacity:0.7">(@pct.ToString("N1", CulturaPtBr)%)</span></span>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Nenhum investimento.</MudText>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public IReadOnlyList<InvestimentoPatrimonio>? Patrimonios { get; set; }
+    [Parameter] public decimal Total { get; set; }
+
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+}

@@ -1,0 +1,369 @@
+@page "/cartoes/{Id:guid}/fatura"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject CartaoCreditoService CartaoCreditoService
+@inject LancamentoService LancamentoService
+@inject FaturaService FaturaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Fatura</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => NavigationManager.NavigateTo("/cartoes"))" Title="Voltar para cartões" />
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" Class="mr-2" />
+                Fatura — @_cartao?.Banco ••@_cartao?.Ultimos4Digitos
+            </MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(async () => await NavegarMes(-1))" />
+            <MudText Class="mx-2">@_dataVencimento.ToString("dd/MM/yyyy")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(async () => await NavegarMes(1))" />
+        </MudToolBar>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Total da fatura</span>
+            <span class="value">@Math.Abs(_fechada ? _totalFechado : _total).ToString("N2")</span>
+        </div>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Pendentes</span>
+            <span class="value @_classePendentes">@_pendentes</span>
+        </div>
+    </MudItem>
+    @if (_fechada)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <div class="summary-chip">
+                <span class="label">@_rotuloPago</span>
+                <span class="value pos">@_pago.ToString("N2")</span>
+            </div>
+        </MudItem>
+    }
+    <MudItem xs="12" md="3">
+        @if (_fechada)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">Fatura fechada em @_dataFechamento?.ToString("dd/MM/yyyy HH:mm")</MudAlert>
+            @if (!PagaTotalmente)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-1"
+                           StartIcon="@Icons.Material.Filled.Payment"
+                           OnClick="AbrirPagamento">Pagar fatura</MudButton>
+            }
+        }
+        else
+        {
+            <MudButton Variant="@gVariant" Color="Color.Error" FullWidth="true" StartIcon="@Icons.Material.Filled.Lock"
+                       OnClick="FecharFatura">Fechar fatura</MudButton>
+        }
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudTable Items="@_lancamentos" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Data</MudTh>
+                <MudTh>Categoria</MudTh>
+                <MudTh>Pessoa</MudTh>
+                <MudTh>Valor</MudTh>
+                <MudTh>Confirmado</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                <MudTd>@context.Pessoa?.Nome</MudTd>
+                <MudTd>
+                    <span class="@(context.Valor > 0 ? "entrada-fatura" : "")">
+                        <MudMoneyInput Value="@ValorDaLinha(context)"
+                                       Disabled="@(_fechada || context.Tipo == LancamentoTipo.Transferencia)"
+                                       ValueChanged="v => SalvarValor(context, v)" />
+                    </span>
+                </MudTd>
+                <MudTd>
+                    <MudSwitch T="bool" Value="@context.Confirmado" Disabled="@(_fechada || context.Tipo == LancamentoTipo.Transferencia)"
+                               ValueChanged="v => AlternarConfirmado(context, v)" />
+                </MudTd>
+                <MudTd>
+                    @if (!_fechada && context.Tipo != LancamentoTipo.Transferencia)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       OnClick="() => EditarLancamento(context)" Title="Editar" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+
+    @if (_fechada && _pagamentos.Count > 0)
+    {
+        <MudItem xs="12">
+            <MudText Typo="Typo.subtitle1" Class="mt-2">Pagamentos</MudText>
+            <MudTable Items="@_pagamentos" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Conta de origem</MudTh>
+                    <MudTh>Valor</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.DataPagamento.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@(context.ContaOrigem ?? "-")</MudTd>
+                    <MudTd>@context.ValorPago.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small" Color="Color.Warning"
+                                       OnClick="() => Estornar(context)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    }
+
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudButton Variant="@gVariant" StartIcon="@Icons.Material.Filled.Add" OnClick="AdicionarLancamento">Adicionar</MudButton>
+            <MudSpacer />
+            <MudButton Variant="@gVariant" OnClick="AbrirHistorico">Histórico</MudButton>
+        </MudToolBar>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CartaoCredito? _cartao;
+    private List<Lancamento> _lancamentos = new();
+    private Dictionary<Guid, decimal?> _valoresEdicao = new();
+    private bool _carregando;
+
+    private int _ano;
+    private int _mes;
+    private bool _fechada;
+    private DateTime? _dataFechamento;
+    private decimal _total;
+    private int _pendentes;
+    private decimal _totalFechado;
+    private decimal _pago;
+    private List<PagamentoFatura> _pagamentos = new();
+
+    private DateOnly _dataVencimento;
+    private DateOnly _dataInicioPeriodo;
+    private DateOnly _dataFimPeriodo;
+
+    private decimal SaldoDevedor => Math.Abs(_totalFechado) - _pago;
+
+    private bool PagaTotalmente => _fechada && _pago >= Math.Abs(_totalFechado);
+
+    private string _rotuloPago => SaldoDevedor > 0 ? $"Pago (devedor {SaldoDevedor:N2})" : "Pago";
+
+    private string _classePendentes => _pendentes > 0 ? "neg" : "";
+
+    private decimal? ValorDaLinha(Lancamento lancamento)
+        => _valoresEdicao.TryGetValue(lancamento.Id, out var valor) ? valor : Math.Abs(lancamento.Valor);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cartao = await CartaoCreditoService.ObterAsync(Id);
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        _ano = hoje.Year;
+        _mes = hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task NavegarMes(int delta)
+    {
+        var atual = new DateOnly(_ano, _mes, 1).AddMonths(delta);
+        _ano = atual.Year;
+        _mes = atual.Month;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (_cartao is null) return;
+        if (_carregando) return;
+
+        _carregando = true;
+        try
+        {
+            _dataInicioPeriodo = new DateOnly(_ano, _mes, 1);
+            _dataFimPeriodo = new DateOnly(_ano, _mes, DateTime.DaysInMonth(_ano, _mes));
+            _dataVencimento = new DateOnly(_ano, _mes, Math.Min(_cartao.DiaVencimento, DateTime.DaysInMonth(_ano, _mes)));
+
+            var lista = await FaturaService.ObterLancamentosAsync(Id, _dataInicioPeriodo, _dataFimPeriodo);
+            var total = await FaturaService.SomarAsync(Id, _dataInicioPeriodo, _dataFimPeriodo);
+            var fechada = await FaturaService.EhFechadaAsync(Id, _ano, _mes);
+            var fatura = fechada ? await FaturaService.ObterFechadaAsync(Id, _ano, _mes) : null;
+            var pagamentos = fechada
+                ? await FaturaService.ObterPagamentosAsync(Id, _ano, _mes)
+                : new List<PagamentoFatura>();
+            var dicionario = lista.ToDictionary(l => l.Id, l => (decimal?)Math.Abs(l.Valor));
+
+            _lancamentos = lista;
+            _total = total;
+            _fechada = fechada;
+            _pendentes = lista.Count(l => !l.Confirmado);
+            _dataFechamento = fatura?.DataFechamento;
+            _pagamentos = pagamentos;
+            _pago = pagamentos.Sum(p => p.ValorPago);
+            _totalFechado = fatura?.ValorTotal ?? 0m;
+            _valoresEdicao = dicionario;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar a fatura: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task SalvarValor(Lancamento lancamento, decimal? valor)
+    {
+        _valoresEdicao[lancamento.Id] = valor;
+
+        if (valor is null || valor.Value == Math.Abs(lancamento.Valor)) return;
+
+        try
+        {
+            await LancamentoService.AtualizarValorAsync(lancamento.Id, valor.Value);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            await CarregarAsync();
+        }
+    }
+
+    private async Task AlternarConfirmado(Lancamento lancamento, bool valor)
+    {
+        if (lancamento.Confirmado == valor) return;
+        try
+        {
+            await LancamentoService.AlternarConfirmadoAsync(lancamento.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            await CarregarAsync();
+        }
+    }
+
+    private async Task EditarLancamento(Lancamento lancamento)
+    {
+        var parameters = new DialogParameters
+        {
+            { "TipoTransacao", "cartao" },
+            { "LancamentoId", lancamento.Id }
+        };
+        var dialog = await DialogService.ShowAsync<Finort.Components.Dialogs.TransacaoDialog>("Editar lançamento", parameters);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task AdicionarLancamento()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<NovoLancamentoFaturaDialog>
+        {
+            { x => x.CartaoId, Id },
+            { x => x.Ano, _ano },
+            { x => x.Mes, _mes }
+        };
+        var dialog = await DialogService.ShowAsync<NovoLancamentoFaturaDialog>("Novo lançamento", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task FecharFatura()
+    {
+        if (_pendentes > 0)
+        {
+            Snackbar.Add($"Existem {_pendentes} lançamento(s) não confirmado(s).", Severity.Error);
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox("Fechar fatura",
+            $"Fechar a fatura de {_dataVencimento:dd/MM/yyyy}? Não será mais possível alterá-la.",
+            "Fechar", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await FaturaService.FecharAsync(Id, _ano, _mes, _dataInicioPeriodo, _dataFimPeriodo);
+            Snackbar.Add("Fatura fechada.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (FaturaComPendentesException ex)
+        {
+            Snackbar.Add($"Existem {ex.Pendentes.Count} lançamento(s) não confirmado(s).", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AbrirPagamento()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<PagamentoDialog>
+        {
+            { x => x.CartaoId, Id },
+            { x => x.CartaoNome, $"{_cartao?.Banco} ••{_cartao?.Ultimos4Digitos}" },
+            { x => x.AnoRef, _ano },
+            { x => x.MesRef, _mes },
+            { x => x.TotalFechado, _totalFechado },
+            { x => x.JaPago, _pago },
+            { x => x.ContaPreSelecionada, _cartao?.ContaId }
+        };
+        var dialog = await DialogService.ShowAsync<PagamentoDialog>("Pagar fatura", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        Snackbar.Add("Pagamento registrado.", Severity.Success);
+        await CarregarAsync();
+    }
+
+    private async Task AbrirHistorico()
+    {
+        var parameters = new DialogParameters<FaturaHistoricoDialog>
+        {
+            { x => x.CartaoCreditoId, Id }
+        };
+        await DialogService.ShowAsync<FaturaHistoricoDialog>("Histórico de Faturas", parameters);
+    }
+
+    private async Task Estornar(PagamentoFatura pagamento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Estornar pagamento",
+            $"Estornar o pagamento de {pagamento.ValorPago:N2}? Os meses afetados serão reabertos.",
+            "Estornar", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await FaturaService.EstornarAsync(pagamento.ReferenciaId);
+            Snackbar.Add("Pagamento estornado.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

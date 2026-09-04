@@ -1,0 +1,52 @@
+@page "/lancamentos/editar/{Id:guid}"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Lancamentos
+@inject LancamentoService LancamentoService
+@inject NavigationManager Navigation
+
+<PageTitle>Editar lançamento</PageTitle>
+
+<MudCard Class="pa-4">
+    <MudCardContent>
+        @if (_carregado)
+        {
+            <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" />
+                    <MudText Typo="Typo.h5">Editar @_titulo</MudText>
+                </MudStack>
+                <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                               OnClick="@(() => Navigation.NavigateTo("/lancamentos"))" />
+            </MudStack>
+            <LancamentoForm Tipo="@_tipo" LancamentoId="@Id" />
+        }
+        else
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _carregado;
+    private LancamentoTipo _tipo;
+    private string _titulo = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = await LancamentoService.ObterAsync(Id);
+        if (principal is null) return;
+        _tipo = principal.Tipo;
+        _titulo = _tipo switch
+        {
+            LancamentoTipo.Receita => "receita",
+            LancamentoTipo.Despesa => "despesa",
+            LancamentoTipo.Transferencia => "transferência",
+            _ => "lançamento"
+        };
+        _carregado = true;
+    }
+}

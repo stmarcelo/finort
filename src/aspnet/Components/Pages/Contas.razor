@@ -1,0 +1,114 @@
+@page "/contas"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject ContaService ContaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Contas</PageTitle>
+
+<MudToolBar Class="mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Class="mr-2" /> Contas
+    </MudText>
+    <MudSpacer />
+    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => AbrirDialog(null)">Nova conta</MudButton>
+</MudToolBar>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_contas.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Nenhuma conta cadastrada.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var c in _contas)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600">@c.Nome</MudText>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                         OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                         OnClick="() => Excluir(c)">Excluir</MudMenuItem>
+                        </MudMenu>
+                    </MudStack>
+
+                    @if (c.Banco is not null || c.Agencia is not null || c.ContaEDigito is not null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-1" Style="color:var(--finort-muted);">
+                            @(c.Banco ?? "")@(c.Agencia is not null ? $" Ag. {c.Agencia}" : "")@(c.ContaEDigito is not null ? $" Cc. {c.ContaEDigito}" : "")
+                        </MudText>
+                    }
+
+                    @{
+                        var (real, previsto) = Saldos(c.Id);
+                    }
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Class="text-muted">Saldo real</MudText>
+                        <MudText Typo="Typo.body2" Style="@($"font-weight:600;color:{(real > 0 ? "var(--mud-palette-success)" : real < 0 ? "var(--mud-palette-error)" : "inherit")}")">
+                            R$ @real.ToString("N2")
+                        </MudText>
+                    </MudStack>
+                    <MudStack Row Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Class="text-muted">Saldo previsto</MudText>
+                        <MudText Typo="Typo.body2" Style="@($"color:{(previsto > 0 ? "var(--mud-palette-success)" : previsto < 0 ? "var(--mud-palette-error)" : "inherit")}")">
+                            R$ @previsto.ToString("N2")
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<Conta> _contas = new();
+    private Dictionary<Guid, (decimal Real, decimal Previsto)> _saldos = new();
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            _contas = await ContaService.ListarAsync();
+            var resumo = await ContaService.ListarResumoAsync();
+            _saldos = resumo.ToDictionary(r => r.Id, r => (r.SaldoReal, r.SaldoPrevisto));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _carregando = false; }
+    }
+
+    private (decimal Real, decimal Previsto) Saldos(Guid contaId)
+        => _saldos.TryGetValue(contaId, out var s) ? s : (0m, 0m);
+
+    private async Task AbrirDialog(Conta? conta)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<ContaDialog> { { x => x.Conta, conta } };
+        var dialog = await DialogService.ShowAsync<ContaDialog>("Conta", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task Excluir(Conta conta)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir conta",
+            $"Excluir \"{conta.Nome}\"?", "Excluir", null, null,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+        try { await ContaService.ExcluirAsync(conta.Id); await CarregarAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

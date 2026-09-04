@@ -1,0 +1,116 @@
+@page "/cartoes"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject CartaoCreditoService CartaoCreditoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Cartões</PageTitle>
+
+<MudToolBar Class="mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.CreditCard" Class="mr-2" /> Cartões
+    </MudText>
+    <MudSpacer />
+    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => AbrirDialog(null)">Novo cartão</MudButton>
+</MudToolBar>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_cartoes.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Nenhum cartão cadastrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var c in _cartoes)
+        {
+            var utilizado = Math.Abs(c.TotalNaoPago);
+            var pctUtilizado = c.Limite > 0 ? utilizado / c.Limite * 100m : 0m;
+            <MudItem xs="12" sm="6" md="4">
+                <div class="surface-card pa-4">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.CreditCard" Color="Color.Primary" Size="Size.Small" />
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600">@c.Banco</MudText>
+                        </MudStack>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                            <MudMenuItem Icon="@Icons.Material.Filled.ReceiptLong"
+                                         OnClick="@(() => Navigation.NavigateTo($"/cartoes/{c.Id}/fatura"))">Fatura</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                         OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                         OnClick="() => Excluir(c)">Excluir</MudMenuItem>
+                        </MudMenu>
+                    </MudStack>
+
+                    <MudText Typo="Typo.body2" Class="mb-1">**** @c.Ultimos4Digitos</MudText>
+
+                    <div class="d-flex justify-space-between mb-1">
+                        <MudText Typo="Typo.body2" Style="opacity:0.7">R$ @utilizado.ToString("N2")</MudText>
+                        <MudText Typo="Typo.body2" Style="opacity:0.7">R$ @c.Limite.ToString("N2")</MudText>
+                    </div>
+                    <MudProgressLinear Value="@((double)pctUtilizado)" Color="@Color.Primary" Size="Size.Small" Class="mb-2" />
+
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Style="opacity:0.7">Disponível</MudText>
+                        <MudText Typo="Typo.body2" Style="@($"font-weight:600;color:{(c.LimiteDisponivel > 0 ? "var(--mud-palette-success)" : "var(--mud-palette-error)")}")">
+                            R$ @c.LimiteDisponivel.ToString("N2")
+                        </MudText>
+                    </MudStack>
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Style="opacity:0.7">Melhor dia</MudText>
+                        <MudText Typo="Typo.body2">@c.MelhorDiaCompra</MudText>
+                    </MudStack>
+                    <MudStack Row Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Style="opacity:0.7">Vencimento</MudText>
+                        <MudText Typo="Typo.body2">@c.DiaVencimento</MudText>
+                    </MudStack>
+                </div>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<CartaoResumo> _cartoes = new();
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try { _cartoes = await CartaoCreditoService.ListarComSaldoAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _carregando = false; }
+    }
+
+    private async Task AbrirDialog(CartaoResumo? cartaoResumo)
+    {
+        CartaoCredito? cartao = null;
+        if (cartaoResumo is not null)
+            cartao = await CartaoCreditoService.ObterAsync(cartaoResumo.Id);
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<CartaoDialog> { { x => x.Cartao, cartao } };
+        var dialog = await DialogService.ShowAsync<CartaoDialog>("Cartão", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task Excluir(CartaoResumo cartaoResumo)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir cartão",
+            $"Excluir \"{cartaoResumo.Banco} ****{cartaoResumo.Ultimos4Digitos}\"?", "Excluir", null, null,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+        try { await CartaoCreditoService.ExcluirAsync(cartaoResumo.Id); await CarregarAsync(); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

@@ -1,0 +1,69 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject FaturaService FaturaService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Pagar fatura</MudText></TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column mb-2">
+            <MudText Typo="Typo.body2">@CartaoNome — @($"{MesRef:D2}/{AnoRef}")</MudText>
+            <MudText Typo="Typo.body2">Total fechado: @Math.Abs(TotalFechado).ToString("N2")</MudText>
+            <MudText Typo="Typo.body2">Já pago: @JaPago.ToString("N2")</MudText>
+            <MudText Typo="Typo.body2">Saldo devedor: @(Math.Abs(TotalFechado) - JaPago > 0 ? (Math.Abs(TotalFechado) - JaPago).ToString("N2") : "0,00")</MudText>
+        </div>
+        <MudForm @ref="_form">
+            <MudMoneyInput @bind-Value="_valor" Label="Valor do pagamento" Variant="@gVariant" Required="true" />
+            <ContaSelect Label="Conta de origem" Placeholder="Selecione" Required="true"
+                         RequiredError="Informe a conta de origem." @bind-Value="_contaId" />
+            <MudDatePicker @bind-Date="_data" Label="Data do pagamento" Variant="@gVariant" Required="true" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@gVariant" OnClick="Pagar">Pagar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid CartaoId { get; set; }
+    [Parameter] public string CartaoNome { get; set; } = string.Empty;
+    [Parameter] public int AnoRef { get; set; }
+    [Parameter] public int MesRef { get; set; }
+    [Parameter] public decimal TotalFechado { get; set; }
+    [Parameter] public decimal JaPago { get; set; }
+    [Parameter] public Guid? ContaPreSelecionada { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = null!;
+    private decimal? _valor;
+    private Guid? _contaId;
+    private DateTime? _data = DateTime.Today;
+
+    protected override void OnInitialized()
+    {
+        _valor = Math.Abs(TotalFechado) - JaPago;
+        _contaId = ContaPreSelecionada;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Pagar()
+    {
+        await _form.Validate();
+        if (!_form.IsValid || _valor is null or <= 0 || _contaId is null || _data is null) return;
+
+        try
+        {
+            await FaturaService.PagarAsync(CartaoId, AnoRef, MesRef, _contaId.Value,
+                DateOnly.FromDateTime(_data.Value), _valor.Value);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

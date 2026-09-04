@@ -1,0 +1,267 @@
+@inherits LayoutComponentBase
+@using MudBlazor
+@inject ScopedAuthenticationStateProvider Auth
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject VersionCheckService VersionService
+@inject AppDbContext Db
+@using Finort.Components.Dialogs
+@using Finort.Services
+@using Finort.Data
+@using Microsoft.EntityFrameworkCore
+
+<MudThemeProvider Theme="AppTheme.Instance" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudLayout>
+    <MudAppBar Elevation="0">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+        <img src="/img/logo-finort-dourado-h100.png" alt="Finort - Finanças Norteadas" class="appbar-logo" />
+        <div class="quick-access-container">
+            <MudAutocomplete T="(string Nome, string Rota)"
+                             @ref="_acessoRapido"
+                             SearchFunc="BuscarRotas"
+                             ToStringFunc="r => r.Nome"
+                             ValueChanged="OnRotasSelecionada"
+                             Placeholder="Acesso rápido"
+                             Adornment="Adornment.Start"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             Class="quick-access-input"
+                             Variant="Variant.Text"
+                             Margin="Margin.Dense"
+                             PopoverClass="quick-access-popover"
+                             CoerceText="true"
+                             ResetValueOnEmptyText="true"
+                             DebounceInterval="150" />
+        </div>
+        <MudSpacer />
+        <MudSpacer />
+        @if (_nome is not null)
+        {
+            <MudMenu Dense="true">
+                <ActivatorContent>
+                    <MudAvatar Size="Size.Small" Color="Color.Secondary" Class="cursor-pointer appbar-avatar">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Primary" />
+                    </MudAvatar>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="px-4 py-2">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Olá @PrimeiroNome</MudText>
+                    </div>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Person"
+                                 OnClick="@(() => Navigation.NavigateTo("/perfil"))">Perfil</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings"
+                                 OnClick="@(() => Navigation.NavigateTo("/configuracoes"))">Configurações</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.MenuBook"
+                                 OnClick="@(() => Navigation.NavigateTo("/manual"))">Ajuda</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Info"
+                                 OnClick="AbrirSobre">Sobre</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="Sair">Sair</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+        <MudNavMenu>
+            <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.CalendarMonth">Calendário</MudNavLink>
+            <MudNavLink Href="/fluxo" Icon="@Icons.Material.Filled.AccountBalance">Fluxo mensal</MudNavLink>
+            <MudNavLink Href="/lancamentos" Icon="@Icons.Material.Filled.List">Lista de lançamentos</MudNavLink>
+            <MudNavLink Href="/cartoes" Icon="@Icons.Material.Filled.CreditCard">Cartões</MudNavLink>
+            <MudNavLink Href="/investimentos" Icon="@Icons.Material.Filled.TrendingUp">Investimentos</MudNavLink>
+            <MudNavLink Href="/fechar-mes" Icon="@Icons.Material.Filled.EventBusy">Fechar mês</MudNavLink>
+            <MudNavLink Href="/projetos" Icon="@Icons.Material.Filled.FolderSpecial">Projetos</MudNavLink>
+
+            <MudDivider Class="my-2" />
+
+            <MudNavGroup Title="Cadastros" Expanded="false">
+                <MudNavLink Href="/pessoas" Icon="@Icons.Material.Filled.People">Pessoas</MudNavLink>
+                <MudNavLink Href="/categorias" Icon="@Icons.Material.Filled.Category">Categorias</MudNavLink>
+                <MudNavLink Href="/contas" Icon="@Icons.Material.Filled.AccountBalance">Contas</MudNavLink>
+                <MudNavLink Href="/provisoes" Icon="@Icons.Material.Filled.EventRepeat">Provisões</MudNavLink>
+            </MudNavGroup>
+
+            <MudNavGroup Title="Transação" Expanded="false">
+                <MudNavLink OnClick="@(() => AbrirTransacao("receita"))" Icon="@Icons.Material.Filled.AccountBalanceWallet">Receita</MudNavLink>
+                <MudNavLink OnClick="@(() => AbrirTransacao("despesa"))" Icon="@Icons.Material.Filled.ShoppingCart">Despesa</MudNavLink>
+                <MudNavLink OnClick="@(() => AbrirTransacao("cartao"))" Icon="@Icons.Material.Filled.CreditCard">Despesa de Cartão</MudNavLink>
+                <MudNavLink OnClick="@(() => AbrirTransacao("transferencia"))" Icon="@Icons.Material.Filled.SwapHoriz">Transferência</MudNavLink>
+            </MudNavGroup>
+
+            <MudDivider Class="my-2" />
+
+            <MudNavLink Href="/configuracoes" Icon="@Icons.Material.Filled.Settings">Configurações</MudNavLink>
+            <MudNavLink Href="/manual" Icon="@Icons.Material.Filled.MenuBook">Ajuda</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer Class="mb-16">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+    <div style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100;">
+        <MudMenu>
+            <ActivatorContent>
+                <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Large" />
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Icon="@Icons.Material.Filled.AccountBalanceWallet" OnClick="@(() => AbrirTransacao("receita"))">
+                    <MudText Color="Color.Success">Receita</MudText>
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.ShoppingCart" OnClick="@(() => AbrirTransacao("despesa"))">
+                    <MudText Color="Color.Error">Despesa</MudText>
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.CreditCard" OnClick="@(() => AbrirTransacao("cartao"))">
+                    <MudText Color="Color.Error">Despesa de cartão</MudText>
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz" OnClick="@(() => AbrirTransacao("transferencia"))">
+                    <MudText>Transferência</MudText>
+                </MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </div>
+</MudLayout>
+
+@code {
+    private readonly List<(string Nome, string Rota)> _rotas = new()
+    {
+        ("Pessoas", "/pessoas"),
+        ("Categorias", "/categorias"),
+        ("Contas", "/contas"),
+        ("Cartões", "/cartoes"),
+        ("Investimentos", "/investimentos"),
+        ("Lançamentos", "/lancamentos"),
+        ("Fluxo mensal", "/fluxo"),
+        ("Dashboard", "/dashboard"),
+        ("Provisões", "/provisoes"),
+        ("Projetos", "/projetos"),
+        ("Fechar mês", "/fechar-mes"),
+        ("Configurações", "/configuracoes"),
+        ("Manual", "/manual"),
+        ("Calendário", "/")
+    };
+
+    private string? _nome;
+    private bool _drawerOpen = false;
+    private MudAutocomplete<(string Nome, string Rota)>? _acessoRapido;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await Auth.GetAuthenticationStateAsync();
+        _nome = authState.User.Identity?.IsAuthenticated == true
+            ? authState.User.Identity?.Name
+            : null;
+        Navigation.LocationChanged += OnLocationChanged;
+
+        _ = VerificarVersaoStartup();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _drawerOpen = false;
+        _ = LimparAcessoRapidoAsync();
+        StateHasChanged();
+    }
+
+    private async Task LimparAcessoRapidoAsync()
+    {
+        try
+        {
+            if (_acessoRapido is not null)
+                await _acessoRapido.ClearAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // Circuit desconectado durante a navegação.
+        }
+    }
+
+    private string PrimeiroNome
+        => _nome?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? _nome ?? "";
+
+    private async Task Sair()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("authHelpers.logout");
+        }
+        catch
+        {
+            // Fall through: local sign-out and navigation must still run.
+        }
+        Auth.SignOut();
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task AbrirSobre()
+    {
+        var parameters = new DialogParameters();
+        await DialogService.ShowAsync<SobreDialog>("Sobre", parameters);
+    }
+
+    private void AbrirTransacao(string tipo)
+    {
+        var rota = tipo switch
+        {
+            "receita" => "/lancamentos/novo/receita",
+            "despesa" => "/lancamentos/novo/despesa",
+            "cartao" => "/lancamentos/novo/cartao",
+            "transferencia" => "/lancamentos/novo/transferencia",
+            _ => "/lancamentos"
+        };
+        Navigation.NavigateTo(rota);
+    }
+
+    private Task<IEnumerable<(string Nome, string Rota)>> BuscarRotas(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(_rotas.AsEnumerable());
+
+        var filtradas = _rotas
+            .Where(r => r.Nome.Contains(value, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(filtradas);
+    }
+
+    private async Task OnRotasSelecionada((string Nome, string Rota) selecionada)
+    {
+        if (_acessoRapido is not null)
+            await _acessoRapido.ClearAsync();
+
+        if (!string.IsNullOrEmpty(selecionada.Rota))
+            Navigation.NavigateTo(selecionada.Rota);
+    }
+
+    private async Task VerificarVersaoStartup()
+    {
+        try
+        {
+            var config = await Db.Configuracoes.FirstOrDefaultAsync();
+            if (config is not null && config.UltimaVerificacaoVersao.HasValue)
+            {
+                var horasDesdeUltima = (DateTime.Now - config.UltimaVerificacaoVersao.Value).TotalHours;
+                if (horasDesdeUltima < 24)
+                    return;
+            }
+
+            var versao = await VersionService.VerificarAsync();
+            if (config is not null)
+            {
+                config.UltimaVerificacaoVersao = DateTime.Now;
+                config.VersaoConhecida = versao.TagName;
+                await Db.SaveChangesAsync();
+            }
+        }
+        catch
+        {
+            // Silent: startup check is best-effort
+        }
+    }
+}

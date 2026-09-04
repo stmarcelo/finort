@@ -1,0 +1,361 @@
+@page "/lancamentos"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@inject LancamentoService LancamentoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Lançamentos</PageTitle>
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Class="mr-2" /> Lançamentos
+            </MudText>
+        </MudToolBar>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudExpansionPanels Elevation="1">
+            <MudExpansionPanel @ref="_painelFiltros" Text="@TituloFiltros">
+<MudGrid Class="mt-4">
+                    <MudItem xs="12" md="6" lg="3">
+                        <ContaSelect Label="Conta" Placeholder="Todas" PermitirNovo="false"
+                                     @bind-Value="_filtroConta" />
+                    </MudItem>
+                    <MudItem xs="12" md="6" lg="3">
+                        <CartaoSelect Label="Cartão" Placeholder="Todos" PermitirNovo="false"
+                                      @bind-Value="_filtroCartao" />
+                    </MudItem>
+                    <MudItem xs="12" md="6" lg="3">
+                        <PessoaSelect Label="Pessoa" Placeholder="Todas" PermitirNovo="false"
+                                      @bind-Value="_filtroPessoa" />
+                    </MudItem>
+                    <MudItem xs="12" md="6" lg="3">
+                        <MudSelect T="LancamentoTipo?" Label="Tipo" Variant="@gVariant" @bind-Value="_filtroTipo"
+                                   Placeholder="Todos">
+                            <MudSelectItem T="LancamentoTipo?" Value="LancamentoTipo.Receita">Receita</MudSelectItem>
+                            <MudSelectItem T="LancamentoTipo?" Value="LancamentoTipo.Despesa">Despesa</MudSelectItem>
+                            <MudSelectItem T="LancamentoTipo?" Value="LancamentoTipo.Transferencia">Transferência</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6" lg="3">
+                        <div class="d-flex ga-2">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="FiltrarAsync">Filtrar</MudButton>
+                            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="LimparFiltro">Limpar filtro</MudButton>
+                        </div>
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudItem>
+
+    <MudItem xs="12">
+        <div class="d-flex align-center flex-wrap mb-2">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit"
+                           OnClick="@(async () => await NavegarMes(-1))" />
+            <MudText Typo="Typo.h6" Class="mx-2">@RotuloMes</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit"
+                           OnClick="@(async () => await NavegarMes(1))" />
+            <span class="flex-grow-1"></span>
+            <MudButton Variant="@gVariant" OnClick="IrParaHoje">Hoje</MudButton>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12">
+        <div class="d-flex flex-wrap mb-2">
+            <div class="summary-chip mr-2">
+                <span class="label">Real (confirmado)</span>
+                <span class="value @ClasseTotalReal">@_totalReal.ToString("N2")</span>
+            </div>
+            <div class="summary-chip">
+                <span class="label">Previsão (tudo)</span>
+                <span class="value @ClasseTotalPrevisto">@_totalPrevisto.ToString("N2")</span>
+            </div>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudTable Items="@_linhas" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true">
+            <HeaderContent>
+                <MudTh>Data</MudTh>
+                <MudTh>Conta / Cartão</MudTh>
+                <MudTh>Tipo</MudTh>
+                <MudTh>Pessoa</MudTh>
+                <MudTh>Projeto</MudTh>
+                <MudTh>Categoria</MudTh>
+                <MudTh>Valor</MudTh>
+                <MudTh>Confirmado</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @if (context.Lancamento is not null)
+                {
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Data.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@RotuloOrigem(context.Lancamento)</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@RotuloTipo(context.Lancamento.Tipo)</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">
+                        @if (!string.IsNullOrEmpty(context.Lancamento.Pessoa?.CorDeExibicao))
+                        {
+                            var corHex = context.Lancamento.Pessoa.CorDeExibicao.StartsWith("#")
+                                ? context.Lancamento.Pessoa.CorDeExibicao
+                                : "#" + context.Lancamento.Pessoa.CorDeExibicao;
+                            <span style="color:@corHex;font-weight:600;">@context.Lancamento.Pessoa?.Nome</span>
+                        }
+                        else
+                        {
+                            @context.Lancamento.Pessoa?.Nome
+                        }
+                    </MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Projeto?.Descricao</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Categoria.Nome@(context.Lancamento.Subcategoria is null ? "" : " › " + context.Lancamento.Subcategoria.Nome)</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Valor.ToString("N2")</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">
+                        @if (SemOrigem(context.Lancamento))
+                        {
+                            <MudTooltip Text="Vincule uma conta ou um cartão antes de confirmar.">
+                                <MudSwitch T="bool" Value="@context.Lancamento.Confirmado" Disabled="true" />
+                            </MudTooltip>
+                        }
+                        else if (EhPagamentoFatura(context.Lancamento))
+                        {
+                            <MudSwitch T="bool" Value="@context.Lancamento.Confirmado" Disabled="true" />
+                        }
+                        else
+                        {
+                            <MudSwitch T="bool" Value="@context.Lancamento.Confirmado"
+                                       ValueChanged="v => AlternarConfirmado(context.Lancamento, v)" />
+                        }
+                    </MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">
+                        @if (!EhPagamentoFatura(context.Lancamento))
+                        {
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="() => EditarTransacao(context.Lancamento)">Editar</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                             OnClick="() => Excluir(context.Lancamento)">Excluir</MudMenuItem>
+                            </MudMenu>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Somente leitura</MudText>
+                        }
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd Style="@EstiloSubtotal"><strong>@context.Dia.ToString("dd/MM/yyyy")</strong></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@(EstiloSubtotal + "text-align:right;")">
+                        <span class="@(context.Subtotal < 0 ? "fluxo-valor neg" : "fluxo-valor pos")">@context.Subtotal.ToString("N2", CulturaPtBr)</span>
+                    </MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                    <MudTd Style="@EstiloSubtotal"></MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private sealed record LinhaGrid(Lancamento? Lancamento, DateOnly Dia, decimal Subtotal);
+
+    private List<Lancamento> _lancamentos = new();
+    private List<LinhaGrid> _linhas = new();
+
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private Guid? _filtroConta;
+    private Guid? _filtroCartao;
+    private Guid? _filtroPessoa;
+    private LancamentoTipo? _filtroTipo;
+    private int _anoNav;
+    private int _mesNav;
+
+    private MudExpansionPanel _painelFiltros = null!;
+
+    private decimal _totalReal;
+    private decimal _totalPrevisto;
+
+    private bool TemFiltroAplicado
+        => _filtroConta is not null || _filtroCartao is not null ||
+           _filtroPessoa is not null || _filtroTipo is not null;
+
+    private bool _filtrosAplicados;
+
+    private string TituloFiltros => _filtrosAplicados ? "Filtros (aplicado)" : "Filtros";
+
+    private string RotuloMes => new DateTime(_anoNav, _mesNav, 1).ToString("MMMM yyyy", CulturaPtBr);
+
+    private string ClasseTotalReal
+        => _totalReal > 0 ? "pos" : _totalReal < 0 ? "neg" : "";
+
+    private string ClasseTotalPrevisto
+        => _totalPrevisto > 0 ? "pos" : _totalPrevisto < 0 ? "neg" : "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        _mesNav = hoje.Month;
+        _anoNav = hoje.Year;
+
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query);
+        if (query.TryGetValue("mes", out var valoresMes)
+            && int.TryParse(valoresMes.FirstOrDefault(), out var mesParam)
+            && mesParam is >= 1 and <= 12)
+        {
+            _mesNav = mesParam;
+        }
+        if (query.TryGetValue("ano", out var valoresAno)
+            && int.TryParse(valoresAno.FirstOrDefault(), out var anoParam)
+            && anoParam >= 1)
+        {
+            _anoNav = anoParam;
+        }
+
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        _lancamentos = await LancamentoService.ListarAsync(
+            _filtroConta, _filtroTipo, _mesNav, _anoNav,
+            confirmado: null, pessoaId: _filtroPessoa, cartaoId: _filtroCartao);
+
+        _totalReal = _lancamentos.Where(l => l.Confirmado).Sum(l => l.Valor);
+        _totalPrevisto = _lancamentos.Sum(l => l.Valor);
+
+        _linhas = _lancamentos
+            .GroupBy(l => l.Data).OrderByDescending(g => g.Key)
+            .SelectMany(g => g.Select(l => new LinhaGrid(l, g.Key, 0m))
+                              .Append(new LinhaGrid(null, g.Key, g.Sum(x => x.Valor))))
+            .ToList();
+    }
+
+    private async Task FiltrarAsync()
+    {
+        await CarregarAsync();
+        _filtrosAplicados = TemFiltroAplicado;
+        await _painelFiltros.CollapseAsync();
+    }
+
+    private async Task LimparFiltro()
+    {
+        _filtroConta = null;
+        _filtroCartao = null;
+        _filtroPessoa = null;
+        _filtroTipo = null;
+        _filtrosAplicados = false;
+        await IrParaHoje();
+    }
+
+    private async Task IrParaHoje()
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        _anoNav = hoje.Year;
+        _mesNav = hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task NavegarMes(int delta)
+    {
+        var destino = new DateOnly(_anoNav, _mesNav, 1).AddMonths(delta);
+        _anoNav = destino.Year;
+        _mesNav = destino.Month;
+        await CarregarAsync();
+    }
+
+    private static string EstiloSubtotal => "background-color:#f5f5f7;font-weight:600;";
+
+    private static string? EstiloCelula(Lancamento lancamento)
+        => lancamento.Confirmado
+            ? lancamento.Tipo == LancamentoTipo.Receita
+                ? "background-color:#e8f5e9;"
+                : "background-color:#ffebee;"
+            : null;
+
+    private async Task AlternarConfirmado(Lancamento lancamento, bool valor)
+    {
+        if (lancamento.Confirmado == valor) return;
+        try
+        {
+            await LancamentoService.AlternarConfirmadoAsync(lancamento.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            await CarregarAsync();
+        }
+    }
+
+    private async Task EditarTransacao(Lancamento lancamento)
+    {
+        var tipoTransacao = lancamento.CartaoCreditoId is not null
+            ? "cartao"
+            : lancamento.Tipo.ToString().ToLower();
+        var parameters = new DialogParameters
+        {
+            { "TipoTransacao", tipoTransacao },
+            { "LancamentoId", lancamento.Id }
+        };
+        var dialog = await DialogService.ShowAsync<Finort.Components.Dialogs.TransacaoDialog>("Editar Transação", parameters);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await CarregarAsync();
+        }
+    }
+
+    private async Task Excluir(Lancamento lancamento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
+            $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?", "Excluir",
+            null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await LancamentoService.ExcluirAsync(lancamento.Id);
+            await CarregarAsync();
+        }
+        catch (LancamentoConfirmadoException ex)
+        {
+            var nomes = string.Join("; ", ex.Confirmados.Select(l => $"{l.Data:dd/MM/yyyy} — {l.Valor.ToString("N2")}"));
+            Snackbar.Add($"Não é possível excluir lançamento(s) confirmado(s): {nomes}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private static bool SemOrigem(Lancamento l)
+        => l.ContaId is null && l.CartaoCreditoId is null;
+
+    private static bool EhPagamentoFatura(Lancamento l)
+        => l.Tipo == LancamentoTipo.Transferencia
+           && l.Subcategoria?.IsProtected == true
+           && l.Subcategoria.Nome == "Cartão de crédito";
+
+    private static string RotuloOrigem(Lancamento lancamento)
+        => lancamento.Conta?.Nome
+           ?? (lancamento.CartaoCredito is null ? "-" : $"Cartão {lancamento.CartaoCredito.Banco}");
+
+    private static string RotuloTipo(LancamentoTipo tipo) => tipo switch
+    {
+        LancamentoTipo.Receita => "Receita",
+        LancamentoTipo.Despesa => "Despesa",
+        LancamentoTipo.Transferencia => "Transferência",
+        _ => tipo.ToString()
+    };
+}

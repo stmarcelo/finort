@@ -1,0 +1,47 @@
+@page "/cartoes/{Id:guid}/faturas"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject FaturaService FaturaService
+
+<PageTitle>Histórico de faturas</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" Class="mr-2" /> Histórico de faturas
+            </MudText>
+        </MudToolBar>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTable Items="@_situacoes" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Mês/Ano</MudTh>
+                <MudTh>Valor total</MudTh>
+                <MudTh>Pago</MudTh>
+                <MudTh>Situação</MudTh>
+                <MudTh>Fechada em</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@($"{context.MesReferencia:D2}/{context.AnoReferencia}")</MudTd>
+                <MudTd>@Math.Abs(context.ValorTotal).ToString("N2")</MudTd>
+                <MudTd>@context.Pago.ToString("N2")</MudTd>
+                <MudTd>
+                    <MudText Class="@(context.Paga ? "text-success" : "")">
+                        @(context.Paga ? "Paga" : context.Parcial ? "Parcial" : "—")
+                    </MudText>
+                </MudTd>
+                <MudTd>@context.DataFechamento?.ToString("dd/MM/yyyy HH:mm")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private List<FaturaSituacao> _situacoes = new();
+
+    protected override async Task OnInitializedAsync()
+        => _situacoes = await FaturaService.ObterSituacoesAsync(Id);
+}

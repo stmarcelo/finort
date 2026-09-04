@@ -1,0 +1,12 @@
+services:
+  finort:
+    image: ghcr.io/stmarcelo/finort:latest
+    container_name: finort
+    ports:
+      - "5298:5298"
+    volumes:
+      - finort-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  finort-data:

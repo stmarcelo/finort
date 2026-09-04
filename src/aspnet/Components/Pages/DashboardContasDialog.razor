@@ -1,0 +1,43 @@
+@using Finort.Models.Financeiro
+@using System.Globalization
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@MudDialog.Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Contas is not null && Contas.Count > 0)
+        {
+            <MudList T="ContaPatrimonio" Dense="true">
+                @foreach (var c in Contas)
+                {
+                    var pct = Total == 0m ? 0m : Math.Abs(c.Valor) / Total * 100m;
+                    <MudListItem T="ContaPatrimonio" Value="c">
+                        <div class="d-flex justify-space-between align-center" style="width: 100%">
+                            <span style="font-size: 0.85em; opacity:0.7">@c.Nome@(c.Banco is not null ? $" ({c.Banco})" : "")</span>
+                            <span>
+                                <b style="@($"color:{CorSaldo(c.Valor)}")">R$ @c.Valor.ToString("N2", CulturaPtBr)</b>
+                                <span style="opacity:0.7">(@pct.ToString("N1", CulturaPtBr)%)</span>
+                            </span>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Nenhuma conta.</MudText>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public IReadOnlyList<ContaPatrimonio>? Contas { get; set; }
+    [Parameter] public decimal Total { get; set; }
+
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private static string CorSaldo(decimal valor)
+        => valor > 0 ? "var(--mud-palette-success)" : valor < 0 ? "var(--mud-palette-error)" : "inherit";
+}

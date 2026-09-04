@@ -1,0 +1,83 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject InvestimentoService InvestimentoService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Movimentações — @Nome</MudText></TitleContent>
+    <DialogContent>
+        @if (_movimentos.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Nenhuma movimentação registrada.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_movimentos" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Data</MudTh>
+                    <MudTh>Tipo</MudTh>
+                    <MudTh>Quantidade</MudTh>
+                    <MudTh>Valor</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@Rotulo(context.Tipo)</MudTd>
+                    <MudTd>@(context.Quantidade?.ToString("N8") ?? "-")</MudTd>
+                    <MudTd>@context.Valor.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small" Color="Color.Warning"
+                                       OnClick="@(async () => await Estornar(context))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@( () => MudDialog.Cancel() )">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid InvestimentoId { get; set; }
+    [Parameter] public string Nome { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<InvestimentoMovimento> _movimentos = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private static string Rotulo(MovimentoTipo tipo) => tipo switch
+    {
+        MovimentoTipo.Compra => "Compra",
+        MovimentoTipo.Venda => "Venda",
+        MovimentoTipo.Aporte => "Aporte",
+        _ => "Resgate"
+    };
+
+    private async Task CarregarAsync()
+        => _movimentos = await InvestimentoService.ListarMovimentosAsync(InvestimentoId);
+
+    private async Task Estornar(InvestimentoMovimento movimento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Estornar movimento",
+            $"Estornar {Rotulo(movimento.Tipo)} de {movimento.Valor:N2}? O lançamento bancário será removido e os meses afetados reabertos.",
+            "Estornar", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await InvestimentoService.EstornarMovimentoAsync(movimento.Id);
+            Snackbar.Add("Movimento estornado.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

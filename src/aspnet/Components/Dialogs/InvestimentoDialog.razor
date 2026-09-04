@@ -1,0 +1,97 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject InvestimentoService InvestimentoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">@(Investimento is null ? "Novo investimento" : "Editar investimento")</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_nome" Label="Nome" Variant="@gVariant" Required="true"
+                          RequiredError="Informe o nome." />
+            <MudSelect T="TipoInvestimento" Label="Tipo" Variant="@gVariant" @bind-Value="_tipo" Required="true">
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Reserva">Reserva</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Dolar">Dólar</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Criptomoeda">Criptomoeda</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Fii">FII</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Acao">Ação</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Cdb">CDB</MudSelectItem>
+            </MudSelect>
+            <ContaSelect Label="Conta vinculada" Placeholder="Selecione" Required="true"
+                         RequiredError="Informe a conta vinculada." @bind-Value="_contaId" />
+            <MudTextField @bind-Value="_subtipo" Label="Subtipo (opcional)" Variant="@gVariant" />
+            <MudTextField @bind-Value="_descricao" Label="Descrição (opcional)" Variant="@gVariant" />
+            @if (_tipo != TipoInvestimento.Reserva && _tipo != TipoInvestimento.Cdb)
+            {
+                <MudMoneyInput @bind-Value="_valorCota" CasasDecimais="@CasasCota"
+                               Label="Valor da cota atual (opcional)" Variant="@gVariant" />
+                <MudDatePicker @bind-Date="_dataCotacao" Label="Data da cotação (opcional)" Variant="@gVariant" />
+            }
+            @if (_tipo == TipoInvestimento.Cdb)
+            {
+                <MudDatePicker @bind-Date="_dataVencimento" Label="Data de vencimento do CDB" Variant="@gVariant" />
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@gVariant" OnClick="Salvar">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Investimento? Investimento { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = null!;
+    private string _nome = string.Empty;
+    private TipoInvestimento _tipo = TipoInvestimento.Reserva;
+    private Guid? _contaId;
+    private string? _subtipo;
+    private string? _descricao;
+    private decimal? _valorCota;
+    private DateTime? _dataCotacao;
+    private DateTime? _dataVencimento;
+
+    private int CasasCota => 2;
+
+    protected override void OnInitialized()
+    {
+        if (Investimento is not null)
+        {
+            _nome = Investimento.Nome;
+            _tipo = Investimento.Tipo;
+            _contaId = Investimento.ContaVinculadaId;
+            _subtipo = Investimento.Subtipo;
+            _descricao = Investimento.Descricao;
+            _valorCota = Investimento.ValorCotaAtual == 0m ? null : Investimento.ValorCotaAtual;
+            _dataCotacao = Investimento.DataCotacao;
+            _dataVencimento = Investimento.DataVencimento;
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        await _form.Validate();
+        if (!_form.IsValid || _contaId is null) return;
+
+        try
+        {
+            if (Investimento is null)
+                await InvestimentoService.CriarAsync(_nome, _tipo, _contaId.Value,
+                    _subtipo, _descricao, _valorCota, _dataCotacao, _dataVencimento);
+            else
+                await InvestimentoService.AtualizarAsync(Investimento.Id, _nome, _tipo,
+                    _contaId.Value, _subtipo, _descricao, _dataVencimento);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,50 @@
+@namespace Finort.Components.Dialogs
+@inject CategoriaService CategoriaService
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">@(Categoria is null ? "Nova categoria" : "Editar categoria")</MudText></TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_nome" Label="Nome" Variant="@GlobalVariant.Value" Required="true"
+                          RequiredError="Informe um nome." />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@GlobalVariant.Value" OnClick="Salvar">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Categoria? Categoria { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm _form = null!;
+    private string _nome = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (Categoria is not null) _nome = Categoria.Nome;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        Guid idSalvo;
+        if (Categoria is null)
+            idSalvo = (await CategoriaService.CriarCategoriaAsync(_nome.Trim())).Id;
+        else
+        {
+            await CategoriaService.AtualizarCategoriaAsync(Categoria, _nome.Trim());
+            idSalvo = Categoria.Id;
+        }
+
+        MudDialog.Close(DialogResult.Ok(idSalvo));
+    }
+}

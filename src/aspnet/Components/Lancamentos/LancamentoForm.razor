@@ -1,0 +1,36 @@
+@namespace Finort.Components.Lancamentos
+@inherits AppComponentBase
+@inject ContaService ContaService
+@inject CategoriaService CategoriaService
+@inject LancamentoService LancamentoService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudForm @ref="_form">
+    @if (Tipo == LancamentoTipo.Transferencia)
+    {
+        <ContaSelect Label="Conta de origem" Required="true"
+                     RequiredError="Selecione a conta de origem."
+                     @bind-Value="_contaOrigemId" />
+        <ContaSelect Label="Conta de destino" Required="true"
+                     RequiredError="Selecione a conta de destino."
+                     @bind-Value="_contaDestinoId" />
+        <MudDatePicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
+        <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
+    }
+    else
+    {
+        <ContaSelect Label="Conta" Required="true" RequiredError="Selecione a conta."
+                     @bind-Value="_contaId" />
+        <MudDatePicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
+        <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
+        <CategoriaSelect Required="true" RequiredError="Selecione a categoria."
+                         Value="@_categoriaId" ValueChanged="OnCategoriaChanged" />
+        <SubcategoriaSelect CategoriaId="@_categoriaId" @bind-Value="_subcategoriaId" />
+        <PessoaSelect Placeholder="Opcional" @bind-Value="_pessoaId" />
+        <ProjetoSelect PessoaId="@_pessoaId" @bind-Value="_projetoId" />
+    }
+</MudForm>
+
+<MudButton Variant="@gVariant" Color="Color.Primary" FullWidth="true" OnClick="Salvar"
+           Disabled="@(_salvando)">@(_salvando ? "Salvando..." : "Salvar")</MudButton>

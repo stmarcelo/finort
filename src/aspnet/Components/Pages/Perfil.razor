@@ -1,0 +1,120 @@
+@page "/perfil"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject AuthService AuthService
+@inject ScopedAuthenticationStateProvider Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>Perfil</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4 mt-4">Perfil</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Dados da conta</MudText>
+            @if (_config is not null)
+            {
+                <MudTextField T="string" Label="Nome" Variant="@gVariant"
+                              @bind-Value="_nome" Required="true"
+                              TextChanged="@(() => { _podeSalvarPerfil = !string.IsNullOrWhiteSpace(_nome) && !string.IsNullOrWhiteSpace(_email); StateHasChanged(); })" />
+                <MudTextField T="string" Label="Email" Variant="@gVariant"
+                              @bind-Value="_email" Required="true"
+                              TextChanged="@(() => { _podeSalvarPerfil = !string.IsNullOrWhiteSpace(_nome) && !string.IsNullOrWhiteSpace(_email); StateHasChanged(); })" />
+                <MudButton Variant="@gVariant" Color="Color.Primary" Class="mt-3"
+                           Disabled="@(!_podeSalvarPerfil)"
+                           OnClick="SalvarPerfil">
+                    Salvar
+                </MudButton>
+            }
+            else
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Alterar senha</MudText>
+            <MudTextField T="string" Label="Senha atual" InputType="InputType.Password"
+                          Variant="@gVariant" @bind-Value="_senhaAtual" Required="true"
+                          TextChanged="@(() => ValidarSenha())" />
+            <MudTextField T="string" Label="Nova senha" InputType="InputType.Password"
+                          Variant="@gVariant" @bind-Value="_novaSenha" Required="true"
+                          TextChanged="@(() => ValidarSenha())" />
+            <MudTextField T="string" Label="Confirmar nova senha" InputType="InputType.Password"
+                          Variant="@gVariant" @bind-Value="_confirmacaoSenha" Required="true"
+                          Error="@(_confirmacaoSenha.Length > 0 && _novaSenha != _confirmacaoSenha)"
+                          ErrorText="As senhas não conferem."
+                          TextChanged="@(() => ValidarSenha())" />
+            <MudText Typo="Typo.caption" Class="mt-1"
+                     Style="@(_senhaForte ? "color:var(--mud-palette-success-text)" : "color:#b00020")">
+                @(_senhaForte ? "Senha válida" : "Mínimo 8 caracteres")
+            </MudText>
+            <MudButton Variant="@gVariant" Color="Color.Primary" Class="mt-2"
+                       Disabled="@(!_podeSalvarSenha)" OnClick="TrocarSenha">
+                Alterar senha
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private Configuracao? _config;
+    private string _nome = "";
+    private string _email = "";
+    private string _senhaAtual = "";
+    private string _novaSenha = "";
+    private string _confirmacaoSenha = "";
+    private bool _podeSalvarSenha;
+    private bool _senhaForte;
+    private bool _podeSalvarPerfil;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _config = await AuthService.GetConfiguracaoAsync();
+        if (_config is not null)
+        {
+            _nome = _config.Nome;
+            _email = _config.Email;
+            _podeSalvarPerfil = !string.IsNullOrWhiteSpace(_nome) && !string.IsNullOrWhiteSpace(_email);
+        }
+    }
+
+    private void ValidarSenha()
+    {
+        _senhaForte = _novaSenha.Length >= 8;
+        _podeSalvarSenha = !string.IsNullOrWhiteSpace(_senhaAtual)
+                           && _senhaForte
+                           && _novaSenha == _confirmacaoSenha;
+        StateHasChanged();
+    }
+
+    private async Task SalvarPerfil()
+    {
+        if (_config is null) return;
+        try
+        {
+            await AuthService.AtualizarPerfilAsync(_config, _nome.Trim(), _email.Trim());
+            _config = await AuthService.GetConfiguracaoAsync();
+            Snackbar.Add("Perfil atualizado.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task TrocarSenha()
+    {
+        if (!_podeSalvarSenha) return;
+        try
+        {
+            var config = await AuthService.GetConfiguracaoAsync()
+                ?? throw new InvalidOperationException("Configuração não encontrada.");
+            await AuthService.AlterarSenhaComVerificacaoAsync(config, _senhaAtual, _novaSenha);
+            Snackbar.Add("Senha alterada com sucesso.", Severity.Success);
+            _senhaAtual = _novaSenha = _confirmacaoSenha = "";
+            _podeSalvarSenha = false;
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

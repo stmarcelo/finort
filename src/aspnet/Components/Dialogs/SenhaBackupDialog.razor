@@ -1,0 +1,46 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+
+<MudDialog>
+    <DialogContent>
+        @if (ModoCadastro)
+        {
+            <MudText Typo="Typo.body2">Cadastre uma senha para proteger os arquivos de backup.</MudText>
+        }
+        <MudTextField T="string" Label="Senha de backup" InputType="InputType.Password"
+                      Variant="@gVariant" @bind-Value="_senha"
+                      TextChanged="@(() => Validar())" />
+        @if (ModoCadastro)
+        {
+            <MudTextField T="string" Label="Confirmar senha" InputType="InputType.Password"
+                          Variant="@gVariant" @bind-Value="_confirmacao"
+                          Error="@(_confirmacao.Length > 0 && _senha != _confirmacao)"
+                          ErrorText="As senhas não conferem."
+                          TextChanged="@(() => Validar())" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="@gVariant" OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="@gVariant" Color="Color.Primary" Disabled="@(!_podeSalvar)"
+                   OnClick="Salvar">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public bool ModoCadastro { get; set; }
+
+    private string _senha = "";
+    private string _confirmacao = "";
+    private bool _podeSalvar;
+
+    private void Validar()
+    {
+        _podeSalvar = !string.IsNullOrWhiteSpace(_senha) && (!ModoCadastro || _senha == _confirmacao);
+        StateHasChanged();
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private void Salvar() => MudDialog.Close(DialogResult.Ok(_senha));
+}

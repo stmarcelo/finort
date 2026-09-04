@@ -1,0 +1,465 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@inject DashboardService DashboardService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Dashboard</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-2 mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Insights" Class="mr-2" /> Dashboard
+    </MudText>
+    <span class="flex-grow-1"></span>
+    <MudDatePicker Date="_periodoInicio" DateChanged="OnPeriodoInicioChanged"
+                   Label="De" PickerVariant="PickerVariant.Inline"
+                   OpenTo="OpenTo.Month" FixDay="1"
+                   Variant="Variant.Outlined" Density="Density.Compact"
+                   Class=" mudfield-width-fixed" />
+    <MudDatePicker Date="_periodoFim" DateChanged="OnPeriodoFimChanged"
+                   Label="Até" PickerVariant="PickerVariant.Inline"
+                   OpenTo="OpenTo.Month"
+                   Variant="Variant.Outlined" Density="Density.Compact"
+                   Class=" mudfield-width-fixed" />
+    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="IrParaHoje">Hoje</MudButton>
+</div>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_dados is null)
+{
+    <MudAlert Severity="Severity.Info">Nenhum dado carregado.</MudAlert>
+}
+else
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Receitas no período</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="color: var(--mud-palette-success)">
+                    R$ @_dados.TotalReceitas.ToString("N2", CulturaPtBr)
+                </MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Despesas no período</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="color: var(--mud-palette-error)">
+                    R$ @_dados.TotalDespesas.ToString("N2", CulturaPtBr)
+                </MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Saldo do período</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="@($"color:{CorSaldo(_dados.TotalReceitas - _dados.TotalDespesas)}")">
+                    R$ @((_dados.TotalReceitas - _dados.TotalDespesas).ToString("N2", CulturaPtBr))
+                </MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Taxa de poupança</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1">
+                    @_dados.TaxaPoupanca.ToString("N1", CulturaPtBr)%
+                </MudText>
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="8">
+            <div class="surface-card pa-4" style="min-height: 200px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Tendência mensal — Receitas vs Despesas</MudText>
+                @if (_dados.TendenciaMensal.Count > 0)
+                {
+                    <MudChart ChartType="ChartType.Line"
+                              InputData="@(_dados.TendenciaMensal.Select(m => (double)m.Receitas).ToArray())"
+                              InputLabels="@(_dados.TendenciaMensal.Select(m => $"{MesAbrev(m.Mes)}/{m.Ano}").ToArray())"
+                              ChartSeries="@_tendenciaSeries"
+                              Width="100%" Height="160px" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">Sem dados de tendência.</MudText>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <div class="surface-card pa-4" style="min-height: 200px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Utilização de cartões</MudText>
+                @if (_dados.UtilizacaoCartoes.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Nenhum cartão ativo.</MudText>
+                }
+                else
+                {
+                    @foreach (var c in _dados.UtilizacaoCartoes)
+                    {
+                        var pctUtilizado = c.Limite > 0 ? c.Utilizado / c.Limite * 100m : 0m;
+                        <div class="mb-2">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@c.Nome</MudText>
+                                <MudText Typo="Typo.body2">@pctUtilizado.ToString("N0")%</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pctUtilizado)" Color="@Color.Primary" Size="Size.Small" Class="mt-1" />
+                            <div class="d-flex justify-space-between mt-1">
+                                <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @c.Utilizado.ToString("N2", CulturaPtBr)</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @c.Limite.ToString("N2", CulturaPtBr)</MudText>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 260px;">
+                <MudText Typo="Typo.subtitle1">Despesas por categoria@(SufixoProjecao)</MudText>
+                @if (_dados.DespesasPorCategoria.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Sem despesas neste período.</MudText>
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@(_dados.DespesasPorCategoria.Select(c => (double)c.Valor).ToArray())"
+                              InputLabels="@(_dados.DespesasPorCategoria.Select(c => c.Nome).ToArray())"
+                              Width="100%" Height="130px" />
+                    <ul class="chart-legenda">
+                        @foreach (var c in _dados.DespesasPorCategoria.Take(5))
+                        {
+                            var pct = TotalDonut(_dados.DespesasPorCategoria) == 0m ? 0m
+                                : c.Valor / TotalDonut(_dados.DespesasPorCategoria) * 100m;
+                            <li>
+                                <span class="d-block">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
+                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome</span>
+                            </li>
+                        }
+                        @if (_dados.DespesasPorCategoria.Count > 5)
+                        {
+                            <li>
+                                <MudLink OnClick="@(() => AbrirDialogItens(_dados.DespesasPorCategoria, "Despesas por categoria"))" Typo="Typo.body2">
+                                    +@(_dados.DespesasPorCategoria.Count - 5) itens
+                                </MudLink>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 260px;">
+                <MudText Typo="Typo.subtitle1">Receitas por categoria@(SufixoProjecao)</MudText>
+                @if (_dados.ReceitasPorCategoria.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Sem receitas neste período.</MudText>
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@(_dados.ReceitasPorCategoria.Select(c => (double)c.Valor).ToArray())"
+                              InputLabels="@(_dados.ReceitasPorCategoria.Select(c => c.Nome).ToArray())"
+                              Width="100%" Height="130px" />
+                    <ul class="chart-legenda">
+                        @foreach (var c in _dados.ReceitasPorCategoria.Take(5))
+                        {
+                            var pct = TotalDonut(_dados.ReceitasPorCategoria) == 0m ? 0m
+                                : c.Valor / TotalDonut(_dados.ReceitasPorCategoria) * 100m;
+                            <li>
+                                <span class="d-block">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
+                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome</span>
+                            </li>
+                        }
+                        @if (_dados.ReceitasPorCategoria.Count > 5)
+                        {
+                            <li>
+                                <MudLink OnClick="@(() => AbrirDialogItens(_dados.ReceitasPorCategoria, "Receitas por categoria"))" Typo="Typo.body2">
+                                    +@(_dados.ReceitasPorCategoria.Count - 5) itens
+                                </MudLink>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 260px;">
+                <MudText Typo="Typo.subtitle1">Investimentos — patrimônio</MudText>
+                @if (_dados.Patrimonios.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Nenhum investimento cadastrado.</MudText>
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@(_dados.Patrimonios.Select(p => (double)p.Valor).ToArray())"
+                              InputLabels="@(_dados.Patrimonios.Select(p => p.Nome).ToArray())"
+                              Width="100%" Height="130px" ChartOptions="@_roseOptions" />
+                    <ul class="chart-legenda">
+                        @foreach (var p in _dados.Patrimonios.Take(5))
+                        {
+                            var totalInv = _dados.Patrimonios.Sum(x => x.Valor);
+                            var pct = totalInv == 0m ? 0m : p.Valor / totalInv * 100m;
+                            <li>
+                                <span class="d-block">R$ @p.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
+                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@p.Nome</span>
+                            </li>
+                        }
+                        @if (_dados.Patrimonios.Count > 5)
+                        {
+                            <li>
+                                <MudLink OnClick="() => AbrirDialogInvestimentos()" Typo="Typo.body2">
+                                    +@(_dados.Patrimonios.Count - 5) itens
+                                </MudLink>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 260px;">
+                <MudText Typo="Typo.subtitle1">Contas — saldos</MudText>
+                @if (_dados.Contas.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Nenhuma conta cadastrada.</MudText>
+                }
+                else
+                {
+                    <MudChart ChartType="ChartType.Donut"
+                              InputData="@(_dados.Contas.Select(c => (double)Math.Abs(c.Valor)).ToArray())"
+                              InputLabels="@(_dados.Contas.Select(c => c.Nome).ToArray())"
+                              Width="100%" Height="130px" ChartOptions="@_roseOptions" />
+                    <ul class="chart-legenda">
+                        @foreach (var c in _dados.Contas.Take(5))
+                        {
+                            var totalContas = _dados.Contas.Sum(x => Math.Abs(x.Valor));
+                            var pct = totalContas == 0m ? 0m : Math.Abs(c.Valor) / totalContas * 100m;
+                            <li>
+                                <span class="d-block" style="@($"color:{CorSaldo(c.Valor)}")">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
+                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome@(c.Banco is not null ? $" ({c.Banco})" : "")</span>
+                            </li>
+                        }
+                        @if (_dados.Contas.Count > 5)
+                        {
+                            <li>
+                                <MudLink OnClick="() => AbrirDialogContas()" Typo="Typo.body2">
+                                    +@(_dados.Contas.Count - 5) itens
+                                </MudLink>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12">
+            <div class="surface-card pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Top 10 despesas</MudText>
+                @if (_dados.TopDespesas.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Sem despesas neste período.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@_dados.TopDespesas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Categoria</MudTh>
+                            <MudTh>Pessoa</MudTh>
+                            <MudTh>Valor</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Categoria</MudTd>
+                            <MudTd>@(context.Pessoa ?? "-")</MudTd>
+                            <MudTd><span class="fluxo-valor neg">@context.Valor.ToString("N2")</span></MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <MudDivider Class="my-4" />
+
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Top 10 receitas</MudText>
+                @if (_dados.TopReceitas.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Sem receitas neste período.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@_dados.TopReceitas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Categoria</MudTh>
+                            <MudTh>Pessoa</MudTh>
+                            <MudTh>Valor</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Categoria</MudTd>
+                            <MudTd>@(context.Pessoa ?? "-")</MudTd>
+                            <MudTd><span class="fluxo-valor pos">@context.Valor.ToString("N2")</span></MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private bool _carregando = true;
+    private DateTime? _periodoInicio;
+    private DateTime? _periodoFim;
+    private DashboardMes? _dados;
+
+    private ChartOptions _roseOptions = new()
+    {
+        ChartPalette = new[] { Colors.Blue.Default, Colors.Red.Default, Colors.Green.Default,
+            Colors.Amber.Default, Colors.Purple.Default, Colors.Teal.Default,
+            Colors.Pink.Default, Colors.Lime.Default, Colors.Orange.Default,
+            Colors.Cyan.Default }
+    };
+
+    private List<ChartSeries> _tendenciaSeries = new();
+
+    private string RotuloMes => _periodoInicio is not null && _periodoFim is not null
+        ? $"{_periodoInicio.Value.ToString("MMM/yyyy", CulturaPtBr)} – {_periodoFim.Value.ToString("MMM/yyyy", CulturaPtBr)}"
+        : "";
+
+    private static decimal TotalDonut(IReadOnlyList<CategoriaValor> itens)
+        => itens.Sum(i => i.Valor);
+
+    private static string CorSaldo(decimal valor)
+        => valor > 0 ? "var(--mud-palette-success)" : valor < 0 ? "var(--mud-palette-error)" : "inherit";
+
+    private string SufixoProjecao
+        => _periodoFim is not null &&
+           _periodoFim.Value > new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month))
+            ? " (inclui projeções)"
+            : "";
+
+    private static string MesAbrev(int mes) => mes switch
+    {
+        1 => "Jan", 2 => "Fev", 3 => "Mar", 4 => "Abr",
+        5 => "Mai", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+        9 => "Set", 10 => "Out", 11 => "Nov", 12 => "Dez",
+        _ => ""
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoje = DateTime.Today;
+        _periodoFim = new DateTime(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        _periodoInicio = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-3);
+        await CarregarAsync();
+    }
+
+    private async Task OnPeriodoInicioChanged(DateTime? novaData)
+    {
+        if (novaData is null) return;
+        _periodoInicio = new DateTime(novaData.Value.Year, novaData.Value.Month, 1);
+        if (_periodoInicio > _periodoFim)
+            _periodoFim = new DateTime(_periodoInicio.Value.Year, _periodoInicio.Value.Month,
+                DateTime.DaysInMonth(_periodoInicio.Value.Year, _periodoInicio.Value.Month));
+        await CarregarAsync();
+    }
+
+    private async Task OnPeriodoFimChanged(DateTime? novaData)
+    {
+        if (novaData is null) return;
+        _periodoFim = new DateTime(novaData.Value.Year, novaData.Value.Month,
+            DateTime.DaysInMonth(novaData.Value.Year, novaData.Value.Month));
+        if (_periodoFim < _periodoInicio)
+            _periodoInicio = new DateTime(_periodoFim.Value.Year, _periodoFim.Value.Month, 1);
+        await CarregarAsync();
+    }
+
+    private async Task IrParaHoje()
+    {
+        var hoje = DateTime.Today;
+        _periodoFim = new DateTime(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        _periodoInicio = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-3);
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (_periodoInicio is null || _periodoFim is null) return;
+        _carregando = true;
+        try
+        {
+            var inicio = new DateOnly(_periodoInicio.Value.Year, _periodoInicio.Value.Month, 1);
+            var fim = new DateOnly(_periodoFim.Value.Year, _periodoFim.Value.Month,
+                DateTime.DaysInMonth(_periodoFim.Value.Year, _periodoFim.Value.Month));
+            _dados = await DashboardService.ObterAsync(inicio, fim);
+
+            _tendenciaSeries = new List<ChartSeries>
+            {
+                new ChartSeries
+                {
+                    Name = "Receitas",
+                    Data = _dados.TendenciaMensal.Select(m => (double)m.Receitas).ToArray()
+                },
+                new ChartSeries
+                {
+                    Name = "Despesas",
+                    Data = _dados.TendenciaMensal.Select(m => (double)m.Despesas).ToArray()
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task AbrirDialogItens(IReadOnlyList<CategoriaValor> itens, string titulo)
+    {
+        var total = itens.Sum(i => i.Valor);
+        var parameters = new DialogParameters
+        {
+            ["Itens"] = itens,
+            ["Total"] = total
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<DashboardItensDialog>(titulo, parameters, options);
+    }
+
+    private async Task AbrirDialogInvestimentos()
+    {
+        if (_dados is null) return;
+        var total = _dados.Patrimonios.Sum(p => p.Valor);
+        var parameters = new DialogParameters
+        {
+            ["Patrimonios"] = _dados.Patrimonios,
+            ["Total"] = total
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<DashboardInvestimentosDialog>("Investimentos — patrimônio", parameters, options);
+    }
+
+    private async Task AbrirDialogContas()
+    {
+        if (_dados is null) return;
+        var total = _dados.Contas.Sum(c => Math.Abs(c.Valor));
+        var parameters = new DialogParameters
+        {
+            ["Contas"] = _dados.Contas,
+            ["Total"] = total
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<DashboardContasDialog>("Contas — saldos", parameters, options);
+    }
+}

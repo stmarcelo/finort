@@ -1,0 +1,84 @@
+@page "/redefinir-senha"
+@attribute [AllowAnonymous]
+@layout LoginLayout
+@inherits AppComponentBase
+@inject TokenService TokenService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<div class="auth-wrap">
+    <div class="tile-dark auth-card pa-6">
+        <MudText Typo="Typo.h5" Align="Align.Center" Class="auth-title">Redefinir senha</MudText>
+    @if (_tokenInvalido)
+    {
+        <MudText Typo="Typo.body1" Align="Align.Center" Class="my-4">
+            Link inválido, já utilizado ou expirado. Solicite um novo link.
+        </MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                   OnClick="IrEsqueciSenha">Solicitar novo link</MudButton>
+    }
+    else
+    {
+        <MudTextField @bind-Value="_senha" Label="Nova senha" Variant="@gVariant"
+                      InputType="InputType.Password" T="string" />
+        <MudTextField @bind-Value="_confirmacao" Label="Confirmação da senha" Variant="@gVariant"
+                      InputType="InputType.Password" T="string" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                   Class="mt-4" Disabled="_processando" OnClick="Redefinir">Redefinir senha</MudButton>
+    }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Token { get; set; }
+
+    private string _senha = string.Empty;
+    private string _confirmacao = string.Empty;
+    private bool _processando;
+    private bool _tokenInvalido;
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _tokenInvalido = true;
+        }
+    }
+
+    private async Task Redefinir()
+    {
+        if (_processando || _tokenInvalido) return;
+        if (_senha.Length < 8)
+        {
+            Snackbar.Add("A senha deve ter no mínimo 8 caracteres", Severity.Error);
+            return;
+        }
+        if (_senha != _confirmacao)
+        {
+            Snackbar.Add("As senhas não coincidem", Severity.Error);
+            return;
+        }
+
+        _processando = true;
+        try
+        {
+            var configuracao = await TokenService.ValidateAsync(Token!);
+            if (configuracao is null)
+            {
+                _tokenInvalido = true;
+                return;
+            }
+            await AuthService.AlterarSenhaAsync(configuracao, _senha);
+            await TokenService.MarkUsedAsync(Token!);
+            Snackbar.Add("Senha redefinida com sucesso", Severity.Success);
+            Navigation.NavigateTo("/login");
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+
+    private void IrEsqueciSenha() => Navigation.NavigateTo("/esqueci-senha");
+}

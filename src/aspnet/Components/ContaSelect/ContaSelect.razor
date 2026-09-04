@@ -1,0 +1,47 @@
+@namespace Finort.Components
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject ContaService ContaService
+@inject IDialogService DialogService
+
+<SelecaoBusca Label="@Label" Placeholder="@Placeholder" Class="@Class"
+              Required="@Required" RequiredError="@RequiredError"
+              Opcoes="_opcoes" PermitirNovo="@PermitirNovo" TituloNovo="Nova conta"
+              Adicionar="AbrirNovaContaAsync"
+              Value="@Value" ValueChanged="OnValueChanged" />
+
+@code {
+    private IReadOnlyList<KeyValuePair<Guid, string>> _opcoes = Array.Empty<KeyValuePair<Guid, string>>();
+
+    [Parameter] public string Label { get; set; } = "Conta";
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? RequiredError { get; set; }
+    [Parameter] public bool PermitirNovo { get; set; } = true;
+
+    [Parameter] public Guid? Value { get; set; }
+    [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
+
+    protected override async Task OnInitializedAsync() => await RecarregarAsync();
+
+    private async Task RecarregarAsync()
+    {
+        var contas = await ContaService.ListarAsync();
+        _opcoes = contas.Select(c => new KeyValuePair<Guid, string>(c.Id, c.Nome)).ToList();
+    }
+
+    private Task OnValueChanged(Guid? id) => ValueChanged.InvokeAsync(id);
+
+    public async Task AbrirNovaContaAsync()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ContaDialog>("Nova conta", options: options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        await RecarregarAsync();
+        if (result.Data is Guid novoId)
+            await ValueChanged.InvokeAsync(novoId);
+    }
+}

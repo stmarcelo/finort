@@ -1,0 +1,53 @@
+@page "/lancamentos/novo/cartao"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Services
+@using Finort.Components.Lancamentos
+@inject LancamentoService LancamentoService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Nova despesa de cartão</PageTitle>
+
+<MudCard Class="pa-4 mt-4">
+    <MudCardContent>
+        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" />
+                <MudText Typo="Typo.h5">Nova despesa de cartão</MudText>
+            </MudStack>
+            <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong"
+                           OnClick="@(() => Navigation.NavigateTo("/lancamentos"))" />
+        </MudStack>
+        <DespesaCartaoForm @ref="_formComponent" OnSalvarValido="SalvarAsync" />
+
+        <MudButton Variant="@gVariant" Color="Color.Primary" FullWidth="true"
+                   OnClick="@(async () => await _formComponent.ValidarESalvarAsync())">Salvar</MudButton>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private Finort.Components.Lancamentos.DespesaCartaoForm _formComponent = null!;
+    private bool _salvando;
+
+    private async Task SalvarAsync(DespesaCartaoForm.DadosDespesaCartao d)
+    {
+        if (_salvando) return;
+        _salvando = true;
+        try
+        {
+            await LancamentoService.CriarDespesaCartaoAsync(
+                d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
+                d.Parcelas, d.ReembolsoPessoaId, reembolsoVencimento: null,
+                vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: d.ReembolsoContaId,
+                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
+            Snackbar.Add("Lançamento salvo.", Severity.Success);
+            Navigation.NavigateTo("/lancamentos");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _salvando = false; }
+    }
+}

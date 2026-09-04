@@ -1,0 +1,185 @@
+@page "/"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@using Finort.Components.Dialogs
+@inject CalendarioService CalendarioService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Calendário</PageTitle>
+
+<div class="d-flex align-center flex-wrap mb-2 mt-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit"
+                   OnClick="MesAnterior" />
+    <MudText Typo="Typo.h5" Class="mx-2 cal-titulo">@RotuloMes</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit"
+                   OnClick="ProximoMes" />
+    <span class="flex-grow-1"></span>
+    <MudButton Variant="@gVariant" OnClick="IrParaHoje">Hoje</MudButton>
+</div>
+
+<div class="d-flex flex-wrap mb-2">
+    <div class="summary-chip mr-2">
+        <span class="label">A pagar</span>
+        <span class="value neg">@(_dadosMes?.TotalApagar.ToString("N2") ?? "0,00")</span>
+    </div>
+    <div class="summary-chip mr-2">
+        <span class="label">A receber</span>
+        <span class="value pos">@(_dadosMes?.TotalAreceber.ToString("N2") ?? "0,00")</span>
+    </div>
+    <div class="summary-chip">
+        <span class="label">Saldo previsto</span>
+        <span class="value @ClasseSaldo">@(_dadosMes?.SaldoPrevisto.ToString("N2") ?? "0,00")</span>
+    </div>
+</div>
+
+<div class="surface-card pa-3">
+    <div class="cal-grid">
+        @foreach (var diaSemana in DiasSemana)
+        {
+            <div class="cal-dow">@diaSemana</div>
+        }
+        @foreach (var celula in _celulas)
+        {
+            if (celula.Data is null)
+            {
+                <div class="cal-cell cal-vazia"></div>
+            }
+            else
+            {
+                <button type="button" class="cal-cell @(celula.Data == Hoje ? "cal-today" : "")"
+                        title="Ver compromissos do dia"
+                        @onclick="() => AbrirDia(celula)">
+                    <span class="cal-day">@celula.Data.Value.Day</span>
+                    @foreach (var item in celula.ItensVisiveis)
+                    {
+                        <div class="cal-item @(item.IsLembrete ? "cal-item-lembrete" : "") @(item.IsFatura ? "cal-item-fatura" : "") @(item.Valor < 0 ? "neg" : "pos") @(item.Confirmado ? "cal-ok" : "") @(item.Projetada ? "cal-proj-item" : "") @(item.Riscada ? "cal-riscada" : "")">
+                            @if (item.IsLembrete || item.IsFatura)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" Class="mr-1" Style="font-size: 0.75rem;" />
+                            }
+                            <span class="cal-desc">@item.Descricao</span>
+                            <span>@item.Valor.ToString("N0")</span>
+                        </div>
+                    }
+                    @if (celula.Excedente > 0)
+                    {
+                        <div class="cal-mais">+@celula.Excedente</div>
+                    }
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Célula da grade: dia do mês ou vazia (offset da primeira semana).</summary>
+    private sealed record Celula(DateOnly? Data, IReadOnlyList<CompromissoItem> ItensVisiveis, int Excedente);
+
+    private const int MaxItensCelula = 3;
+    private static readonly string[] DiasSemana = { "dom", "seg", "ter", "qua", "qui", "sex", "sáb" };
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private DateOnly Hoje => DateOnly.FromDateTime(DateTime.Today);
+
+    private int _ano;
+    private int _mes;
+    private CalendarioMes? _dadosMes;
+    private Dictionary<DateOnly, IReadOnlyList<CompromissoItem>> _porDia = new();
+    private List<Celula> _celulas = new();
+
+    private string RotuloMes
+        => _dadosMes is null ? "" : new DateTime(_ano, _mes, 1).ToString("MMMM yyyy", CulturaPtBr);
+
+    private string ClasseSaldo
+    {
+        get
+        {
+            var saldo = _dadosMes?.SaldoPrevisto ?? 0;
+            return saldo > 0 ? "pos" : saldo < 0 ? "neg" : "";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ano = Hoje.Year;
+        _mes = Hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        try
+        {
+            _dadosMes = await CalendarioService.ObterMesAsync(_ano, _mes);
+            MontarCelulas();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void MontarCelulas()
+    {
+        _porDia = (_dadosMes?.Dias ?? Array.Empty<CompromissoDia>())
+            .ToDictionary(d => d.Data, d => d.Itens);
+
+        var celulas = new List<Celula>();
+        var primeiroDia = new DateOnly(_ano, _mes, 1);
+        var deslocamento = ((int)primeiroDia.DayOfWeek + 7) % 7; // DayOfWeek: domingo = 0
+
+        for (var i = 0; i < deslocamento; i++)
+            celulas.Add(new Celula(null, Array.Empty<CompromissoItem>(), 0));
+
+        for (var dia = 1; dia <= DateTime.DaysInMonth(_ano, _mes); dia++)
+        {
+            var data = new DateOnly(_ano, _mes, dia);
+            IReadOnlyList<CompromissoItem> itens = _porDia.TryGetValue(data, out var lista)
+                ? lista
+                : Array.Empty<CompromissoItem>();
+            var visiveis = itens.Take(MaxItensCelula).ToList();
+            celulas.Add(new Celula(data, visiveis, Math.Max(0, itens.Count - MaxItensCelula)));
+        }
+
+        _celulas = celulas;
+    }
+
+    private async Task MesAnterior() => await Navegar(-1);
+
+    private async Task ProximoMes() => await Navegar(1);
+
+    private async Task IrParaHoje()
+    {
+        _ano = Hoje.Year;
+        _mes = Hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task Navegar(int delta)
+    {
+        var destino = new DateOnly(_ano, _mes, 1).AddMonths(delta);
+        _ano = destino.Year;
+        _mes = destino.Month;
+        await CarregarAsync();
+    }
+
+    private async Task AbrirDia(Celula celula)
+    {
+        if (celula.Data is null)
+            return;
+
+        IReadOnlyList<CompromissoItem> itens = _porDia.TryGetValue(celula.Data.Value, out var lista)
+            ? lista
+            : Array.Empty<CompromissoItem>();
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<CompromissoDiaDialog>
+        {
+            { x => x.Data, celula.Data.Value },
+            { x => x.Itens, itens }
+        };
+        await DialogService.ShowAsync<CompromissoDiaDialog>("Compromissos do dia", parameters, options);
+    }
+}

@@ -1,0 +1,86 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject ProjetoService ProjetoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <PessoaSelect @bind-Value="_pessoaId" Required="true"
+                      RequiredError="Selecione a pessoa." />
+        <MudTextField T="string" Label="Descrição" Variant="@gVariant"
+                      @bind-Value="_descricao" Required="true"
+                      RequiredError="Informe a descrição."
+                      TextChanged="@(() => Validar())" />
+        <MudDatePicker Label="Data de contratação" Variant="@gVariant"
+                       Date="@_data"
+                       DateChanged="@((DateTime? d) => { _data = d; Validar(); })"
+                       Required="true" />
+        <MudMoneyInput Label="Valor contratado" Variant="@gVariant"
+                       @bind-Value="_valor" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="@gVariant" OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="@gVariant" Color="Color.Primary" Disabled="@(!_podeSalvar)"
+                   OnClick="Salvar">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Projeto? Projeto { get; set; }
+
+    private Guid? _pessoaId;
+    private string _descricao = "";
+    private DateTime? _data;
+    private decimal? _valor;
+    private bool _podeSalvar;
+
+    protected override void OnInitialized()
+    {
+        if (Projeto is null) return;
+        _pessoaId = Projeto.PessoaId;
+        _descricao = Projeto.Descricao;
+        _data = Projeto.DataContratacao.ToDateTime(TimeOnly.MinValue);
+        _valor = Projeto.ValorContratado;
+        Validar();
+    }
+
+    private void Validar()
+    {
+        _podeSalvar = _pessoaId is not null
+                      && !string.IsNullOrWhiteSpace(_descricao)
+                      && _data is not null
+                      && _valor is not null && _valor > 0;
+        StateHasChanged();
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        if (!_podeSalvar)
+        {
+            Snackbar.Add("Preencha todos os campos obrigatórios.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            var data = DateOnly.FromDateTime(_data!.Value);
+            if (Projeto is null)
+            {
+                var novo = await ProjetoService.CriarAsync(_descricao, data, _valor!.Value, _pessoaId!.Value);
+                MudDialog.Close(DialogResult.Ok(novo.Id));
+            }
+            else
+            {
+                await ProjetoService.AtualizarAsync(Projeto, _descricao, data, _valor!.Value, _pessoaId!.Value);
+                MudDialog.Close(DialogResult.Ok(Projeto.Id));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

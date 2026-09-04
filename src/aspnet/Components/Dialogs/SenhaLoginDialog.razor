@@ -1,0 +1,25 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">Digite sua senha de login para continuar.</MudText>
+        <MudTextField T="string" Label="Senha de login" InputType="InputType.Password"
+                      Variant="@gVariant" @bind-Value="_senha"
+                      TextChanged="@(() => StateHasChanged())" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="@gVariant" OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="@gVariant" Color="Color.Primary" Disabled="@string.IsNullOrWhiteSpace(_senha)"
+                   OnClick="Confirmar">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _senha = "";
+
+    private void Cancelar() => MudDialog.Cancel();
+    private void Confirmar() => MudDialog.Close(DialogResult.Ok(_senha));
+}

@@ -1,0 +1,29 @@
+@namespace Finort.Components
+@inherits MudBaseInput<decimal?>
+@implements IDisposable
+@inject IJSRuntime JS
+
+<div @ref="_wrapper" style="display:contents;">
+    <MudTextField
+                  T="string"
+              Class="@Class"
+              Style="@Style"
+              Label="@Label"
+              Variant="@Variant"
+              FullWidth="true"
+              Immediate="true"
+              Disabled="@Disabled"
+              ReadOnly="@ReadOnly"
+              Placeholder="@Placeholder"
+              Required="@Required"
+              RequiredError="@RequiredError"
+              HelperText="@HelperText"
+              Adornment="@Adornment"
+              AdornmentIcon="@AdornmentIcon"
+              AdornmentText="@AdornmentText"
+              Error="@HasErrors"
+              ErrorText="@GetErrorText()"
+              UserAttributes="@(MergeUserAttributes())"
+              Text="@_display"
+              TextChanged="OnInput" />
+</div>

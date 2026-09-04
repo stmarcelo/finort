@@ -1,0 +1,84 @@
+@namespace Finort.Components
+@inherits AppComponentBase
+@inject ProjetoService ProjetoService
+
+<MudAutocomplete T="Projeto"
+                 Value="@_selecionado"
+                 ValueChanged="OnSelecionadoChanged"
+                 SearchFunc="@Buscar"
+                 ToStringFunc="@(p => p?.Descricao ?? "")"
+                 Label="@Label"
+                 Variant="@gVariant"
+                 Placeholder="@Placeholder"
+                 MaxHeight="320"
+                 Disabled="@(_pessoaIdParam is null)"
+                 ResetValueOnEmptyText="false"
+                 CoerceText="true"
+                 DebounceInterval="150" />
+
+@code {
+    private List<Projeto> _daPessoa = [];
+    private Projeto? _selecionado;
+
+    [Parameter] public Guid? PessoaId { get; set; }
+    [Parameter] public string Label { get; set; } = "Projeto";
+    [Parameter] public string? Placeholder { get; set; } = "Opcional";
+
+    [Parameter] public Guid? Value { get; set; }
+    [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var pessoaMudou = PessoaId != _pessoaIdParam;
+        if (!pessoaMudou && Value == _valorRecebido) return;
+
+        if (pessoaMudou)
+        {
+            _pessoaIdParam = PessoaId;
+            _daPessoa = PessoaId is null ? [] : await ProjetoService.ListarAtivosPorPessoaAsync(PessoaId.Value);
+        }
+        _valorRecebido = Value;
+
+        if (PessoaId is null || !_daPessoa.Any(p => p.Id == Value))
+        {
+            // Mantém um projeto já vinculado (ex.: conclusão de um projeto ainda ativo em lançamento antigo),
+            // mesmo que ele tenha sido concluído depois.
+            var jaVinculado = Value is not null && _daPessoa.All(p => p.Id != Value)
+                ? await ProjetoService.ObterAsync(Value.Value)
+                : null;
+            if (jaVinculado is not null)
+            {
+                _selecionado = jaVinculado;
+                return;
+            }
+
+            _selecionado = null;
+            await EmitirValor(null);
+            return;
+        }
+
+        var unica = ProjetoSelecaoLogica.PreSelecaoUnica(_daPessoa.Count, _daPessoa);
+        if (unica.HasValue && Value != unica.Value)
+        {
+            _selecionado = _daPessoa.FirstOrDefault(p => p.Id == unica.Value);
+            await EmitirValor(unica.Value);
+            return;
+        }
+
+        _selecionado = _daPessoa.FirstOrDefault(p => p.Id == Value);
+    }
+
+    private Guid? _pessoaIdParam;
+    private Guid? _valorRecebido;
+
+    private Task<IEnumerable<Projeto>> Buscar(string texto, CancellationToken _)
+        => Task.FromResult<IEnumerable<Projeto>>(ProjetoSelecaoLogica.Filtrar(_daPessoa, texto));
+
+    private async Task OnSelecionadoChanged(Projeto? projeto)
+    {
+        _selecionado = projeto;
+        await EmitirValor(projeto?.Id);
+    }
+
+    private async Task EmitirValor(Guid? id) => await ValueChanged.InvokeAsync(id);
+}

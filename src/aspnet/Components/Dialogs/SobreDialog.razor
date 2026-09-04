@@ -1,0 +1,202 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using Finort.Data
+@using Finort.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Hosting
+@using Microsoft.AspNetCore.Components
+@inject VersionCheckService VersionService
+@inject AppDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject AppUpdateService AppUpdate
+@inject IHostApplicationLifetime HostLifetime
+
+<MudDialog>
+    <TitleContent>
+        <img src="/img/logo_finort.png" alt="Finort" style="max-width: 250px; width: 100%;" />
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-column align-center pa-4">
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+                O Finort é uma ferramenta essencial para o controle financeiro pessoal,
+                ajudando você a organizar receitas, despesas e investimentos para uma
+                saúde financeira sólida.
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <div class="d-flex flex-column align-start" style="width: 100%;">
+                <MudText Typo="Typo.body2">
+                    <strong>Versão:</strong> @(_versao?.VersaoAtual ?? "0.1.0")
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    <strong>Status:</strong> @ObterStatusTexto()
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    <strong>Última verificação:</strong> @ObterDataVerificacao()
+                </MudText>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VerificarAtualizacao" Disabled="_verificando" Variant="Variant.Outlined">
+            @if (_verificando)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Verificar Atualização
+        </MudButton>
+        @if (_podeAtualizar)
+        {
+            <MudButton OnClick="AtualizarAgora" Disabled="_atualizando" Variant="Variant.Filled" Color="Color.Primary">
+                @if (_atualizando)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Atualizar agora
+            </MudButton>
+        }
+        <MudButton OnClick="Close">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private AppVersion? _versao;
+    private bool _verificando;
+    private DateTime? _ultimaVerificacao;
+    private bool _atualizando;
+    private bool _podeAtualizar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ultimaVerificacao = await ObterUltimaVerificacaoDoBanco();
+
+        if (CacheValido())
+            _versao = await ObterVersaoCacheDoBanco();
+        else
+            _versao = await VersionService.VerificarAsync();
+
+        AvaliarBotaoAtualizacao();
+    }
+
+    private async Task VerificarAtualizacao()
+    {
+        _verificando = true;
+        StateHasChanged();
+
+        _versao = await VersionService.VerificarAsync();
+        await AtualizarUltimaVerificacao();
+
+        if (_versao.NovaVersaoDisponivel)
+            Snackbar.Add($"Nova versão disponível: v{_versao.TagName}", Severity.Info);
+        else
+            Snackbar.Add("Sistema já está na última versão", Severity.Success);
+
+        _verificando = false;
+        StateHasChanged();
+        AvaliarBotaoAtualizacao();
+    }
+
+    private void AvaliarBotaoAtualizacao() =>
+        _podeAtualizar = AppUpdateService.DeveMostrarBotao(
+            OperatingSystem.IsWindows(),
+            _versao?.NovaVersaoDisponivel ?? false);
+
+    private async Task AtualizarAgora()
+    {
+        if (_versao is null) return;
+
+        if (!AppUpdate.UpdaterDisponivel())
+        {
+            // Sem updater.exe (ex.: rodando via dotnet run): abre a página da release.
+            AppUpdate.AbrirPaginaRelease(AppUpdateService.ResolverUrlRelease(_versao.HtmlUrl, _versao.TagName));
+            Snackbar.Add("Página da release aberta no navegador.", Severity.Info);
+            return;
+        }
+
+        var confirmar = await DialogService.ShowMessageBox(
+            "Atualizar agora",
+            new MarkupString(
+                $@"O Finort será fechado, será feito um backup do banco de dados,
+                   a versão <b>v{_versao.TagName}</b> será instalada e o sistema reaberto.
+                   Seus dados não são substituídos — apenas atualizações de estrutura
+                   (migrations) são aplicadas. Continuar?"),
+            yesText: "Atualizar agora", cancelText: "Cancelar");
+
+        if (confirmar != true) return;
+
+        _atualizando = true;
+        StateHasChanged();
+
+        try
+        {
+            AppUpdate.IniciarAtualizacao(_versao.TagName);
+            Snackbar.Add("Atualização iniciada: o sistema será fechado e reaberto.", Severity.Info);
+            await Task.Delay(1500);
+            HostLifetime.StopApplication();
+        }
+        catch (Exception ex)
+        {
+            _atualizando = false;
+            StateHasChanged();
+            Snackbar.Add($"Não foi possível iniciar a atualização: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string ObterStatusTexto()
+    {
+        if (_versao is null) return "Não foi possível verificar";
+        if (_versao.NovaVersaoDisponivel) return $"Nova versão disponível: v{_versao.TagName}";
+        return "Sistema atualizado";
+    }
+
+    private string ObterDataVerificacao()
+    {
+        if (_ultimaVerificacao is null) return "Nunca verificado";
+        return _ultimaVerificacao.Value.ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private async Task<DateTime?> ObterUltimaVerificacaoDoBanco()
+    {
+        var config = await Db.Configuracoes.FirstOrDefaultAsync();
+        return config?.UltimaVerificacaoVersao;
+    }
+
+    private bool CacheValido()
+    {
+        if (_ultimaVerificacao is null) return false;
+        return (DateTime.Now - _ultimaVerificacao.Value) < TimeSpan.FromHours(24);
+    }
+
+    private async Task<AppVersion> ObterVersaoCacheDoBanco()
+    {
+        var config = await Db.Configuracoes.FirstOrDefaultAsync();
+        var tagConhecida = config?.VersaoConhecida ?? "";
+        var versaoAtual = typeof(VersionCheckService).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+
+        return new AppVersion
+        {
+            TagName = tagConhecida,
+            VersaoAtual = versaoAtual,
+            NovaVersaoDisponivel = !string.IsNullOrEmpty(tagConhecida) &&
+                                   VersionCheckService.CompararVersoesPublic(tagConhecida, versaoAtual) > 0
+        };
+    }
+
+    private async Task AtualizarUltimaVerificacao()
+    {
+        var config = await Db.Configuracoes.FirstOrDefaultAsync();
+        if (config is not null)
+        {
+            config.UltimaVerificacaoVersao = DateTime.Now;
+            config.VersaoConhecida = _versao?.TagName;
+            await Db.SaveChangesAsync();
+            _ultimaVerificacao = config.UltimaVerificacaoVersao;
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+}

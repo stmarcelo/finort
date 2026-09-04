@@ -1,0 +1,188 @@
+@page "/fluxo"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@using Finort.Components.Pages
+@using Finort.Data
+@using Microsoft.EntityFrameworkCore
+@inject FluxoService FluxoService
+@inject AppDbContext DbContext
+@inject ISnackbar Snackbar
+
+<PageTitle>Fluxo mensal</PageTitle>
+
+<MudPaper Class="pa-4 mb-4 mt-4">
+    <div class="fluxo-header">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Large" Color="Color.Primary" Class="mr-2" />
+            <MudText Typo="Typo.h5">Fluxo Mensal</MudText>
+        </div>
+        <div class="fluxo-slider">
+            <MudSlider Value="@_diasAntecipacao" ValueChanged="@((int v) => OnDiasAntecipacaoChanged(v))"
+                       Min="0" Max="15" Color="Color.Primary" />
+            <MudText Typo="Typo.caption" Class="fluxo-slider-text">@_diasAntecipacao dias de antecipação</MudText>
+        </div>
+    </div>
+</MudPaper>
+
+<MudGrid Class="mt-2" AlignItems="AlignItems.Stretch">
+    <MudItem xs="12" md="3" class="fluxo-lateral">
+        @if (_anterior is not null)
+        {
+            <FluxoCard Dados="_anterior" MesReferencia="_mesAnterior" AnoReferencia="_anoAnterior"
+                       Mudo="EhPassado(_anterior)" DiasAntecipacao="_diasAntecipacao" />
+        }
+    </MudItem>
+    <MudItem xs="12" md="4">
+        @if (_atual is not null)
+        {
+            <FluxoCard Dados="_atual" MesReferencia="_mes" AnoReferencia="_ano"
+                       MostrarNavegacao="true" OnNavegar="Navegar" Mudo="EhPassado(_atual)"
+                       DiasAntecipacao="_diasAntecipacao" />
+        }
+        else
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+    </MudItem>
+    <MudItem xs="12" md="4" class="fluxo-lateral">
+        @if (_posterior is not null)
+        {
+            <FluxoCard Dados="_posterior" MesReferencia="_mesPosterior" AnoReferencia="_anoPosterior"
+                       Mudo="EhPassado(_posterior)" DiasAntecipacao="_diasAntecipacao" />
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private DateOnly Hoje => DateOnly.FromDateTime(DateTime.Today);
+
+    private int _ano;
+    private int _mes;
+    private int _anoAnterior;
+    private int _mesAnterior;
+    private int _anoPosterior;
+    private int _mesPosterior;
+    private FluxoMensal? _anterior;
+    private FluxoMensal? _atual;
+    private FluxoMensal? _posterior;
+    private int _diasAntecipacao = 5;
+
+    private static bool EhPassado(FluxoMensal dados)
+        => dados is null ||
+           new DateOnly(dados.Ano, dados.Mes, 1) < new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ano = Hoje.Year;
+        _mes = Hoje.Month;
+        await CarregarDiasAntecipacaoAsync();
+        await CarregarAsync();
+    }
+
+    private async Task CarregarDiasAntecipacaoAsync()
+    {
+        try
+        {
+            var config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+            if (config is not null)
+                _diasAntecipacao = config.DiasAntecipacao;
+        }
+        catch
+        {
+            _diasAntecipacao = 5;
+        }
+    }
+
+    private async Task OnDiasAntecipacaoChanged(int valor)
+    {
+        _diasAntecipacao = Math.Clamp(valor, 0, 15);
+        await SalvarDiasAntecipacaoAsync();
+        await CarregarAsync();
+    }
+
+    private async Task SalvarDiasAntecipacaoAsync()
+    {
+        try
+        {
+            var config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+            if (config is not null)
+            {
+                config.DiasAntecipacao = _diasAntecipacao;
+                config.UpdatedAt = DateTime.UtcNow;
+                await DbContext.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar configuração: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CarregarAsync()
+    {
+        try
+        {
+            var selecionado = new DateOnly(_ano, _mes, 1);
+            var anterior = selecionado.AddMonths(-1);
+            var posterior = selecionado.AddMonths(1);
+
+            _anoAnterior = anterior.Year;
+            _mesAnterior = anterior.Month;
+            _anoPosterior = posterior.Year;
+            _mesPosterior = posterior.Month;
+
+            _anterior = await FluxoService.ObterCardAsync(anterior.Year, anterior.Month, _diasAntecipacao);
+            _atual = await FluxoService.ObterCardAsync(selecionado.Year, selecionado.Month, _diasAntecipacao);
+            _posterior = await FluxoService.ObterCardAsync(posterior.Year, posterior.Month, _diasAntecipacao);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task Navegar(int delta)
+    {
+        var destino = new DateOnly(_ano, _mes, 1).AddMonths(delta);
+        _ano = destino.Year;
+        _mes = destino.Month;
+        await CarregarAsync();
+    }
+}
+
+<style>
+    .fluxo-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+    .fluxo-slider {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 180px;
+    }
+    .fluxo-slider .mud-slider {
+        width: 100%;
+    }
+    .fluxo-slider-text {
+        opacity: 0.7;
+        white-space: nowrap;
+        margin-top: -4px;
+    }
+    @@media (max-width: 959px) {
+        .fluxo-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .fluxo-slider {
+            width: 100%;
+            max-width: 250px;
+            align-self: center;
+        }
+    }
+</style>

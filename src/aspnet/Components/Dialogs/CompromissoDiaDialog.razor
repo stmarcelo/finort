@@ -1,0 +1,69 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">@Titulo</MudText></TitleContent>
+    <DialogContent>
+        @if (Itens.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Nenhum compromisso neste dia.</MudText>
+        }
+        else
+        {
+            @foreach (var item in Itens)
+            {
+                <div class="d-flex justify-space-between align-center py-2 px-3 mb-1 cal-dia-item @(item.IsLembrete ? "cal-item-lembrete" : "") @(item.IsFatura ? "cal-item-fatura" : "")">
+                    <div>
+                        <div class="d-flex align-center gap-2">
+                            @if (item.IsLembrete || item.IsFatura)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" />
+                            }
+                            <span class="cal-valor @(item.Valor < 0 ? "neg" : "pos") @(item.Confirmado ? "cal-ok" : "")">
+                                @item.Valor.ToString("N2")
+                            </span>
+                            @if (item.Projetada)
+                            {
+                                <span class="cal-proj">Projeção</span>
+                            }
+                            else if (item.Confirmado)
+                            {
+                                <span class="cal-badge">Confirmado</span>
+                            }
+                        </div>
+                        <MudText Typo="Typo.body2">
+                            @item.Descricao@(string.IsNullOrWhiteSpace(item.Origem) ? "" : $" · {item.Origem}")
+                        </MudText>
+                    </div>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Fechar">Fechar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="VerLancamentosDoMes">Ver lançamentos do mês</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    [Parameter] public DateOnly Data { get; set; }
+    [Parameter] public IReadOnlyList<CompromissoItem> Itens { get; set; } = Array.Empty<CompromissoItem>();
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string Titulo => char.ToUpper(Data.ToString("dddd, dd 'de' MMMM 'de' yyyy", CulturaPtBr)[0])
+        + Data.ToString("dddd, dd 'de' MMMM 'de' yyyy", CulturaPtBr)[1..];
+
+    private void Fechar() => MudDialog.Close();
+
+    private void VerLancamentosDoMes()
+    {
+        MudDialog.Close();
+        Navigation.NavigateTo($"/lancamentos?mes={Data.Month}&ano={Data.Year}");
+    }
+}

@@ -1,0 +1,111 @@
+@page "/provisoes"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject ProvisaoService ProvisaoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Provisões</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.EventRepeat" Class="mr-2" /> Provisões
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => AbrirDialog(null)">Nova provisão</MudButton>
+        </MudToolBar>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTable Items="@_provisoes" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Onde</MudTh>
+                <MudTh>Pessoa</MudTh>
+                <MudTh>Destino</MudTh>
+                <MudTh>Frequência</MudTh>
+                <MudTh>Dia</MudTh>
+                <MudTh>Valor</MudTh>
+                <MudTh>Categoria</MudTh>
+                <MudTh>Variante</MudTh>
+                <MudTh>Último lançamento</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@RotuloOnde(context.Onde)</MudTd>
+                <MudTd>@(context.Pessoa?.Nome ?? "-")</MudTd>
+                <MudTd>@(context.Conta?.Nome ?? context.CartaoCredito?.Banco ?? "-")</MudTd>
+                <MudTd>@RotuloFrequencia(context.Frequencia)</MudTd>
+                <MudTd>@context.Dia</MudTd>
+                <MudTd>@context.Valor.ToString("N2")</MudTd>
+                <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                <MudTd>@(context.ValorVariante ? "Sim" : "Não")</MudTd>
+                <MudTd>@(context.UltimoMesLancado.HasValue ? $"{context.UltimoMesLancado:D2}/{context.UltimoAnoLancado}" : "-")</MudTd>
+                <MudTd>
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                     OnClick="() => AbrirDialog(context)">Editar</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                     OnClick="() => Excluir(context)">Excluir</MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<Provisao> _provisoes = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync() => _provisoes = await ProvisaoService.ListarAsync();
+
+    private async Task AbrirDialog(Provisao? provisao)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<ProvisaoDialog> { { x => x.Provisao, provisao } };
+        var dialog = await DialogService.ShowAsync<ProvisaoDialog>("Provisão", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await CarregarAsync();
+    }
+
+    private async Task Excluir(Provisao provisao)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var confirm = await DialogService.ShowMessageBox("Excluir provisão",
+            "Excluir a provisão? Os lançamentos já gerados serão mantidos.",
+            "Excluir", null, null, options);
+        if (confirm != true) return;
+
+        try
+        {
+            await ProvisaoService.ExcluirAsync(provisao.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private static string RotuloOnde(ProvisaoOnde onde) => onde switch
+    {
+        ProvisaoOnde.DebitoConta => "Débito em conta",
+        ProvisaoOnde.DebitoCartao => "Débito em cartão",
+        ProvisaoOnde.Receita => "Receita",
+        _ => onde.ToString()
+    };
+
+    private static string RotuloFrequencia(ProvisaoFrequencia frequencia) => frequencia switch
+    {
+        ProvisaoFrequencia.Mensal => "Mensal",
+        ProvisaoFrequencia.Trimestral => "Trimestral",
+        ProvisaoFrequencia.Semestral => "Semestral",
+        ProvisaoFrequencia.Anual => "Anual",
+        _ => frequencia.ToString()
+    };
+}

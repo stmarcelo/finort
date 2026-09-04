@@ -1,0 +1,147 @@
+@page "/configurar"
+@attribute [AllowAnonymous]
+@layout LoginLayout
+@inherits AppComponentBase
+@using System.Security.Claims
+@inject AuthService AuthService
+@inject ScopedAuthenticationStateProvider Auth
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ProvisaoService ProvisaoService
+
+<div class="login-split">
+    <div class="login-image">
+        <img src="/img/img-login.png" alt="Finort - Finanças Norteadas" />
+    </div>
+    <div class="login-form">
+        <div class="login-form-inner">
+            <img src="/img/logo_finort.png" class="login-logo"
+                 alt="Finort - Finanças Norteadas" />
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="auth-title mb-2">Primeiro acesso</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4">Configure seu acesso</MudText>
+            <MudTextField @bind-Value="_nome" Label="Nome" Variant="@gVariant" T="string"
+                          TextChanged="@(() => Validar())" />
+            <MudTextField @bind-Value="_email" Label="E-mail" Variant="@gVariant" T="string"
+                          TextChanged="@(() => Validar())" />
+            <MudTextField @bind-Value="_senha" Label="Senha" Variant="@gVariant"
+                          InputType="InputType.Password" T="string"
+                          TextChanged="@(() => Validar())" />
+            <MudTextField @bind-Value="_confirmacao" Label="Confirmação da senha" Variant="@gVariant"
+                          InputType="InputType.Password" T="string"
+                          Error="@(_confirmacao.Length > 0 && _senha != _confirmacao)"
+                          ErrorText="As senhas não conferem."
+                          TextChanged="@(() => Validar())" />
+            <MudText Typo="Typo.caption"
+                     Style="@(_senhaForte ? "color:var(--mud-palette-success-text)" : "color:#b00020")">
+                @(_senhaForte ? "Senha válida" : "Mínimo 8 caracteres")
+            </MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Class="mt-4" Disabled="@(!_podeSalvar || _processando)" OnClick="Salvar">Criar acesso</MudButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _nome = string.Empty;
+    private string _email = string.Empty;
+    private string _senha = string.Empty;
+    private string _confirmacao = string.Empty;
+    private bool _processando;
+    private bool _jaExiste;
+    private bool _podeSalvar;
+    private bool _senhaForte;
+
+    private void Validar()
+    {
+        _senhaForte = _senha.Length >= 8;
+        _podeSalvar = !string.IsNullOrWhiteSpace(_nome) && !string.IsNullOrWhiteSpace(_email)
+                      && _senhaForte && _senha == _confirmacao;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var configuracao = await AuthService.GetConfiguracaoAsync();
+        _jaExiste = configuracao is not null;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _jaExiste)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task Salvar()
+    {
+        if (_processando) return;
+        if (string.IsNullOrWhiteSpace(_nome) || string.IsNullOrWhiteSpace(_email) ||
+            string.IsNullOrWhiteSpace(_senha))
+        {
+            Snackbar.Add("Preencha todos os campos", Severity.Error);
+            return;
+        }
+        if (_senha.Length < 8)
+        {
+            Snackbar.Add("A senha deve ter no mínimo 8 caracteres", Severity.Error);
+            return;
+        }
+        if (_senha != _confirmacao)
+        {
+            Snackbar.Add("As senhas não coincidem", Severity.Error);
+            return;
+        }
+
+        _processando = true;
+        try
+        {
+            try
+            {
+                await AuthService.CriarConfiguracaoAsync(_nome.Trim(), _email.Trim(), _senha);
+            }
+            catch (InvalidOperationException)
+            {
+                Snackbar.Add("O acesso já foi configurado neste servidor.", Severity.Error);
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            LoginResponse? response;
+            try
+            {
+                response = await JS.InvokeAsync<LoginResponse>("authHelpers.login", _senha);
+            }
+            catch
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+            if (response.Status == 200 && response.Nome is not null)
+            {
+                var identity = new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.Name, response.Nome) }, "app");
+                Auth.SignIn(new ClaimsPrincipal(identity));
+                try
+                {
+                    await ProvisaoService.SincronizarAsync();
+                }
+                catch
+                {
+                    // Falha de sincronismo não deve impedir a entrada.
+                }
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                Navigation.NavigateTo("/login");
+            }
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+}

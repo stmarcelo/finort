@@ -1,0 +1,378 @@
+@page "/investimentos"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject InvestimentoService InvestimentoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Investimentos</PageTitle>
+
+<MudToolBar Class="mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Savings" Class="mr-2" /> Investimentos
+    </MudText>
+    <MudSpacer />
+    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="NovoInvestimento">Novo investimento</MudButton>
+</MudToolBar>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_cards.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Nenhum investimento cadastrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var card in _cards)
+        {
+            var investimento = card.Investimento;
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@IconeTipo(investimento)" Color="Color.Primary" Size="Size.Small" />
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600">@investimento.Nome</MudText>
+                        </MudStack>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@RotuloCabecalho(investimento)</MudChip>
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="@(async () => await EditarInvestimento(investimento))">Editar</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                             OnClick="@(async () => await ExcluirInvestimento(investimento))">Excluir</MudMenuItem>
+                                <MudDivider />
+                                @if (investimento.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Cdb)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Add"
+                                                 OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Aporte))">Aporte</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Remove"
+                                                 OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Resgate))">Resgate</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.TrendingUp"
+                                                 OnClick="@(async () => await AbrirProvento(investimento))">Rendimento</MudMenuItem>
+                                }
+                                else
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.ShoppingCart"
+                                                 OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Compra))">Comprar</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Sell"
+                                                 OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Venda))">Vender</MudMenuItem>
+                                    @if (investimento.Tipo != TipoInvestimento.Dolar && investimento.Tipo != TipoInvestimento.Criptomoeda)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Paid"
+                                                     OnClick="@(async () => await AbrirProvento(investimento))">Dividendos</MudMenuItem>
+                                    }
+                                }
+                                <MudDivider />
+                                <MudMenuItem OnClick="@(async () => await AbrirMovimentacoes(investimento))">Histórico</MudMenuItem>
+                                <MudMenuItem OnClick="@(async () => await AbrirProventos(investimento))">Proventos</MudMenuItem>
+                            </MudMenu>
+                        </MudStack>
+                    </MudStack>
+
+                    @if (investimento.Tipo == TipoInvestimento.Reserva)
+                    {
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Último aporte</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(card.DataUltimoAporte?.ToString("dd/MM/yyyy") ?? "—")
+                            </MudText>
+                        </MudStack>
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Valor aporte</MudText>
+                            <MudText Typo="Typo.body2">
+                                R$ @card.ValorUltimoAporte.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                        <MudDivider Class="my-2" />
+                        <MudStack Row Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">Saldo</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;color:var(--mud-palette-success)">
+                                R$ @card.Saldo.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                    }
+                    else if (investimento.Tipo == TipoInvestimento.Cdb)
+                    {
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Vencimento</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(investimento.DataVencimento?.ToString("dd/MM/yyyy") ?? "—")
+                            </MudText>
+                        </MudStack>
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Último aporte</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(card.DataUltimoAporte?.ToString("dd/MM/yyyy") ?? "—")
+                            </MudText>
+                        </MudStack>
+                        <MudDivider Class="my-2" />
+                        <MudStack Row Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">Saldo</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;color:var(--mud-palette-success)">
+                                R$ @card.Saldo.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Cotação</MudText>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.body2" Style="font-weight:600">
+                                    @(investimento.ValorCotaAtual == 0m ? "—" : $"R$ {investimento.ValorCotaAtual:N2}")
+                                </MudText>
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Default"
+                                               Title="Atualizar cotação"
+                                               OnClick="@(async () => await AbrirDialogAtualizarCotacao(investimento))" />
+                            </MudStack>
+                        </MudStack>
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Quantidade</MudText>
+                            <MudText Typo="Typo.body2">
+                                @card.QuantidadeTotal.ToString(FormatoQuantidade(investimento.Tipo))
+                            </MudText>
+                        </MudStack>
+                        <MudDivider Class="my-2" />
+                        <MudStack Row Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">Saldo</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;color:var(--mud-palette-success)">
+                                R$ @card.Saldo.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private sealed class CotacaoEdicao
+    {
+        public decimal? Valor { get; set; }
+        public DateTime? Data { get; set; }
+    }
+
+    private bool _carregando = true;
+    private List<InvestimentoCard> _cards = new();
+    private Dictionary<Guid, CotacaoEdicao> _cotacoesEdicao = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private static string RotuloTipo(Investimento i)
+        => i.Tipo switch
+        {
+            TipoInvestimento.Reserva => "Reserva",
+            TipoInvestimento.Dolar => "Dólar",
+            TipoInvestimento.Criptomoeda => "Criptomoeda",
+            TipoInvestimento.Fii => "FII",
+            TipoInvestimento.Acao => "Ação",
+            TipoInvestimento.Cdb => "CDB",
+            _ => i.Tipo.ToString()
+        };
+
+    private static string IconeTipo(Investimento i)
+        => i.Tipo switch
+        {
+            TipoInvestimento.Reserva => Icons.Material.Filled.Savings,
+            TipoInvestimento.Dolar => Icons.Material.Filled.AttachMoney,
+            TipoInvestimento.Criptomoeda => Icons.Material.Filled.CurrencyBitcoin,
+            TipoInvestimento.Fii => Icons.Material.Filled.Business,
+            TipoInvestimento.Acao => Icons.Material.Filled.ShowChart,
+            TipoInvestimento.Cdb => Icons.Material.Filled.AccountBalance,
+            _ => Icons.Material.Filled.Savings
+        };
+
+    private static string RotuloCabecalho(Investimento i)
+    {
+        var tipo = RotuloTipo(i);
+        return string.IsNullOrWhiteSpace(i.Subtipo) ? tipo : $"{tipo} · {i.Subtipo}";
+    }
+
+    private static string FormatoQuantidade(TipoInvestimento tipo)
+        => tipo switch
+        {
+            TipoInvestimento.Fii => "N0",
+            TipoInvestimento.Acao => "N0",
+            TipoInvestimento.Criptomoeda => "N8",
+            _ => "N2"
+        };
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            var cards = await InvestimentoService.ListarParaCardsAsync();
+            var edicoes = cards.ToDictionary(
+                c => c.Investimento.Id,
+                c => new CotacaoEdicao
+                {
+                    Valor = c.Investimento.ValorCotaAtual == 0m ? null : c.Investimento.ValorCotaAtual,
+                    Data = c.Investimento.DataCotacao
+                });
+
+            // publica de uma vez para o render nunca misturar listas/dicionários antigos:
+            _cards = cards;
+            _cotacoesEdicao = edicoes;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar investimentos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task NovoInvestimento()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<InvestimentoDialog>("Novo investimento", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task EditarInvestimento(Investimento investimento)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<InvestimentoDialog> { { x => x.Investimento, investimento } };
+        var dialog = await DialogService.ShowAsync<InvestimentoDialog>("Editar investimento", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task SalvarCotacao(Investimento investimento, decimal? valor, DateTime? data)
+    {
+        try
+        {
+            await InvestimentoService.AtualizarCotacaoAsync(
+                investimento.Id, valor ?? 0m, data);
+            Snackbar.Add("Cotação atualizada.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AbrirDialogAtualizarCotacao(Investimento investimento)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Investimento", investimento },
+            { "OnSave", EventCallback.Factory.Create<(decimal? valor, DateTime? data)>(this, async (tuple) => await SalvarCotacao(investimento, tuple.valor, tuple.data)) }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        await DialogService.ShowAsync<AtualizarCotacaoDialog>("Atualizar cotação", parameters, options);
+    }
+
+    private async Task AbrirProvento(Investimento investimento)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<ProventoDialog>
+        {
+            { x => x.Tipo, investimento.Tipo == TipoInvestimento.Reserva ? ProventoTipo.Rendimento : ProventoTipo.Dividendo }
+        };
+        var titulo = investimento.Tipo == TipoInvestimento.Reserva ? "Rendimento" : "Dividendos";
+        var dialog = await DialogService.ShowAsync<ProventoDialog>(titulo, parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is null) return;
+
+        var dados = ((DateOnly Data, decimal Valor))result.Data;
+        try
+        {
+            await InvestimentoService.RegistrarProventoAsync(
+                investimento.Id, dados.Data, dados.Valor,
+                investimento.Tipo == TipoInvestimento.Reserva ? ProventoTipo.Rendimento : ProventoTipo.Dividendo);
+            Snackbar.Add("Provento registrado.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AbrirProventos(Investimento investimento)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<ProventosDialog>
+        {
+            { x => x.InvestimentoId, investimento.Id },
+            { x => x.Nome, investimento.Nome }
+        };
+        await DialogService.ShowAsync<ProventosDialog>("Proventos", parameters, options);
+    }
+
+    private async Task AbrirMovimento(Investimento investimento, MovimentoTipo tipo)
+    {
+        var card = _cards.Single(c => c.Investimento.Id == investimento.Id);
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<MovimentoDialog>
+        {
+            { x => x.InvestimentoId, investimento.Id },
+            { x => x.Tipo, tipo },
+            { x => x.PosicaoAtual, card.QuantidadeTotal },
+            { x => x.SaldoAtual, card.SaldoReserva },
+            { x => x.CasasDecimaisQuantidade, investimento.Tipo == TipoInvestimento.Criptomoeda ? 8
+                : investimento.Tipo is TipoInvestimento.Fii or TipoInvestimento.Acao ? 0 : 2 },
+            { x => x.CasasDecimaisCota, 2 }
+        };
+        var titulo = tipo switch
+        {
+            MovimentoTipo.Compra => "Comprar",
+            MovimentoTipo.Venda => "Vender",
+            MovimentoTipo.Aporte => "Aportar",
+            _ => "Resgatar"
+        };
+        var dialog = await DialogService.ShowAsync<MovimentoDialog>(titulo, parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add("Movimento registrado.", Severity.Success);
+            await CarregarAsync();
+        }
+    }
+
+    private async Task AbrirMovimentacoes(Investimento investimento)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters<MovimentacoesDialog>
+        {
+            { x => x.InvestimentoId, investimento.Id },
+            { x => x.Nome, investimento.Nome }
+        };
+        var dialog = await DialogService.ShowAsync<MovimentacoesDialog>("Movimentações", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task ExcluirInvestimento(Investimento investimento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir investimento",
+            $"Excluir '{investimento.Nome}' e todos os seus registros (proventos/movimentações)? Esta ação é irreversível.",
+            "Excluir", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await InvestimentoService.ExcluirAsync(investimento.Id);
+            Snackbar.Add("Investimento excluído.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

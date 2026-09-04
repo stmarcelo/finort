@@ -1,0 +1,86 @@
+@namespace Finort.Components
+@inherits AppComponentBase
+@using Finort.Components.Dialogs
+@inject CategoriaService CategoriaService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<SelecaoBusca Label="@Label" Placeholder="@Placeholder" Class="@Class"
+              Opcoes="_opcoes" PermitirNovo="@PermitirNovo" TituloNovo="Nova subcategoria"
+              Adicionar="AbrirNovaSubcategoriaAsync"
+              Value="@Value" ValueChanged="OnValueChanged" />
+
+@code {
+    private IReadOnlyList<KeyValuePair<Guid, string>> _opcoes = Array.Empty<KeyValuePair<Guid, string>>();
+
+    [Parameter] public string Label { get; set; } = "Subcategoria";
+    [Parameter] public string? Placeholder { get; set; } = "Opcional";
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Categoria pai. Sem categoria, a lista fica vazia e o cadastro é bloqueado.</summary>
+    [Parameter] public Guid? CategoriaId { get; set; }
+    [Parameter] public bool PermitirNovo { get; set; } = true;
+
+    [Parameter] public Guid? Value { get; set; }
+    [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
+
+    protected override async Task OnInitializedAsync() => await RecarregarAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Categoria trocou -> recarrega subcategorias e limpa seleção inválida.
+        if (CategoriaId.HasValue && !_opcoes.Any() || _ultimaCategoria != CategoriaId)
+        {
+            await RecarregarAsync();
+            if (_ultimaCategoria != CategoriaId && Value.HasValue &&
+                !_opcoes.Any(o => o.Key == Value.Value))
+            {
+                await ValueChanged.InvokeAsync(null);
+            }
+            _ultimaCategoria = CategoriaId;
+        }
+    }
+
+    private Guid? _ultimaCategoria;
+
+    private async Task RecarregarAsync()
+    {
+        if (!CategoriaId.HasValue)
+        {
+            _opcoes = Array.Empty<KeyValuePair<Guid, string>>();
+            return;
+        }
+
+        var categorias = await CategoriaService.ListarAsync();
+        var categoria = categorias.FirstOrDefault(c => c.Id == CategoriaId.Value);
+        _opcoes = categoria?.Subcategorias
+            .OrderBy(s => s.Nome)
+            .Select(s => new KeyValuePair<Guid, string>(s.Id, s.Nome))
+            .ToList() ?? new List<KeyValuePair<Guid, string>>();
+    }
+
+    private Task OnValueChanged(Guid? id) => ValueChanged.InvokeAsync(id);
+
+    public async Task AbrirNovaSubcategoriaAsync()
+    {
+        if (!CategoriaId.HasValue)
+        {
+            Snackbar.Add("Selecione uma categoria antes de criar uma subcategoria.", Severity.Warning);
+            return;
+        }
+
+        var categorias = await CategoriaService.ListarAsync();
+        var categoria = categorias.FirstOrDefault(c => c.Id == CategoriaId.Value);
+        if (categoria is null) return;
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<SubcategoriaDialog> { { x => x.Categoria, categoria } };
+        var dialog = await DialogService.ShowAsync<SubcategoriaDialog>("Nova subcategoria", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        await RecarregarAsync();
+        if (result.Data is Guid novoId)
+            await ValueChanged.InvokeAsync(novoId);
+    }
+}

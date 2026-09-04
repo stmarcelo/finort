@@ -1,0 +1,100 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using Finort.Components.Lancamentos
+@using Finort.Models.Financeiro
+@inject LancamentoService LancamentoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_titulo</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_tipo == LancamentoTipo.Despesa && TipoTransacao == "cartao")
+        {
+            <DespesaCartaoForm @ref="_cartaoForm" LancamentoId="@LancamentoId" OnSalvarValido="SalvarCartaoAsync" />
+        }
+        else
+        {
+            <LancamentoForm Tipo="@_tipo" LancamentoId="@_lancamentoGuidId" OnSaved="FecharAsync" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        @if (_tipo == LancamentoTipo.Despesa && TipoTransacao == "cartao")
+        {
+            <MudButton Color="Color.Primary" Variant="@gVariant"
+                       OnClick="@(async () => await _cartaoForm!.ValidarESalvarAsync())">Salvar</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string TipoTransacao { get; set; } = "receita";
+    [Parameter] public Guid? LancamentoId { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private LancamentoTipo _tipo;
+    private Guid? _lancamentoGuidId;
+    private DespesaCartaoForm? _cartaoForm;
+
+    private string _titulo => TipoTransacao switch
+    {
+        "receita" => LancamentoId.HasValue ? "Editar receita" : "Nova receita",
+        "despesa" => LancamentoId.HasValue ? "Editar despesa" : "Nova despesa",
+        "cartao" => LancamentoId.HasValue ? "Editar despesa de cartão" : "Nova despesa de cartão",
+        "transferencia" => LancamentoId.HasValue ? "Editar transferência" : "Nova transferência",
+        _ => "Novo lançamento"
+    };
+
+    protected override void OnInitialized()
+    {
+        _tipo = TipoTransacao switch
+        {
+            "receita" => LancamentoTipo.Receita,
+            "despesa" => LancamentoTipo.Despesa,
+            "cartao" => LancamentoTipo.Despesa,
+            "transferencia" => LancamentoTipo.Transferencia,
+            _ => LancamentoTipo.Despesa
+        };
+        _lancamentoGuidId = LancamentoId;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private Task FecharAsync()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+        return Task.CompletedTask;
+    }
+
+    private async Task SalvarCartaoAsync(DespesaCartaoForm.DadosDespesaCartao d)
+    {
+        try
+        {
+            if (LancamentoId.HasValue)
+            {
+                await LancamentoService.AtualizarDespesaCartaoAsync(
+                    LancamentoId.Value, d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId,
+                    d.PessoaId, d.ProjetoId);
+                Snackbar.Add("Lançamento atualizado.", Severity.Success);
+            }
+            else
+            {
+                await LancamentoService.CriarDespesaCartaoAsync(
+                    d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
+                    d.Parcelas, d.ReembolsoPessoaId, reembolsoVencimento: null,
+                    vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: d.ReembolsoContaId,
+                    ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
+                Snackbar.Add("Lançamento salvo.", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

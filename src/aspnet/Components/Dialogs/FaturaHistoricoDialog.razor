@@ -1,0 +1,62 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using Finort.Models.Financeiro
+@inject FaturaService FaturaService
+@inject CartaoCreditoService CartaoService
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.h6">Histórico de Faturas - @_cartaoNome</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_situacoes.Any())
+        {
+            <MudTable Items="_situacoes" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Mês/Ano</MudTh>
+                    <MudTh>Valor total</MudTh>
+                    <MudTh>Pago</MudTh>
+                    <MudTh>Situação</MudTh>
+                    <MudTh>Fechada em</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@($"{context.MesReferencia:D2}/{context.AnoReferencia}")</MudTd>
+                    <MudTd>@Math.Abs(context.ValorTotal).ToString("N2")</MudTd>
+                    <MudTd>@context.Pago.ToString("N2")</MudTd>
+                    <MudTd>
+                        <MudText Class="@(context.Paga ? "text-success" : "")">
+                            @(context.Paga ? "Paga" : context.Parcial ? "Parcial" : "—")
+                        </MudText>
+                    </MudTd>
+                    <MudTd>@context.DataFechamento?.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="text-muted">Nenhuma fatura fechada encontrada.</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Fechar">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid CartaoCreditoId { get; set; }
+
+    private string _cartaoNome = string.Empty;
+    private List<FaturaSituacao> _situacoes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cartao = (await CartaoService.ListarComSaldoAsync()).FirstOrDefault(c => c.Id == CartaoCreditoId);
+        _cartaoNome = cartao != null ? $"{cartao.Banco} ••{cartao.Ultimos4Digitos}" : "";
+        _situacoes = await FaturaService.ObterSituacoesAsync(CartaoCreditoId);
+    }
+
+    private void Fechar() => MudDialog.Cancel();
+}

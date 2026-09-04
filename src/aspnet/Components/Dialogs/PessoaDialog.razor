@@ -1,0 +1,226 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using MudBlazor.Utilities
+@using Finort.Models.Financeiro
+@inject PessoaService PessoaService
+@inject LembreteService LembreteService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Pessoa is null ? "Nova pessoa" : "Editar pessoa")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_nome" Label="Nome" Variant="@GlobalVariant.Value" Required="true"
+                          RequiredError="Informe um nome." />
+            <MudColorPicker Value="_cor" ValueChanged="(MudColor c) => OnCorChanged(c)"
+                            Label="Cor de exibição" Variant="@GlobalVariant.Value"
+                            ShowToolbar="true" />
+            <MudTextField @bind-Value="_observacao" Label="Observação" Variant="@GlobalVariant.Value"
+                          Lines="3" />
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h6" Class="mb-2">Lembretes</MudText>
+
+            @if (_lembretes.Any())
+            {
+                @foreach (var lembrete in _lembretes)
+                {
+                    <MudPaper Class="pa-2 mb-2" Elevation="0" Outlined="true">
+                        <div class="d-flex align-center justify-space-between">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@(lembrete.Tipo == LembreteTipo.Mensal ? Icons.Material.Filled.Repeat : Icons.Material.Filled.DateRange)" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@lembrete.Texto</MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                    @(lembrete.Tipo == LembreteTipo.Mensal ? $"Dia {lembrete.Dia}" : lembrete.Data?.ToString("dd/MM/yyyy"))
+                                </MudChip>
+                            </div>
+                            <div>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="() => EditarLembrete(lembrete)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => ExcluirLembreteAsync(lembrete.Id)" />
+                            </div>
+                        </div>
+                    </MudPaper>
+                }
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="text-muted mb-2">Nenhum lembrete cadastrado.</MudText>
+            }
+
+            @if (_editandoLembrete)
+            {
+                <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                    <MudSelect T="LembreteTipo" @bind-Value="_novoTipo" Label="Tipo" Class="mb-2">
+                        <MudSelectItem T="LembreteTipo" Value="LembreteTipo.Mensal">Mensal</MudSelectItem>
+                        <MudSelectItem T="LembreteTipo" Value="LembreteTipo.Unico">Único</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="_novoTexto" Label="Texto do lembrete" Class="mb-2" />
+
+                    @if (_novoTipo == LembreteTipo.Mensal)
+                    {
+                        <MudNumericField @bind-Value="_novoDia" Label="Dia do mês" Min="1" Max="31" Class="mb-2" />
+                    }
+                    else
+                    {
+                        <MudDatePicker @bind-Date="_novoData" Label="Data" Class="mb-2" />
+                    }
+
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SalvarLembreteAsync" Size="Size.Small">Salvar</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="CancelarLembrete" Size="Size.Small">Cancelar</MudButton>
+                    </div>
+                </MudPaper>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="IniciarNovoLembrete" Size="Size.Small">
+                    Adicionar lembrete
+                </MudButton>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@GlobalVariant.Value" OnClick="Salvar">Salvar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Pessoa? Pessoa { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private string _nome = string.Empty;
+    private string? _observacao;
+    private MudColor? _cor;
+
+    private List<Lembrete> _lembretes = new();
+    private bool _editandoLembrete;
+    private Lembrete? _lembreteEditando;
+    private LembreteTipo _novoTipo = LembreteTipo.Mensal;
+    private string _novoTexto = string.Empty;
+    private int? _novoDia;
+    private DateTime? _novoData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Pessoa is not null)
+        {
+            _nome = Pessoa.Nome;
+            _observacao = Pessoa.Observacao;
+            if (Pessoa.CorDeExibicao is not null)
+                _cor = new MudColor(NormalizarHex(Pessoa.CorDeExibicao));
+        }
+
+        await CarregarLembretesAsync();
+    }
+
+    private void OnCorChanged(MudColor c)
+        => _cor = c;
+
+    private static string NormalizarHex(string hex)
+        => hex.StartsWith("#") ? hex : "#" + hex;
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        var cor = _cor is null ? null : _cor.ToString(MudColorOutputFormats.Hex);
+        Pessoa salva;
+        if (Pessoa is null)
+            salva = await PessoaService.CriarAsync(_nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
+        else
+        {
+            await PessoaService.AtualizarAsync(Pessoa, _nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
+            salva = Pessoa;
+        }
+
+        MudDialog.Close(DialogResult.Ok(salva.Id));
+    }
+
+    private async Task CarregarLembretesAsync()
+    {
+        if (Pessoa?.Id != null && Pessoa.Id != Guid.Empty)
+        {
+            _lembretes = await LembreteService.ListarPorPessoaAsync(Pessoa.Id);
+        }
+    }
+
+    private void IniciarNovoLembrete()
+    {
+        _editandoLembrete = true;
+        _lembreteEditando = null;
+        _novoTipo = LembreteTipo.Mensal;
+        _novoTexto = string.Empty;
+        _novoDia = null;
+        _novoData = null;
+    }
+
+    private void EditarLembrete(Lembrete lembrete)
+    {
+        _editandoLembrete = true;
+        _lembreteEditando = lembrete;
+        _novoTipo = lembrete.Tipo;
+        _novoTexto = lembrete.Texto;
+        _novoDia = lembrete.Dia;
+        _novoData = lembrete.Data.HasValue ? lembrete.Data.Value.ToDateTime(TimeOnly.MinValue) : null;
+    }
+
+    private void CancelarLembrete()
+    {
+        _editandoLembrete = false;
+        _lembreteEditando = null;
+    }
+
+    private async Task SalvarLembreteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_novoTexto)) return;
+
+        if (Pessoa is null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid) return;
+
+            var cor = _cor is null ? null : _cor.ToString(MudColorOutputFormats.Hex);
+            Pessoa = await PessoaService.CriarAsync(_nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
+            StateHasChanged();
+        }
+
+        if (_novoTipo == LembreteTipo.Mensal && (!_novoDia.HasValue || _novoDia < 1 || _novoDia > 31))
+            return;
+
+        if (_novoTipo == LembreteTipo.Unico && !_novoData.HasValue)
+            return;
+
+        var lembrete = _lembreteEditando ?? new Lembrete { PessoaId = Pessoa!.Id };
+        lembrete.Tipo = _novoTipo;
+        lembrete.Texto = _novoTexto;
+        lembrete.Dia = _novoTipo == LembreteTipo.Mensal ? _novoDia : null;
+        lembrete.Data = _novoTipo == LembreteTipo.Unico && _novoData.HasValue ? DateOnly.FromDateTime(_novoData.Value) : null;
+
+        if (_lembreteEditando != null)
+            await LembreteService.AtualizarAsync(lembrete);
+        else
+            await LembreteService.CriarAsync(lembrete);
+
+        _editandoLembrete = false;
+        _lembreteEditando = null;
+        await CarregarLembretesAsync();
+        StateHasChanged();
+    }
+
+    private async Task ExcluirLembreteAsync(Guid id)
+    {
+        await LembreteService.ExcluirAsync(id);
+        await CarregarLembretesAsync();
+        StateHasChanged();
+    }
+}
