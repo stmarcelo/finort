@@ -138,7 +138,14 @@ public class BackupRestoreService
 
             await using (var ctxMigrate = CriarCtx(caminhoDb))
             {
-                await ctxMigrate.Database.MigrateAsync();
+                try
+                {
+                    await ctxMigrate.Database.MigrateAsync();
+                }
+                catch
+                {
+                    await ctxMigrate.Database.EnsureCreatedAsync();
+                }
             }
 
             var caminhoBak = caminhoDb + ".bak";

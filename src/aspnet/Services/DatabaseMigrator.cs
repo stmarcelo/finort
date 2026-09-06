@@ -23,8 +23,16 @@ public class DatabaseMigrator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to apply database migrations");
-            throw;
+            _logger.LogWarning(ex, "Migrate failed, attempting EnsureCreated...");
+            try
+            {
+                _db.Database.EnsureCreated();
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Failed to apply database migrations");
+                throw;
+            }
         }
     }
 }

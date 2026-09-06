@@ -64,7 +64,14 @@ public class DatabaseSwitchService
             }
             else
             {
-                await ctx.Database.MigrateAsync();
+                try
+                {
+                    await ctx.Database.MigrateAsync();
+                }
+                catch
+                {
+                    await ctx.Database.EnsureCreatedAsync();
+                }
             }
 
             if (!ehMySql)
