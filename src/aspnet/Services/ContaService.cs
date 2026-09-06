@@ -51,20 +51,21 @@ public class ContaService
     public async Task<Conta?> ObterAsync(Guid id)
         => await _db.Contas.FindAsync(id);
 
-    public async Task<Conta> CriarAsync(string nome, string? banco, string? agencia, string? contaEDigito)
+    public async Task<Conta> CriarAsync(string nome, string? banco, string? agencia, string? contaEDigito, decimal? limite = null)
     {
-        var conta = new Conta { Nome = nome, Banco = banco, Agencia = agencia, ContaEDigito = contaEDigito };
+        var conta = new Conta { Nome = nome, Banco = banco, Agencia = agencia, ContaEDigito = contaEDigito, Limite = limite };
         _db.Contas.Add(conta);
         await _db.SaveChangesAsync();
         return conta;
     }
 
-    public async Task AtualizarAsync(Conta conta, string nome, string? banco, string? agencia, string? contaEDigito)
+    public async Task AtualizarAsync(Conta conta, string nome, string? banco, string? agencia, string? contaEDigito, decimal? limite = null)
     {
         conta.Nome = nome;
         conta.Banco = banco;
         conta.Agencia = agencia;
         conta.ContaEDigito = contaEDigito;
+        conta.Limite = limite;
         await _db.SaveChangesAsync();
     }
 

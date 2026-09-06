@@ -40,14 +40,16 @@ else
                             <MudIcon Icon="@Icons.Material.Filled.CreditCard" Color="Color.Primary" Size="Size.Small" />
                             <MudText Typo="Typo.subtitle1" Style="font-weight:600">@c.Banco</MudText>
                         </MudStack>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                            <MudMenuItem Icon="@Icons.Material.Filled.ReceiptLong"
-                                         OnClick="@(() => Navigation.NavigateTo($"/cartoes/{c.Id}/fatura"))">Fatura</MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                         OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
-                                         OnClick="() => Excluir(c)">Excluir</MudMenuItem>
-                        </MudMenu>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="0">
+                            <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small"
+                                           OnClick="@(() => Navigation.NavigateTo($"/cartoes/{c.Id}/fatura"))" Title="Fatura" />
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                             OnClick="() => Excluir(c)">Excluir</MudMenuItem>
+                            </MudMenu>
+                        </MudStack>
                     </MudStack>
 
                     <MudText Typo="Typo.body2" Class="mb-1">**** @c.Ultimos4Digitos</MudText>

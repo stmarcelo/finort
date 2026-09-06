@@ -24,7 +24,7 @@ public class CalendarioFaturasTests
             await new ContaService(db).CriarAsync("Banco", null, null, null));
 
     [Fact]
-    public async Task FaturaAberta_ApareceNoVencimentoDoMesSeguinte()
+    public async Task FaturaAberta_ApareceNoVencimentoDoMes()
     {
         var (db, file, cartao) = await SetupAsync();
         try
@@ -35,13 +35,13 @@ public class CalendarioFaturasTests
                 parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null,
                 vencimentoExato: new DateOnly(2026, 7, 10));
 
-            var mes = await new CalendarioService(db, new FaturaService(db), new LembreteService(db)).ObterMesAsync(2026, 8);
+            var mes = await new CalendarioService(db, new FaturaService(db), new LembreteService(db)).ObterMesAsync(2026, 7);
 
             var item = mes.Dias.SelectMany(d => d.Itens)
                 .Single(i => i.Descricao.StartsWith("Fatura Nubank"));
             Assert.Equal(-120m, item.Valor);
             Assert.False(item.Riscada);
-            Assert.Equal(new DateOnly(2026, 8, 15), mes.Dias.First(d => d.Itens.Any(x => x == item)).Data);
+            Assert.Equal(new DateOnly(2026, 7, 15), mes.Dias.First(d => d.Itens.Any(x => x == item)).Data);
             // Informativo: não entra nos totais
             Assert.Equal(0m, mes.TotalApagar);
         }
@@ -65,7 +65,7 @@ public class CalendarioFaturasTests
             await f.FecharAsync(cartao.Id, 2026, 7);
             await f.PagarAsync(cartao.Id, 2026, 7, conta.Id, new DateOnly(2026, 7, 20), 120m);
 
-            var mes = await new CalendarioService(db, new FaturaService(db), new LembreteService(db)).ObterMesAsync(2026, 8);
+            var mes = await new CalendarioService(db, new FaturaService(db), new LembreteService(db)).ObterMesAsync(2026, 7);
 
             var item = mes.Dias.SelectMany(d => d.Itens)
                 .Single(i => i.Descricao.StartsWith("Fatura Nubank"));

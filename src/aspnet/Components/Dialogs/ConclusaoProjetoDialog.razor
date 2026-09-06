@@ -1,4 +1,5 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject ProjetoService ProjetoService
 @inject ISnackbar Snackbar
@@ -8,7 +9,7 @@
         <MudText Typo="Typo.body2" Class="mb-2">
             Marcar o projeto como concluído em:
         </MudText>
-        <MudDatePicker Label="Data de conclusão" Variant="@gVariant"
+        <DataPicker Label="Data de conclusão" Variant="@gVariant"
                        Date="_data" DateChanged="OnDataChanged" Required="true" />
     </DialogContent>
     <DialogActions>

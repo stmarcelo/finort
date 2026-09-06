@@ -8,11 +8,14 @@
     <TitleContent><MudText Typo="Typo.h6">@(Cartao is null ? "Novo cartão" : "Editar cartão")</MudText></TitleContent>
     <DialogContent>
         <MudForm @ref="_form">
-            <MudTextField @bind-Value="_banco" Label="Banco" Variant="@gVariant" Required="true"
-                          RequiredError="Informe o banco." />
-            <MudTextField T="string" @bind-Value="_ultimos4" Label="Últimos 4 dígitos" Variant="@gVariant"
-                          Required="true" RequiredError="Informe os 4 dígitos." MaxLength="4"
-                          InputType="InputType.Number" />
+            <MudTextField @bind-Value="_banco" Label="Nome do cartão" Variant="@gVariant" Required="true"
+                          RequiredError="Informe o nome do cartão." />
+            <MudTextField T="string" @bind-Value="_ultimos4" Label="Últimos dígitos" Variant="@gVariant"
+                          Required="true" RequiredError="Informe os dígitos."
+                          Immediate="true"
+                           Placeholder="7634, 6234"
+                          HelperText="Pode ser adicionado os 4 digitos dos cartões virtuais"
+                          Validation="@(new Func<string, string?>(ValidarDigitos))" />
             <MudNumericField T="int" @bind-Value="_melhorDia" Label="Melhor dia de compra" Variant="@gVariant"
                              Min="1" Max="31" Required="true" />
             <MudNumericField T="int" @bind-Value="_diaVencimento" Label="Dia de vencimento" Variant="@gVariant"
@@ -69,7 +72,8 @@
         await _form.Validate();
         if (!_form.IsValid) return;
 
-        var digitosOk = _ultimos4.Length == 4 && _ultimos4.All(char.IsAsciiDigit);
+        var digitos = new string(_ultimos4.Where(char.IsAsciiDigit).ToArray());
+        var digitosOk = digitos.Length >= 4 && digitos.Length % 4 == 0 && digitos.Length <= 20;
         if (!digitosOk || _limite is null or <= 0)
         {
             Snackbar.Add("Informe os 4 dígitos e um limite maior que zero.", Severity.Error);
@@ -80,10 +84,10 @@
         {
         Guid idSalvo;
         if (Cartao is null)
-            idSalvo = (await CartaoCreditoService.CriarAsync(_banco.Trim(), _ultimos4.Trim(), _melhorDia, _diaVencimento, _limite.Value, _contaId)).Id;
+            idSalvo = (await CartaoCreditoService.CriarAsync(_banco.Trim(), digitos, _melhorDia, _diaVencimento, _limite.Value, _contaId)).Id;
         else
         {
-            await CartaoCreditoService.AtualizarAsync(Cartao, _banco.Trim(), _ultimos4.Trim(), _melhorDia, _diaVencimento, _limite.Value, _contaId);
+            await CartaoCreditoService.AtualizarAsync(Cartao, _banco.Trim(), digitos, _melhorDia, _diaVencimento, _limite.Value, _contaId);
             idSalvo = Cartao.Id;
         }
         MudDialog.Close(DialogResult.Ok(idSalvo));
@@ -92,5 +96,20 @@
         {
             Snackbar.Add(ex.Message, Severity.Error);
         }
+    }
+
+    private static string? ValidarDigitos(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (value.Any(c => !char.IsDigit(c) && c != ',' && c != ' '))
+            return "Apenas números, vírgula e espaço";
+        var grupos = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        foreach (var grupo in grupos)
+        {
+            if (grupo.Length != 4 || !grupo.All(char.IsDigit))
+                return "Cada grupo deve ter 4 dígitos (ex: 7634, 6234)";
+        }
+        if (grupos.Length > 5) return "Máximo 5 grupos";
+        return null;
     }
 }

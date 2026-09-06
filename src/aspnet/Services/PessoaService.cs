@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Finort.Data;
 using Finort.Models.Financeiro;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,11 @@ public class PessoaService
 
     public async Task<Pessoa> CriarAsync(string nome, string? cor, string? observacao)
     {
+        var nomeNormalizado = Normalizar(nome);
+        var nomes = await _db.Pessoas.Select(p => p.Nome).ToListAsync();
+        if (nomes.Any(n => Normalizar(n) == nomeNormalizado))
+            throw new InvalidOperationException("Já existe uma pessoa com este nome.");
+
         var pessoa = new Pessoa { Nome = nome, CorDeExibicao = cor, Observacao = observacao };
         _db.Pessoas.Add(pessoa);
         await _db.SaveChangesAsync();
@@ -29,6 +36,11 @@ public class PessoaService
 
     public async Task AtualizarAsync(Pessoa pessoa, string nome, string? cor, string? observacao)
     {
+        var nomeNormalizado = Normalizar(nome);
+        var nomes = await _db.Pessoas.Where(p => p.Id != pessoa.Id).Select(p => p.Nome).ToListAsync();
+        if (nomes.Any(n => Normalizar(n) == nomeNormalizado))
+            throw new InvalidOperationException("Já existe uma pessoa com este nome.");
+
         pessoa.Nome = nome;
         pessoa.CorDeExibicao = cor;
         pessoa.Observacao = observacao;
@@ -48,5 +60,17 @@ public class PessoaService
 
         _db.Pessoas.Remove(pessoa);
         await _db.SaveChangesAsync();
+    }
+
+    private static string Normalizar(string texto)
+    {
+        var sb = new StringBuilder(texto.Length);
+        foreach (var c in texto.Normalize(NormalizationForm.FormD))
+        {
+            var uc = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (uc != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Trim();
     }
 }

@@ -7,10 +7,12 @@
         <MudForm @ref="_form">
             <MudTextField @bind-Value="_nome" Label="Nome da conta" Variant="@GlobalVariant.Value" Required="true"
                           RequiredError="Informe um nome." />
-            <MudTextField @bind-Value="_banco" Label="Banco" Variant="@GlobalVariant.Value" />
+            <MudTextField @bind-Value="_banco" Label="Código do banco" Variant="@GlobalVariant.Value" />
             <MudTextField @bind-Value="_agencia" Label="Agência" Variant="@GlobalVariant.Value" />
             <MudTextField @bind-Value="_contaEDigito" Label="Conta e dígito" Variant="@GlobalVariant.Value"
-                          OnKeyUp="@OnContaDigitada" />
+                          Immediate="true" Placeholder="1234-5"
+                          Validation="@(new Func<string, string?>(ValidarContaDigito))" />
+            <MudMoneyInput @bind-Value="_limite" Label="Limite" Variant="@GlobalVariant.Value" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -30,6 +32,7 @@
     private string? _banco;
     private string? _agencia;
     private string? _contaEDigito;
+    private decimal? _limite;
 
     protected override void OnInitialized()
     {
@@ -39,17 +42,19 @@
             _banco = Conta.Banco;
             _agencia = Conta.Agencia;
             _contaEDigito = Conta.ContaEDigito;
+            _limite = Conta.Limite;
         }
     }
 
-    private void OnContaDigitada(KeyboardEventArgs e)
+    private static string? ValidarContaDigito(string value)
     {
-        if (_contaEDigito is null) return;
-        var digitos = new string(_contaEDigito.Where(char.IsAsciiDigit).ToArray());
-        _contaEDigito = digitos.Length <= 1
-            ? digitos
-            : digitos[..^1] + "-" + digitos[^1];
-        StateHasChanged();
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^\d+-\d$"))
+            return "Digite apenas números com um hífen e um dígito final (ex: 1231233-4).";
+
+        return null;
     }
 
     private void Cancelar() => MudDialog.Cancel();
@@ -61,10 +66,10 @@
 
         Guid idSalvo;
         if (Conta is null)
-            idSalvo = (await ContaService.CriarAsync(_nome.Trim(), StringVazioParaNull(_banco), StringVazioParaNull(_agencia), StringVazioParaNull(_contaEDigito))).Id;
+            idSalvo = (await ContaService.CriarAsync(_nome.Trim(), StringVazioParaNull(_banco), StringVazioParaNull(_agencia), StringVazioParaNull(_contaEDigito), _limite)).Id;
         else
         {
-            await ContaService.AtualizarAsync(Conta, _nome.Trim(), StringVazioParaNull(_banco), StringVazioParaNull(_agencia), StringVazioParaNull(_contaEDigito));
+            await ContaService.AtualizarAsync(Conta, _nome.Trim(), StringVazioParaNull(_banco), StringVazioParaNull(_agencia), StringVazioParaNull(_contaEDigito), _limite);
             idSalvo = Conta.Id;
         }
 

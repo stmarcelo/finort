@@ -6,7 +6,8 @@ public enum ProvisaoOnde
 {
     DebitoConta,
     DebitoCartao,
-    Receita
+    Receita,
+    DebitoSemConta
 }
 
 public enum ProvisaoFrequencia

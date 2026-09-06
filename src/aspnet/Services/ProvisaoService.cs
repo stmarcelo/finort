@@ -150,6 +150,12 @@ public class ProvisaoService
                 Valor = -provisao.Valor,
                 CartaoCreditoId = provisao.CartaoCreditoId
             },
+            ProvisaoOnde.DebitoSemConta => new Lancamento
+            {
+                Data = data,
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -provisao.Valor
+            },
             _ => throw new InvalidOperationException("Origem de provisão desconhecida.")
         };
 

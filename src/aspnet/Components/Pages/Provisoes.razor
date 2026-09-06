@@ -39,7 +39,7 @@
                 <MudTd>@(context.Conta?.Nome ?? context.CartaoCredito?.Banco ?? "-")</MudTd>
                 <MudTd>@RotuloFrequencia(context.Frequencia)</MudTd>
                 <MudTd>@context.Dia</MudTd>
-                <MudTd>@context.Valor.ToString("N2")</MudTd>
+                <MudTd><span style="color:@CorValor(context.Onde);font-weight:600;">@context.Valor.ToString("N2")</span></MudTd>
                 <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
                 <MudTd>@(context.ValorVariante ? "Sim" : "Não")</MudTd>
                 <MudTd>@(context.UltimoMesLancado.HasValue ? $"{context.UltimoMesLancado:D2}/{context.UltimoAnoLancado}" : "-")</MudTd>
@@ -92,11 +92,18 @@
         }
     }
 
+    private static string CorValor(ProvisaoOnde onde) => onde switch
+    {
+        ProvisaoOnde.Receita => "#2e7d32",
+        _ => "#c62828"
+    };
+
     private static string RotuloOnde(ProvisaoOnde onde) => onde switch
     {
         ProvisaoOnde.DebitoConta => "Débito em conta",
         ProvisaoOnde.DebitoCartao => "Débito em cartão",
         ProvisaoOnde.Receita => "Receita",
+        ProvisaoOnde.DebitoSemConta => "Débito sem conta",
         _ => onde.ToString()
     };
 

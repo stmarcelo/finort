@@ -38,9 +38,9 @@
         {
             await LancamentoService.CriarDespesaCartaoAsync(
                 CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
-                parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null,
-                vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: null, ehEntrada: d.EhEntrada,
-                projetoId: d.ProjetoId);
+                d.Parcelas, d.ReembolsoPessoaId, reembolsoVencimento: null,
+                vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: d.ReembolsoContaId,
+                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
             Snackbar.Add("Lançamento adicionado à fatura.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

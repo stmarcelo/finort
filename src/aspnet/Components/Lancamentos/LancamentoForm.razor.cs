@@ -24,6 +24,9 @@ public partial class LancamentoForm : AppComponentBase
     private Guid? _projetoId;
     private DateTime? _data;
     private decimal? _valor;
+    private bool _repetir;
+    private int _quantidadeRepeticoes = 2;
+    private bool _temGrupo;
 
     protected override async Task OnInitializedAsync()
     {
@@ -33,6 +36,7 @@ public partial class LancamentoForm : AppComponentBase
         var principal = pernas.FirstOrDefault(p => p.Id == LancamentoId.Value) ?? pernas[0];
         _data = principal.Data.ToDateTime(TimeOnly.MinValue);
         _valor = Math.Abs(principal.Valor);
+        _temGrupo = principal.ParcelamentoId.HasValue || principal.RecorrenciaId.HasValue;
 
         if (principal.Tipo == LancamentoTipo.Transferencia)
         {
@@ -101,7 +105,10 @@ public partial class LancamentoForm : AppComponentBase
                         Snackbar.Add("Informe a conta e a categoria.", Severity.Error);
                         return;
                     }
-                    if (Tipo == LancamentoTipo.Receita)
+                    if (_repetir)
+                        await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId.Value, data, _valor.Value,
+                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                    else if (Tipo == LancamentoTipo.Receita)
                         await LancamentoService.CriarReceitaAsync(_contaId.Value, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
                     else
                         await LancamentoService.CriarDespesaAsync(_contaId.Value, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
@@ -120,7 +127,8 @@ public partial class LancamentoForm : AppComponentBase
                 }
                 else
                 {
-                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId!.Value, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId);
+                    var atualizarFuturos = await PerguntarAtualizarFuturosAsync();
+                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId!.Value, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos);
                 }
             }
 
@@ -143,5 +151,25 @@ public partial class LancamentoForm : AppComponentBase
         {
             _salvando = false;
         }
+    }
+
+    private async Task<bool> PerguntarAtualizarFuturosAsync()
+    {
+        if (LancamentoId is null) return false;
+
+        var lancamento = await LancamentoService.ObterAsync(LancamentoId.Value);
+        if (lancamento is null) return false;
+
+        Guid? grupoId = lancamento.ParcelamentoId ?? lancamento.RecorrenciaId;
+        if (!grupoId.HasValue) return false;
+
+        var temFuturos = await LancamentoService.TemLancamentosFuturosNoGrupoAsync(LancamentoId.Value, grupoId.Value);
+        if (!temFuturos) return false;
+
+        var confirm = await DialogService.ShowMessageBox("Alterar lançamentos futuros",
+            "Deseja aplicar as alterações também nos lançamentos futuros não confirmados deste grupo?",
+            "Sim", "Não", "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        return confirm == true;
     }
 }

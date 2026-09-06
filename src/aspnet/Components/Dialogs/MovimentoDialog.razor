@@ -1,4 +1,5 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject InvestimentoService InvestimentoService
 @inject ISnackbar Snackbar
@@ -21,7 +22,7 @@
             </div>
         }
         <MudForm @ref="_form">
-            <MudDatePicker @bind-Date="_data" Label="Data" Variant="@gVariant" Required="true" />
+            <DataPicker @bind-Date="_data" Label="Data" Variant="@gVariant" Required="true" />
             @if (!EhReserva)
             {
                 <MudMoneyInput @bind-Value="_quantidade" CasasDecimais="@CasasDecimaisQuantidade"

@@ -52,15 +52,21 @@
                         title="Ver compromissos do dia"
                         @onclick="() => AbrirDia(celula)">
                     <span class="cal-day">@celula.Data.Value.Day</span>
-                    @foreach (var item in celula.ItensVisiveis)
+                    @foreach (var agrupado in AgruparItens(celula.ItensVisiveis))
                     {
-                        <div class="cal-item @(item.IsLembrete ? "cal-item-lembrete" : "") @(item.IsFatura ? "cal-item-fatura" : "") @(item.Valor < 0 ? "neg" : "pos") @(item.Confirmado ? "cal-ok" : "") @(item.Projetada ? "cal-proj-item" : "") @(item.Riscada ? "cal-riscada" : "")">
-                            @if (item.IsLembrete || item.IsFatura)
+                        <div class="cal-item @(agrupado.IsLembrete ? "cal-item-lembrete" : "") @(agrupado.IsFatura ? "cal-item-fatura" : "") @(agrupado.Tipo == LancamentoTipo.Despesa ? "neg" : "pos") @(agrupado.Confirmado ? "cal-ok" : "") @(agrupado.Projetada ? "cal-proj-item" : "") @(agrupado.Riscada ? "cal-riscada" : "")">
+                            @if (agrupado.IsLembrete || agrupado.IsFatura)
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" Class="mr-1" Style="font-size: 0.75rem;" />
                             }
-                            <span class="cal-desc">@item.Descricao</span>
-                            <span>@item.Valor.ToString("N0")</span>
+                            <span class="cal-desc">@agrupado.Pessoa</span>
+                            <span>@agrupado.ValorTotal.ToString("N2")</span>
+                            @if (agrupado.Quantidade > 1)
+                            {
+                                <MudBadge Content="@agrupado.Quantidade" Color="Color.Default" Overlap="true" Class="ml-1">
+                                    <span></span>
+                                </MudBadge>
+                            }
                         </div>
                     }
                     @if (celula.Excedente > 0)
@@ -99,6 +105,26 @@
             var saldo = _dadosMes?.SaldoPrevisto ?? 0;
             return saldo > 0 ? "pos" : saldo < 0 ? "neg" : "";
         }
+    }
+
+    private static IReadOnlyList<CompromissoAgrupado> AgruparItens(IReadOnlyList<CompromissoItem> itens)
+    {
+        return itens
+            .GroupBy(i => new { i.Tipo, Pessoa = i.PessoaNome ?? (i.IsLembrete || i.IsFatura ? i.Descricao : "Sem Pessoa"), i.IsLembrete, i.IsFatura })
+            .Select(g => new CompromissoAgrupado(
+                g.Key.Pessoa,
+                g.Key.Tipo,
+                g.Sum(i => i.Valor),
+                g.Count(),
+                g.All(i => i.Confirmado),
+                g.Any(i => i.Projetada),
+                g.Key.IsLembrete,
+                g.Key.IsFatura,
+                g.All(i => i.Riscada)))
+            .OrderBy(g => g.IsFatura ? 0 : g.IsLembrete ? 1 : 2)
+            .ThenBy(g => g.Tipo)
+            .ThenBy(g => g.Pessoa)
+            .ToList();
     }
 
     protected override async Task OnInitializedAsync()

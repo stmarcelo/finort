@@ -12,4 +12,6 @@ public class Conta
 
     [Required]
     public string Nome { get; set; } = string.Empty;
+
+    public decimal? Limite { get; set; }
 }

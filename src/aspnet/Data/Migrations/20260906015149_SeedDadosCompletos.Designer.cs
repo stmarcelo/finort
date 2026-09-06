@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finort.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260829232840_RenomearRendaParaReceita")]
-    partial class RenomearRendaParaReceita
+    [Migration("20260906015149_SeedDadosCompletos")]
+    partial class SeedDadosCompletos
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,6 +31,9 @@ namespace Finort.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("DiasAntecipacao")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -59,7 +62,13 @@ namespace Finort.Migrations
                     b.Property<string>("SmtpUser")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("UltimaVerificacaoVersao")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VersaoConhecida")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -255,6 +264,18 @@ namespace Finort.Migrations
                             Id = new Guid("10000000-0000-0000-0000-000000000013"),
                             IsProtected = true,
                             Nome = "Acerto de saldo"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000014"),
+                            IsProtected = false,
+                            Nome = "Indefinida"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Serviços"
                         });
                 });
 
@@ -271,6 +292,9 @@ namespace Finort.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ContaEDigito")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Limite")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
@@ -1101,6 +1125,20 @@ namespace Finort.Migrations
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000009"),
                             IsProtected = true,
                             Nome = "Cartão de crédito"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000058"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            IsProtected = false,
+                            Nome = "Manutenção"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000059"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Assinaturas"
                         });
                 });
 

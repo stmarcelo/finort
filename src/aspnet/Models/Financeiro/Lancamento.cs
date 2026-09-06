@@ -27,6 +27,9 @@ public class Lancamento
     /// <summary>Liga as 2 pernas de uma transferência.</summary>
     public Guid? ReferenciaId { get; set; }
 
+    /// <summary>Data da compra no cartão (fixa, não muda com parcelas).</summary>
+    public DateOnly? DataCompra { get; set; }
+
     // ---- Fase 4a ----
 
     public Guid? CartaoCreditoId { get; set; }

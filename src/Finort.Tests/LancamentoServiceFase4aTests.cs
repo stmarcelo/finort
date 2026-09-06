@@ -41,8 +41,9 @@ public class LancamentoServiceFase4aTests
 
             var despesa = Assert.Single(despesas);
             Assert.Equal(new DateOnly(2026, 8, 6), despesa.Data);
-            // compra dia 6 >= melhorDia 5 → vencimento calculado mês+2 = 10/10/2026
-            Assert.Equal(new DateOnly(2026, 10, 10), despesa.DataVencimentoCartao);
+            Assert.Equal(new DateOnly(2026, 8, 6), despesa.DataCompra);
+            // compra dia 6 >= melhorDia 5 → vencimento calculado mês+1 = 10/09/2026
+            Assert.Equal(new DateOnly(2026, 9, 10), despesa.DataVencimentoCartao);
             Assert.Equal(-120m, despesa.Valor);
             Assert.Equal(cartao.Id, despesa.CartaoCreditoId);
             Assert.Null(despesa.ParcelamentoId);
@@ -69,9 +70,9 @@ public class LancamentoServiceFase4aTests
             Assert.Equal(-100m, despesas.Sum(d => d.Valor));
             Assert.Equal(new[] { "33.33", "33.33", "33.34" },
                 despesas.Select(d => Math.Abs(d.Valor).ToString("F2", CultureInfo.InvariantCulture)));
-            // compra dia 6 >= melhorDia 5 → vencimento base mês+2 = out/2026; parcelas +1 mês cada
-            Assert.Equal(new DateOnly(2026, 10, 10), despesas[0].DataVencimentoCartao);
-            Assert.Equal(new DateOnly(2026, 12, 10), despesas[2].DataVencimentoCartao);
+            // compra dia 6 >= melhorDia 5 → vencimento base mês+1 = set/2026; parcelas +1 mês cada
+            Assert.Equal(new DateOnly(2026, 9, 10), despesas[0].DataVencimentoCartao);
+            Assert.Equal(new DateOnly(2026, 11, 10), despesas[2].DataVencimentoCartao);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -118,6 +119,7 @@ public class LancamentoServiceFase4aTests
 
             var despesa = Assert.Single(despesas);
             Assert.Equal(new DateOnly(2026, 8, 20), despesa.Data);
+            Assert.Equal(new DateOnly(2026, 8, 20), despesa.DataCompra);
             // vencimentoExato informado prevalece sobre o vencimento calculado pelo ciclo
             Assert.Equal(new DateOnly(2026, 9, 15), despesa.DataVencimentoCartao);
             Assert.Equal(-50m, despesa.Valor);
@@ -244,8 +246,8 @@ public class LancamentoServiceFase4aTests
                 parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null);
             var despesa = despesas.Single();
             await service.AlternarConfirmadoAsync(despesa.Id);
-            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/10/2026 → fatura out/2026
-            await faturaService.FecharAsync(cartao.Id, 2026, 10);
+            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/09/2026 → fatura set/2026
+            await faturaService.FecharAsync(cartao.Id, 2026, 9);
 
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.AtualizarValorAsync(despesa.Id, 99m));
@@ -268,8 +270,8 @@ public class LancamentoServiceFase4aTests
                 cartao.Id, new DateOnly(2026, 8, 6), 50m, Renda(db).Id, null, null,
                 parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null);
             await service.AlternarConfirmadoAsync(existentes[0].Id);
-            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/10/2026 → fatura out/2026
-            await faturaService.FecharAsync(cartao.Id, 2026, 10);
+            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/09/2026 → fatura set/2026
+            await faturaService.FecharAsync(cartao.Id, 2026, 9);
 
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.CriarDespesaCartaoAsync(

@@ -136,6 +136,11 @@ public class BackupRestoreService
                 if (File.Exists(caminhoDb + ext)) File.Delete(caminhoDb + ext);
             File.Move(temp, caminhoDb, overwrite: true);
 
+            await using (var ctxMigrate = CriarCtx(caminhoDb))
+            {
+                await ctxMigrate.Database.MigrateAsync();
+            }
+
             var caminhoBak = caminhoDb + ".bak";
             try { if (File.Exists(caminhoBak)) File.Delete(caminhoBak); } catch { }
 

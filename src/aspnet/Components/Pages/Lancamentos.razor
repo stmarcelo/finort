@@ -94,7 +94,8 @@
             <RowTemplate>
                 @if (context.Lancamento is not null)
                 {
-                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Data.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Data.ToString("dd/MM/yyyy")@if (context.Lancamento.DataCompra.HasValue && context.Lancamento.DataCompra != context.Lancamento.Data)
+                    {<br /><span style="font-size:0.75em;color:#888;">compra @context.Lancamento.DataCompra.Value.ToString("dd/MM/yyyy")</span>}</MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">@RotuloOrigem(context.Lancamento)</MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">@RotuloTipo(context.Lancamento.Tipo)</MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">
@@ -112,7 +113,10 @@
                     </MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Projeto?.Descricao</MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Categoria.Nome@(context.Lancamento.Subcategoria is null ? "" : " › " + context.Lancamento.Subcategoria.Nome)</MudTd>
-                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Valor.ToString("N2")</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">
+                        <span style="color:@CorValor(context.Lancamento);font-weight:600;">@context.Lancamento.Valor.ToString("N2")</span>
+                        @RotuloParcela(context.Lancamento)
+                    </MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">
                         @if (SemOrigem(context.Lancamento))
                         {
@@ -170,6 +174,7 @@
 
     private List<Lancamento> _lancamentos = new();
     private List<LinhaGrid> _linhas = new();
+    private Dictionary<Guid, string> _rotulosRecorrencia = new();
 
     private static readonly CultureInfo CulturaPtBr = new("pt-BR");
 
@@ -232,6 +237,16 @@
 
         _totalReal = _lancamentos.Where(l => l.Confirmado).Sum(l => l.Valor);
         _totalPrevisto = _lancamentos.Sum(l => l.Valor);
+
+        _rotulosRecorrencia = new();
+        var grupos = _lancamentos.Where(l => l.RecorrenciaId.HasValue)
+            .GroupBy(l => l.RecorrenciaId!.Value);
+        foreach (var grupo in grupos)
+        {
+            var ordenados = grupo.OrderBy(l => l.Data).ToList();
+            for (int i = 0; i < ordenados.Count; i++)
+                _rotulosRecorrencia[ordenados[i].Id] = $"{i + 1}/{ordenados.Count}";
+        }
 
         _linhas = _lancamentos
             .GroupBy(l => l.Data).OrderByDescending(g => g.Key)
@@ -358,4 +373,19 @@
         LancamentoTipo.Transferencia => "Transferência",
         _ => tipo.ToString()
     };
+
+    private string RotuloParcela(Lancamento lancamento)
+    {
+        if (lancamento.ParcelaAtual.HasValue && lancamento.TotalParcelas.HasValue)
+            return $" ({lancamento.ParcelaAtual}/{lancamento.TotalParcelas})";
+        if (lancamento.RecorrenciaId.HasValue && _rotulosRecorrencia.TryGetValue(lancamento.Id, out var rotulo))
+            return $" ({rotulo})";
+        if (lancamento.RecorrenciaId.HasValue)
+            return " (Recorrente)";
+        return string.Empty;
+    }
+
+    private static string CorValor(Lancamento lancamento)
+        => lancamento.Tipo == LancamentoTipo.Receita ? "#2e7d32" :
+           lancamento.Tipo == LancamentoTipo.Despesa ? "#c62828" : "inherit";
 }

@@ -12,6 +12,7 @@
                 <MudSelectItem Value="ProvisaoOnde.DebitoConta">Débito em conta</MudSelectItem>
                 <MudSelectItem Value="ProvisaoOnde.DebitoCartao">Débito em cartão</MudSelectItem>
                 <MudSelectItem Value="ProvisaoOnde.Receita">Receita</MudSelectItem>
+                <MudSelectItem Value="ProvisaoOnde.DebitoSemConta">Débito sem conta</MudSelectItem>
             </MudSelect>
 
             @if (_onde == ProvisaoOnde.DebitoCartao)
@@ -19,7 +20,7 @@
                 <CartaoSelect Required="true" RequiredError="Selecione o cartão."
                               @bind-Value="_cartaoId" />
             }
-            else
+            else if (_onde != ProvisaoOnde.DebitoSemConta)
             {
                 <ContaSelect Label="@( _onde == ProvisaoOnde.Receita ? "Conta de crédito" : "Conta de débito" )"
                              Required="true" RequiredError="Selecione a conta."
@@ -116,7 +117,8 @@
             return;
         }
 
-        var destinoOk = _onde == ProvisaoOnde.DebitoCartao ? _cartaoId.HasValue : _contaId.HasValue;
+        var destinoOk = _onde == ProvisaoOnde.DebitoSemConta
+            || (_onde == ProvisaoOnde.DebitoCartao ? _cartaoId.HasValue : _contaId.HasValue);
         if (!destinoOk)
         {
             Snackbar.Add("Informe o destino da provisão.", Severity.Error);

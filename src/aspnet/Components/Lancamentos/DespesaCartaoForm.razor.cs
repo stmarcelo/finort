@@ -89,7 +89,27 @@ public partial class DespesaCartaoForm : AppComponentBase
         _pessoaId = lancamento.PessoaId;
         _projetoId = lancamento.ProjetoId;
 
-        await AtualizarPreviewAsync();
+        if (lancamento.ReembolsoId.HasValue)
+        {
+            var reembolso = await Db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
+            if (reembolso is not null)
+            {
+                _comReembolso = true;
+                _reembolsoPessoaId = reembolso.PessoaId;
+                _reembolsoContaId = reembolso.ContaId;
+            }
+        }
+
+        if (lancamento.DataVencimentoCartao.HasValue)
+        {
+            _previewVencimento = lancamento.DataVencimentoCartao.Value;
+            _vencimentoAno = lancamento.DataVencimentoCartao.Value.Year;
+            _vencimentoMes = lancamento.DataVencimentoCartao.Value.Month;
+        }
+        else
+        {
+            await AtualizarPreviewAsync();
+        }
     }
 
     private async Task OnCartaoChanged(Guid? cartaoId)
@@ -107,16 +127,24 @@ public partial class DespesaCartaoForm : AppComponentBase
     private async Task AtualizarPreviewAsync()
     {
         _previewVencimento = null;
-        if (AnoFatura is not null || !_cartaoId.HasValue || !_dataCompra.HasValue) return;
+        if (!_cartaoId.HasValue) return;
 
         var cartao = await CartaoCreditoService.ObterAsync(_cartaoId.Value);
-        if (cartao is not null)
+        if (cartao is null) return;
+
+        if (AnoFatura is not null && MesFatura is not null)
         {
-            _previewVencimento = CartaoCreditoService.CalcularVencimento(
-                cartao, DateOnly.FromDateTime(_dataCompra.Value));
-            _vencimentoAno = _previewVencimento.Value.Year;
-            _vencimentoMes = _previewVencimento.Value.Month;
+            _previewVencimento = new DateOnly(AnoFatura.Value, MesFatura.Value,
+                Math.Min(cartao.DiaVencimento, DateTime.DaysInMonth(AnoFatura.Value, MesFatura.Value)));
+            return;
         }
+
+        if (!_dataCompra.HasValue) return;
+
+        _previewVencimento = CartaoCreditoService.CalcularVencimento(
+            cartao, DateOnly.FromDateTime(_dataCompra.Value));
+        _vencimentoAno = _previewVencimento.Value.Year;
+        _vencimentoMes = _previewVencimento.Value.Month;
     }
 
     private async Task NavegarVencimento(int delta)

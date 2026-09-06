@@ -273,12 +273,12 @@ public class FaturaService
         await _db.SaveChangesAsync();
     }
 
-    /// <summary>Faturas a vencer no mês exibido: referência M−1, sempre presentes quando houver conteúdo.</summary>
+    /// <summary>Faturas a vencer no mês exibido: referência = mesmo mês, sempre presentes quando houver conteúdo.</summary>
     public async Task<List<FaturaResumoCalendario>> ObterResumosParaCalendarioAsync(
         List<CartaoCredito> cartoes, int anoExibido, int mesExibido)
     {
         var resultado = new List<FaturaResumoCalendario>();
-        var referencia = new DateOnly(anoExibido, mesExibido, 1).AddMonths(-1);
+        var referencia = new DateOnly(anoExibido, mesExibido, 1);
         var inicioRef = referencia;
         var fimRef = inicioRef.AddMonths(1);
 
@@ -308,6 +308,20 @@ public class FaturaService
         }
 
         return resultado;
+    }
+
+    /// <summary>Reabre a fatura: remove Fechada, DataFechamento e ValorTotal.</summary>
+    public async Task ReabrirAsync(Guid cartaoId, int ano, int mes)
+    {
+        var fatura = await _db.Faturas.FirstOrDefaultAsync(f =>
+            f.CartaoCreditoId == cartaoId && f.AnoReferencia == ano &&
+            f.MesReferencia == mes && f.Fechada)
+            ?? throw new InvalidOperationException("Fatura não encontrada ou já aberta.");
+
+        fatura.Fechada = false;
+        fatura.DataFechamento = null;
+        fatura.ValorTotal = 0m;
+        await _db.SaveChangesAsync();
     }
 
     /// <summary>Situação consolidada das faturas fechadas do cartão: soma dos destinos positivos

@@ -25,4 +25,16 @@ public sealed record CompromissoItem(
     Guid? LancamentoId,
     bool Riscada = false,
     bool IsLembrete = false,
-    bool IsFatura = false);
+    bool IsFatura = false,
+    string? PessoaNome = null);
+
+public sealed record CompromissoAgrupado(
+    string Pessoa,
+    LancamentoTipo Tipo,
+    decimal ValorTotal,
+    int Quantidade,
+    bool Confirmado,
+    bool Projetada,
+    bool IsLembrete,
+    bool IsFatura,
+    bool Riscada);

@@ -129,14 +129,12 @@ public class CartaoCreditoService
         await _db.SaveChangesAsync();
     }
 
-    /// <summary>Ciclo de fatura: de melhorDia até (melhorDia-1) do mês seguinte. Vencimento no mês seguinte ao fechamento.</summary>
+    /// <summary>Ciclo fatura: dia &lt; melhorDia → vencimento neste mês; dia &gt;= melhorDia → vencimento mês seguinte.</summary>
     public static DateOnly CalcularVencimento(CartaoCredito cartao, DateOnly dataCompra)
     {
-        // Day < melhorDia → compra no ciclo que fecha este mês → vencimento mês seguinte
-        // Day >= melhorDia → compra no ciclo que fecha mês seguinte → vencimento mês +2
         var mes = dataCompra.Day < cartao.MelhorDiaCompra
-            ? dataCompra.AddMonths(1)
-            : dataCompra.AddMonths(2);
+            ? dataCompra
+            : dataCompra.AddMonths(1);
         var ultimoDia = DateTime.DaysInMonth(mes.Year, mes.Month);
         return new DateOnly(mes.Year, mes.Month, Math.Min(cartao.DiaVencimento, ultimoDia));
     }

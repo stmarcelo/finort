@@ -1,4 +1,5 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject ProjetoService ProjetoService
 @inject ISnackbar Snackbar
@@ -11,7 +12,7 @@
                       @bind-Value="_descricao" Required="true"
                       RequiredError="Informe a descrição."
                       TextChanged="@(() => Validar())" />
-        <MudDatePicker Label="Data de contratação" Variant="@gVariant"
+        <DataPicker Label="Data de contratação" Variant="@gVariant"
                        Date="@_data"
                        DateChanged="@((DateTime? d) => { _data = d; Validar(); })"
                        Required="true" />

@@ -103,7 +103,8 @@ public class CalendarioService
             Descricao: l.Pessoa?.Nome ?? l.Categoria.Nome,
             Origem: l.Conta?.Nome ?? (l.CartaoCredito is null ? null : $"Cartão {l.CartaoCredito.Banco}"),
             Projetada: false,
-            LancamentoId: l.Id);
+            LancamentoId: l.Id,
+            PessoaNome: l.Pessoa?.Nome);
 
     /// <summary>Mapeia projeções da régua compartilhada (ProvisaoAgenda) para itens do calendário.</summary>
     private async Task<List<(DateOnly Data, CompromissoItem Item)>> ProjetarProvisoesAsync(DateOnly inicio, DateOnly fim)
@@ -122,7 +123,8 @@ public class CalendarioService
                 Descricao: e.Provisao.Pessoa?.Nome ?? e.Provisao.Categoria.Nome,
                 Origem: e.Provisao.Conta?.Nome ?? (e.Provisao.CartaoCredito is null ? null : $"Cartão {e.Provisao.CartaoCredito.Banco}"),
                 Projetada: true,
-                LancamentoId: null));
+                LancamentoId: null,
+                PessoaNome: e.Provisao.Pessoa?.Nome));
         }).ToList();
     }
 }

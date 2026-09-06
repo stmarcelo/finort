@@ -1,11 +1,12 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 
 <MudDialog>
     <TitleContent><MudText Typo="Typo.h6">Atualizar cotação</MudText></TitleContent>
     <DialogContent>
         <MudMoneyInput @bind-Value="_valor" CasasDecimais="2" Label="Nova cotação" Variant="@gVariant" />
-        <MudDatePicker @bind-Date="_data" Label="Data" Variant="@gVariant" Class="mt-2" />
+        <DataPicker @bind-Date="_data" Label="Data" Variant="@gVariant" Class="mt-2" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>

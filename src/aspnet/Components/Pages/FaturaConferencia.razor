@@ -58,6 +58,9 @@
                            StartIcon="@Icons.Material.Filled.Payment"
                            OnClick="AbrirPagamento">Pagar fatura</MudButton>
             }
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true" Class="mt-1"
+                       StartIcon="@Icons.Material.Filled.LockOpen"
+                       OnClick="ReabrirAsync">Reabrir fatura</MudButton>
         }
         else
         {
@@ -72,14 +75,22 @@
                 <MudTh>Data</MudTh>
                 <MudTh>Categoria</MudTh>
                 <MudTh>Pessoa</MudTh>
+                <MudTh>Parcela</MudTh>
                 <MudTh>Valor</MudTh>
                 <MudTh>Confirmado</MudTh>
                 <MudTh></MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>
+                    @context.Data.ToString("dd/MM/yyyy")
+                    @if (context.DataCompra.HasValue && context.DataCompra != context.Data)
+                    {
+                        <br /><span style="font-size:0.75em;color:#888;">compra @context.DataCompra.Value.ToString("dd/MM/yyyy")</span>
+                    }
+                </MudTd>
                 <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
                 <MudTd>@context.Pessoa?.Nome</MudTd>
+                <MudTd>@RotuloParcela(context)</MudTd>
                 <MudTd>
                     <span class="@(context.Valor > 0 ? "entrada-fatura" : "")">
                         <MudMoneyInput Value="@ValorDaLinha(context)"
@@ -94,8 +105,12 @@
                 <MudTd>
                     @if (!_fechada && context.Tipo != LancamentoTipo.Transferencia)
                     {
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                       OnClick="() => EditarLancamento(context)" Title="Editar" />
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                         OnClick="() => EditarLancamento(context)">Editar</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                         OnClick="() => ExcluirLancamento(context)">Excluir</MudMenuItem>
+                        </MudMenu>
                     }
                 </MudTd>
             </RowTemplate>
@@ -297,7 +312,7 @@
 
         var confirm = await DialogService.ShowMessageBox("Fechar fatura",
             $"Fechar a fatura de {_dataVencimento:dd/MM/yyyy}? Não será mais possível alterá-la.",
-            "Fechar", null, "Cancelar",
+            "Confirmar", null, "Cancelar",
             new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
         if (confirm != true) return;
 
@@ -338,6 +353,26 @@
         await CarregarAsync();
     }
 
+    private async Task ReabrirAsync()
+    {
+        var confirm = await DialogService.ShowMessageBox("Reabrir fatura",
+            $"Reabrir a fatura de {_dataVencimento:dd/MM/yyyy}? Os lançamentos voltarão a ficar editáveis.",
+            "Reabrir", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await FaturaService.ReabrirAsync(Id, _ano, _mes);
+            Snackbar.Add("Fatura reaberta.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
     private async Task AbrirHistorico()
     {
         var parameters = new DialogParameters<FaturaHistoricoDialog>
@@ -345,6 +380,38 @@
             { x => x.CartaoCreditoId, Id }
         };
         await DialogService.ShowAsync<FaturaHistoricoDialog>("Histórico de Faturas", parameters);
+    }
+
+    private static string RotuloParcela(Lancamento lancamento)
+    {
+        if (lancamento.ParcelaAtual.HasValue && lancamento.TotalParcelas.HasValue)
+            return $"{lancamento.ParcelaAtual}/{lancamento.TotalParcelas}";
+        return string.Empty;
+    }
+
+    private async Task ExcluirLancamento(Lancamento lancamento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
+            $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?", "Excluir",
+            null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+
+        try
+        {
+            await LancamentoService.ExcluirAsync(lancamento.Id);
+            Snackbar.Add("Lançamento excluído.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (LancamentoConfirmadoException ex)
+        {
+            var nomes = string.Join("; ", ex.Confirmados.Select(l => $"{l.Data:dd/MM/yyyy} — {l.Valor.ToString("N2")}"));
+            Snackbar.Add($"Não é possível excluir lançamento(s) confirmado(s): {nomes}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task Estornar(PagamentoFatura pagamento)

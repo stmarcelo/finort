@@ -1,4 +1,6 @@
 @namespace Finort.Components
+@using System.Globalization
+@using System.Text
 @inherits AppComponentBase
 
 <div style="display:flex; align-items:flex-start;">
@@ -18,7 +20,8 @@
                          MaxHeight="320"
                          ResetValueOnEmptyText="false"
                          CoerceText="true"
-                         DebounceInterval="150" />
+                         DebounceInterval="150"
+                         Clearable="true" />
     </div>
     @if (_temCadastro)
     {
@@ -78,12 +81,23 @@
 
         if (!string.IsNullOrWhiteSpace(texto))
         {
-            var termo = texto.Trim();
-            resultado = _opcoes.Where(o => o.Value.Contains(termo, StringComparison.OrdinalIgnoreCase));
+            var termo = Normalizar(texto.Trim());
+            resultado = _opcoes.Where(o => Normalizar(o.Value).Contains(termo));
         }
 
         IEnumerable<KeyValuePair<Guid, string>> ordenado = resultado.OrderBy(o => o.Value, StringComparer.CurrentCulture);
         return Task.FromResult(ordenado);
+    }
+
+    private static string Normalizar(string texto)
+    {
+        var sb = new StringBuilder(texto.Length);
+        foreach (var c in texto.Normalize(NormalizationForm.FormD))
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Trim();
     }
 
     private async Task OnSelecionadoChanged(KeyValuePair<Guid, string> item)

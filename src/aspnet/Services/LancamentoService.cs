@@ -105,6 +105,14 @@ public class LancamentoService
     public async Task<Lancamento?> ObterAsync(Guid id)
         => await _db.Lancamentos.FindAsync(id);
 
+    public async Task<bool> TemLancamentosFuturosNoGrupoAsync(Guid lancamentoId, Guid grupoId)
+    {
+        return await _db.Lancamentos.AnyAsync(l =>
+            l.Id != lancamentoId
+            && (l.ParcelamentoId == grupoId || l.RecorrenciaId == grupoId)
+            && !l.Confirmado);
+    }
+
     public async Task<List<Lancamento>> ObterPernasAsync(Guid id)
     {
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -119,7 +127,7 @@ public class LancamentoService
 
     public async Task AtualizarReceitaDespesaAsync(
         Guid id, Guid contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null)
+        Guid? projetoId = null, bool atualizarFuturos = false)
     {
         Validar(valor, data);
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -137,19 +145,47 @@ public class LancamentoService
         lancamento.PessoaId = pessoaId;
         lancamento.ProjetoId = projetoId;
         await GarantirFaturaAbertaAsync(lancamento);
-        if (lancamento.ReembolsoId is not null && !lancamento.Confirmado)
+        await AtualizarReembolsoAsync(lancamento, data, valor, pessoaId, projetoId);
+
+        if (atualizarFuturos)
         {
-            var reembolso = await _db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
-            if (reembolso is not null && !reembolso.Confirmado)
+            Guid? grupoId = lancamento.ParcelamentoId ?? lancamento.RecorrenciaId;
+            if (grupoId.HasValue)
             {
-                await GarantirMesAbertoAsync(reembolso.Data);
-                reembolso.Data = data;
-                reembolso.Valor = Math.Abs(valor);
-                reembolso.PessoaId = pessoaId;
-                reembolso.ProjetoId = projetoId;
+                var futuros = await _db.Lancamentos
+                    .Where(l => l.Id != lancamento.Id
+                        && ((l.ParcelamentoId == grupoId) || (l.RecorrenciaId == grupoId))
+                        && !l.Confirmado
+                        && l.Data > lancamento.Data)
+                    .ToListAsync();
+
+                foreach (var f in futuros)
+                {
+                    f.Valor = f.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
+                    f.CategoriaId = categoriaId;
+                    f.SubcategoriaId = subcategoriaId;
+                    f.PessoaId = pessoaId;
+                    f.ProjetoId = projetoId;
+                    await AtualizarReembolsoAsync(f, f.Data, valor, pessoaId, projetoId);
+                }
             }
         }
+
         await _db.SaveChangesAsync();
+    }
+
+    private async Task AtualizarReembolsoAsync(Lancamento lancamento, DateOnly data, decimal valor, Guid? pessoaId, Guid? projetoId)
+    {
+        if (lancamento.ReembolsoId is null || lancamento.Confirmado) return;
+
+        var reembolso = await _db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
+        if (reembolso is null || reembolso.Confirmado) return;
+
+        await GarantirMesAbertoAsync(reembolso.Data);
+        reembolso.Data = data;
+        reembolso.Valor = Math.Abs(valor);
+        reembolso.PessoaId = pessoaId;
+        reembolso.ProjetoId = projetoId;
     }
 
     public async Task AtualizarTransferenciaAsync(
@@ -280,10 +316,12 @@ public class LancamentoService
         for (var i = 0; i < quantidade; i++)
         {
             var dataVencimento = datasVencimento[i];
+            var dataLancamento = dataCompra.AddMonths(i);
             await GarantirFaturaAbertaAsync(new Lancamento { CartaoCreditoId = cartaoId, Data = dataVencimento, DataVencimentoCartao = dataVencimento });
             var despesa = new Lancamento
             {
-                Data = dataCompra,
+                Data = dataLancamento,
+                DataCompra = dataCompra,
                 DataVencimentoCartao = dataVencimento,
                 Tipo = LancamentoTipo.Despesa,
                 Valor = ehEntrada ? valores[i] : -valores[i],
@@ -308,7 +346,9 @@ public class LancamentoService
                     ContaId = reembolsoContaId,
                     CategoriaId = renda.Id,
                     PessoaId = reembolsoPessoaId,
-                    ProjetoId = projetoId
+                    ProjetoId = projetoId,
+                    ParcelaAtual = quantidade > 1 ? i + 1 : null,
+                    TotalParcelas = quantidade > 1 ? quantidade : null
                 };
                 _db.Lancamentos.Add(reembolso);
                 await _db.SaveChangesAsync();
@@ -325,7 +365,8 @@ public class LancamentoService
 
     public async Task AtualizarDespesaCartaoAsync(
         Guid lancamentoId, Guid cartaoId, DateOnly data, decimal valor,
-        Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, Guid? projetoId)
+        Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, Guid? projetoId,
+        DateOnly? dataVencimentoCartao = null)
     {
         var antigo = await _db.Lancamentos.FindAsync(lancamentoId)
             ?? throw new InvalidOperationException("Lançamento não encontrado.");
@@ -342,7 +383,7 @@ public class LancamentoService
         antigo.SubcategoriaId = subcategoriaId;
         antigo.PessoaId = pessoaId;
         antigo.ProjetoId = projetoId;
-        antigo.DataVencimentoCartao = CartaoCreditoService.CalcularVencimento(cartao, data);
+        antigo.DataVencimentoCartao = dataVencimentoCartao ?? CartaoCreditoService.CalcularVencimento(cartao, data);
 
         await _db.SaveChangesAsync();
     }
@@ -418,6 +459,8 @@ public class LancamentoService
                 SubcategoriaId = subcategoriaId,
                 PessoaId = pessoaId,
                 RecorrenciaId = recorrenciaId,
+                ParcelaAtual = repeticoes > 1 ? i + 1 : null,
+                TotalParcelas = repeticoes > 1 ? repeticoes : null,
                 ProjetoId = projetoId
             };
             _db.Lancamentos.Add(lancamento);

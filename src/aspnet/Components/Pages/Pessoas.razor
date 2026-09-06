@@ -50,8 +50,12 @@
                     }
                 </MudTd>
                 <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="() => AbrirDialog(context)" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => Excluir(context)" />
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                     OnClick="() => AbrirDialog(context)">Editar</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                     OnClick="() => Excluir(context)">Excluir</MudMenuItem>
+                    </MudMenu>
                 </MudTd>
             </RowTemplate>
         </MudTable>

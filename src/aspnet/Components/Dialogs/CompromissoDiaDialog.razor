@@ -12,30 +12,34 @@
         }
         else
         {
-            @foreach (var item in Itens)
+            @foreach (var grupo in AgruparItens(Itens))
             {
-                <div class="d-flex justify-space-between align-center py-2 px-3 mb-1 cal-dia-item @(item.IsLembrete ? "cal-item-lembrete" : "") @(item.IsFatura ? "cal-item-fatura" : "")">
+                <div class="d-flex justify-space-between align-center py-2 px-3 mb-1 cal-dia-item @(grupo.IsLembrete ? "cal-item-lembrete" : "") @(grupo.IsFatura ? "cal-item-fatura" : "")">
                     <div>
                         <div class="d-flex align-center gap-2">
-                            @if (item.IsLembrete || item.IsFatura)
+                            @if (grupo.IsLembrete || grupo.IsFatura)
                             {
                                 <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" />
                             }
-                            <span class="cal-valor @(item.Valor < 0 ? "neg" : "pos") @(item.Confirmado ? "cal-ok" : "")">
-                                @item.Valor.ToString("N2")
+                            <span class="cal-valor @(grupo.Tipo == LancamentoTipo.Despesa ? "neg" : "pos") @(grupo.Confirmado ? "cal-ok" : "")">
+                                @grupo.ValorTotal.ToString("N2")
                             </span>
-                            @if (item.Projetada)
+                            @if (grupo.Projetada)
                             {
                                 <span class="cal-proj">Projeção</span>
                             }
-                            else if (item.Confirmado)
+                            else if (grupo.Confirmado)
                             {
                                 <span class="cal-badge">Confirmado</span>
                             }
+                            @if (grupo.Quantidade > 1)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                    @grupo.Quantidade lançamentos
+                                </MudChip>
+                            }
                         </div>
-                        <MudText Typo="Typo.body2">
-                            @item.Descricao@(string.IsNullOrWhiteSpace(item.Origem) ? "" : $" · {item.Origem}")
-                        </MudText>
+                        <MudText Typo="Typo.body2">@grupo.Pessoa</MudText>
                     </div>
                 </div>
             }
@@ -65,5 +69,25 @@
     {
         MudDialog.Close();
         Navigation.NavigateTo($"/lancamentos?mes={Data.Month}&ano={Data.Year}");
+    }
+
+    private static IReadOnlyList<CompromissoAgrupado> AgruparItens(IReadOnlyList<CompromissoItem> itens)
+    {
+        return itens
+            .GroupBy(i => new { i.Tipo, Pessoa = i.PessoaNome ?? (i.IsLembrete || i.IsFatura ? i.Descricao : "Sem Pessoa"), i.IsLembrete, i.IsFatura })
+            .Select(g => new CompromissoAgrupado(
+                g.Key.Pessoa,
+                g.Key.Tipo,
+                g.Sum(i => i.Valor),
+                g.Count(),
+                g.All(i => i.Confirmado),
+                g.Any(i => i.Projetada),
+                g.Key.IsLembrete,
+                g.Key.IsFatura,
+                g.All(i => i.Riscada)))
+            .OrderBy(g => g.IsFatura ? 0 : g.IsLembrete ? 1 : 2)
+            .ThenBy(g => g.Tipo)
+            .ThenBy(g => g.Pessoa)
+            .ToList();
     }
 }

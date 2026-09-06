@@ -1,10 +1,12 @@
 @namespace Finort.Components.Lancamentos
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject ContaService ContaService
 @inject CategoriaService CategoriaService
 @inject LancamentoService LancamentoService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <MudForm @ref="_form">
     @if (Tipo == LancamentoTipo.Transferencia)
@@ -15,20 +17,31 @@
         <ContaSelect Label="Conta de destino" Required="true"
                      RequiredError="Selecione a conta de destino."
                      @bind-Value="_contaDestinoId" />
-        <MudDatePicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
+        <DataPicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
         <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
     }
     else
     {
         <ContaSelect Label="Conta" Required="true" RequiredError="Selecione a conta."
                      @bind-Value="_contaId" />
-        <MudDatePicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
+        <DataPicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
         <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
         <CategoriaSelect Required="true" RequiredError="Selecione a categoria."
                          Value="@_categoriaId" ValueChanged="OnCategoriaChanged" />
         <SubcategoriaSelect CategoriaId="@_categoriaId" @bind-Value="_subcategoriaId" />
         <PessoaSelect Placeholder="Opcional" @bind-Value="_pessoaId" />
         <ProjetoSelect PessoaId="@_pessoaId" @bind-Value="_projetoId" />
+        <div class="d-flex align-center flex-wrap mt-2">
+            @if (!_temGrupo)
+            {
+                <MudSwitch @bind-Value="_repetir" Label="Repetir" Class="flex-grow-0" />
+                @if (_repetir)
+                {
+                    <MudNumericField T="int" @bind-Value="_quantidadeRepeticoes" Label="Vezes"
+                                     Variant="@gVariant" Min="2" Max="120" Class="ml-4" Style="max-width:120px;" />
+                }
+            }
+        </div>
     }
 </MudForm>
 

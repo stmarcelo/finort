@@ -270,6 +270,18 @@ namespace Finort.Data.Migrations.MySql
                             Id = new Guid("10000000-0000-0000-0000-000000000013"),
                             IsProtected = true,
                             Nome = "Acerto de saldo"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000014"),
+                            IsProtected = false,
+                            Nome = "Indefinida"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Serviços"
                         });
                 });
 
@@ -287,6 +299,9 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<string>("ContaEDigito")
                         .HasColumnType("longtext");
+
+                    b.Property<decimal?>("Limite")
+                        .HasColumnType("decimal(65,30)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -458,6 +473,9 @@ namespace Finort.Data.Migrations.MySql
                         .HasColumnType("char(36)");
 
                     b.Property<DateOnly>("Data")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("DataCompra")
                         .HasColumnType("date");
 
                     b.Property<DateOnly?>("DataVencimentoCartao")
@@ -1113,6 +1131,20 @@ namespace Finort.Data.Migrations.MySql
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000009"),
                             IsProtected = true,
                             Nome = "Cartão de crédito"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000058"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            IsProtected = false,
+                            Nome = "Manutenção"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000059"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Assinaturas"
                         });
                 });
 

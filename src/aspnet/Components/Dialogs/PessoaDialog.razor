@@ -1,9 +1,11 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @using MudBlazor.Utilities
 @using Finort.Models.Financeiro
 @inject PessoaService PessoaService
 @inject LembreteService LembreteService
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
@@ -65,7 +67,7 @@
                     }
                     else
                     {
-                        <MudDatePicker @bind-Date="_novoData" Label="Data" Class="mb-2" />
+                        <DataPicker @bind-Date="_novoData" Label="Data" Class="mb-2" />
                     }
 
                     <div class="d-flex gap-2">
@@ -134,16 +136,23 @@
         if (!_form.IsValid) return;
 
         var cor = _cor is null ? null : _cor.ToString(MudColorOutputFormats.Hex);
-        Pessoa salva;
-        if (Pessoa is null)
-            salva = await PessoaService.CriarAsync(_nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
-        else
+        try
         {
-            await PessoaService.AtualizarAsync(Pessoa, _nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
-            salva = Pessoa;
-        }
+            Pessoa salva;
+            if (Pessoa is null)
+                salva = await PessoaService.CriarAsync(_nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
+            else
+            {
+                await PessoaService.AtualizarAsync(Pessoa, _nome.Trim(), cor, string.IsNullOrWhiteSpace(_observacao) ? null : _observacao.Trim());
+                salva = Pessoa;
+            }
 
-        MudDialog.Close(DialogResult.Ok(salva.Id));
+            MudDialog.Close(DialogResult.Ok(salva.Id));
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task CarregarLembretesAsync()

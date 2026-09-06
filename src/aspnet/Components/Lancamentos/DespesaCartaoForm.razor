@@ -1,4 +1,5 @@
 @namespace Finort.Components.Lancamentos
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject CartaoCreditoService CartaoCreditoService
 @inject FaturaService FaturaService
@@ -10,7 +11,7 @@
         <CartaoSelect Required="true" RequiredError="Selecione o cartão."
                       Value="@_cartaoId" ValueChanged="OnCartaoChanged" />
     }
-    <MudDatePicker Label="Data da compra" Variant="@gVariant"
+    <DataPicker Label="Data da compra" Variant="@gVariant"
                    MinDate="@_minDate" MaxDate="@_maxDate"
                    Date="@_dataCompra" DateChanged="@OnDataChanged" Required="true"
                    RequiredError="Informe a data." />

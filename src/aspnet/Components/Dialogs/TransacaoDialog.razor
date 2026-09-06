@@ -78,7 +78,7 @@
             {
                 await LancamentoService.AtualizarDespesaCartaoAsync(
                     LancamentoId.Value, d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId,
-                    d.PessoaId, d.ProjetoId);
+                    d.PessoaId, d.ProjetoId, d.DataVencimentoCartao);
                 Snackbar.Add("Lançamento atualizado.", Severity.Success);
             }
             else

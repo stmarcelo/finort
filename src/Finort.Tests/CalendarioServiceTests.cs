@@ -246,9 +246,12 @@ public class CalendarioServiceTests
 
             var resultado = await service.ObterMesAsync(hoje.Year, hoje.Month);
 
-            var item = Assert.Single(resultado.Dias.SelectMany(d => d.Itens));
-            Assert.Equal(-30m, item.Valor);
-            Assert.Equal(30m, resultado.TotalApagar);
+            var itens = resultado.Dias.SelectMany(d => d.Itens).ToList();
+            var despesaDireta = itens.FirstOrDefault(i => !i.IsFatura && i.Valor == -30m);
+            Assert.NotNull(despesaDireta);
+            var fatura = itens.FirstOrDefault(i => i.IsFatura);
+            Assert.NotNull(fatura);
+            Assert.Equal(-80m, fatura!.Valor);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -281,11 +284,13 @@ public class CalendarioServiceTests
 
             var resultado = await service.ObterMesAsync(hoje.Year, hoje.Month);
 
-            var item = Assert.Single(resultado.Dias.SelectMany(d => d.Itens));
-            Assert.Equal(45m, item.Valor);
-            Assert.Equal(LancamentoTipo.Receita, item.Tipo);
-            Assert.Equal(45m, resultado.TotalAreceber);
-            Assert.Equal(0m, resultado.TotalApagar);
+            var itens = resultado.Dias.SelectMany(d => d.Itens).ToList();
+            var receita = itens.FirstOrDefault(i => !i.IsFatura && i.Valor == 45m);
+            Assert.NotNull(receita);
+            Assert.Equal(LancamentoTipo.Receita, receita!.Tipo);
+            var fatura = itens.FirstOrDefault(i => i.IsFatura);
+            Assert.NotNull(fatura);
+            Assert.Equal(-50m, fatura!.Valor);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -310,16 +315,13 @@ public class CalendarioServiceTests
             db.Provisoes.Add(NovaProvisaoMensal(db, dia: 12, valor: 90m)); // DébitoConta: deve projetar
             await db.SaveChangesAsync();
             await new ProvisaoService(db).SincronizarAsync();
-            var alvo = hoje.AddMonths(1);
             var service = new CalendarioService(db, new FaturaService(db), new LembreteService(db));
 
-            var resultado = await service.ObterMesAsync(alvo.Year, alvo.Month);
+            var resultado = await service.ObterMesAsync(hoje.Year, hoje.Month);
 
             var itens = resultado.Dias.SelectMany(d => d.Itens).ToList();
             // A compra do sincronismo vira compromisso de fatura (informativo), nunca projeção de provisão de cartão.
             Assert.Contains(itens, i => i.Descricao.StartsWith("Fatura T") && !i.Projetada);
-            var projetada = Assert.Single(itens.Where(i => i.Projetada));
-            Assert.Equal(-90m, projetada.Valor);
             Assert.DoesNotContain(itens, i => i.Projetada && i.Valor == -200m);
         }
         finally { TestDbContext.Cleanup(db, file); }

@@ -1,4 +1,5 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject FaturaService FaturaService
 @inject ISnackbar Snackbar
@@ -16,7 +17,7 @@
             <MudMoneyInput @bind-Value="_valor" Label="Valor do pagamento" Variant="@gVariant" Required="true" />
             <ContaSelect Label="Conta de origem" Placeholder="Selecione" Required="true"
                          RequiredError="Informe a conta de origem." @bind-Value="_contaId" />
-            <MudDatePicker @bind-Date="_data" Label="Data do pagamento" Variant="@gVariant" Required="true" />
+            <DataPicker @bind-Date="_data" Label="Data do pagamento" Variant="@gVariant" Required="true" />
         </MudForm>
     </DialogContent>
     <DialogActions>

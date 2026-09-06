@@ -1,4 +1,5 @@
 @namespace Finort.Components.Dialogs
+@using Finort.Components.Shared
 @inherits AppComponentBase
 @inject InvestimentoService InvestimentoService
 @inject ISnackbar Snackbar
@@ -25,11 +26,11 @@
             {
                 <MudMoneyInput @bind-Value="_valorCota" CasasDecimais="@CasasCota"
                                Label="Valor da cota atual (opcional)" Variant="@gVariant" />
-                <MudDatePicker @bind-Date="_dataCotacao" Label="Data da cotação (opcional)" Variant="@gVariant" />
+                <DataPicker @bind-Date="_dataCotacao" Label="Data da cotação (opcional)" Variant="@gVariant" />
             }
             @if (_tipo == TipoInvestimento.Cdb)
             {
-                <MudDatePicker @bind-Date="_dataVencimento" Label="Data de vencimento do CDB" Variant="@gVariant" />
+                <DataPicker @bind-Date="_dataVencimento" Label="Data de vencimento do CDB" Variant="@gVariant" />
             }
         </MudForm>
     </DialogContent>

@@ -48,7 +48,7 @@ public class Fase3MigrationTests
             Assert.NotNull(acerto);
             Assert.True(acerto!.IsProtected);
 
-            Assert.Equal(13, db.Categorias.Count());
+            Assert.Equal(15, db.Categorias.Count());
             Assert.True(db.Categorias.Single(c => c.Nome == "Financeiro").IsProtected);
             Assert.True(db.Categorias.Single(c => c.Nome == "Acerto de saldo").IsProtected);
         }

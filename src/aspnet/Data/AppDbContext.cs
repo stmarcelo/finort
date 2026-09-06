@@ -82,7 +82,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<CartaoCredito>()
             .Property(c => c.Ultimos4Digitos)
-            .HasMaxLength(4);
+            .HasMaxLength(20);
 
         modelBuilder.Entity<Fatura>()
             .HasOne(f => f.CartaoCredito)
@@ -231,7 +231,9 @@ public class AppDbContext : DbContext
             new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000010"), Nome = "Familia" },
             new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000011"), Nome = "Impostos" },
             new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000012"), Nome = "Investimento" },
-            new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000013"), Nome = "Acerto de saldo", IsProtected = true });
+            new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000013"), Nome = "Acerto de saldo", IsProtected = true },
+            new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000014"), Nome = "Indefinida" },
+            new Categoria { Id = Guid.Parse("10000000-0000-0000-0000-000000000015"), Nome = "Serviços" });
 
         modelBuilder.Entity<Subcategoria>().HasData(
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Nome = "Energia" },
@@ -290,6 +292,8 @@ public class AppDbContext : DbContext
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000054"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000012"), Nome = "Compra/Aporte" },
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000055"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000012"), Nome = "Venda / Resgate" },
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000056"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000013"), Nome = "Acerto", IsProtected = true },
-            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000057"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000009"), Nome = "Cartão de crédito", IsProtected = true });
+            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000057"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000009"), Nome = "Cartão de crédito", IsProtected = true },
+            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000058"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Nome = "Manutenção" },
+            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000059"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000015"), Nome = "Assinaturas" });
     }
 }
