@@ -14,7 +14,8 @@ public partial class DespesaCartaoForm : AppComponentBase
         Guid CategoriaId, Guid? SubcategoriaId, Guid? PessoaId,
         int? Parcelas, Guid? ReembolsoPessoaId, Guid? ReembolsoContaId,
         bool EhEntrada, Guid? ProjetoId,
-        DateOnly? DataVencimentoCartao);
+        DateOnly? DataVencimentoCartao,
+        Guid? ReembolsoCategoriaId = null, Guid? ReembolsoSubcategoriaId = null);
 
     [Parameter] public Guid? CartaoIdFixo { get; set; }
     [Parameter] public int? AnoFatura { get; set; }
@@ -38,10 +39,31 @@ public partial class DespesaCartaoForm : AppComponentBase
     private bool _comReembolso;
     private Guid? _reembolsoPessoaId;
     private Guid? _reembolsoContaId;
+    private Guid? _reembolsoCategoriaId;
+    private Guid? _reembolsoSubcategoriaId;
     private bool _ehEntradaBack;
     private DateOnly? _previewVencimento;
     private int _vencimentoAno;
     private int _vencimentoMes;
+
+    private bool ComReembolso
+    {
+        get => _comReembolso;
+        set
+        {
+            _comReembolso = value;
+            if (value && _categoriaId.HasValue)
+            {
+                _reembolsoCategoriaId = _categoriaId;
+                _reembolsoSubcategoriaId = _subcategoriaId;
+            }
+            else if (!value)
+            {
+                _reembolsoCategoriaId = null;
+                _reembolsoSubcategoriaId = null;
+            }
+        }
+    }
 
     /// <summary>Property para @bind-Value: ao marcar entrada, limpa parcelamento e reembolso.</summary>
     private bool EhEntrada
@@ -89,6 +111,12 @@ public partial class DespesaCartaoForm : AppComponentBase
         _pessoaId = lancamento.PessoaId;
         _projetoId = lancamento.ProjetoId;
 
+        if (lancamento.TotalParcelas.HasValue && lancamento.TotalParcelas.Value > 1)
+        {
+            _parcelado = true;
+            _quantidadeParcelas = lancamento.TotalParcelas.Value;
+        }
+
         if (lancamento.ReembolsoId.HasValue)
         {
             var reembolso = await Db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
@@ -97,6 +125,8 @@ public partial class DespesaCartaoForm : AppComponentBase
                 _comReembolso = true;
                 _reembolsoPessoaId = reembolso.PessoaId;
                 _reembolsoContaId = reembolso.ContaId;
+                _reembolsoCategoriaId = reembolso.CategoriaId;
+                _reembolsoSubcategoriaId = reembolso.SubcategoriaId;
             }
         }
 
@@ -199,11 +229,13 @@ public partial class DespesaCartaoForm : AppComponentBase
         await OnSalvarValido.InvokeAsync(new DadosDespesaCartao(
             _cartaoId.Value, dataCompra, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId,
             EhEntrada ? null : _parcelado ? _quantidadeParcelas : null,
-            !EhEntrada && _comReembolso ? _reembolsoPessoaId : null,
-            !EhEntrada && _comReembolso ? _reembolsoContaId : null,
+            !EhEntrada && ComReembolso ? _reembolsoPessoaId : null,
+            !EhEntrada && ComReembolso ? _reembolsoContaId : null,
             EhEntrada,
             EhEntrada ? null : _projetoId,
-            _previewVencimento));
+            _previewVencimento,
+            !EhEntrada && ComReembolso ? _reembolsoCategoriaId : null,
+            !EhEntrada && ComReembolso ? _reembolsoSubcategoriaId : null));
         return true;
     }
 }

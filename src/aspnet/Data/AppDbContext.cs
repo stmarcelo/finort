@@ -125,7 +125,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<MesFechado>()
-            .HasIndex(m => new { m.Mes, m.Ano })
+            .HasIndex(m => new { m.ContaId, m.Mes, m.Ano })
             .IsUnique();
 
         modelBuilder.Entity<Lancamento>()

@@ -13,8 +13,21 @@ public class FechamentoService
         _db = db;
     }
 
-    /// <summary>Estado de conferência: saldo confirmado da conta, pendências do mês e situação de fecho.</summary>
-    public async Task<ConferenciaMes> ObterConferenciaAsync(Guid contaId, int ano, int mes)
+    public async Task<List<ConferenciaMes>> ObterConferenciasAsync(int ano, int mes)
+    {
+        var contas = await _db.Contas.ToListAsync();
+        var result = new List<ConferenciaMes>();
+
+        foreach (var conta in contas)
+        {
+            var conferencia = await ObterConferenciaAsync(conta.Id, conta.Nome, ano, mes);
+            result.Add(conferencia);
+        }
+
+        return result;
+    }
+
+    public async Task<ConferenciaMes> ObterConferenciaAsync(Guid contaId, string nomeConta, int ano, int mes)
     {
         var inicio = new DateOnly(ano, mes, 1);
         var fim = inicio.AddMonths(1).AddDays(-1);
@@ -24,26 +37,24 @@ public class FechamentoService
             .SumAsync(l => (decimal?)l.Valor) ?? 0m;
 
         var temPendencias = await _db.Lancamentos
-            .AnyAsync(l => !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+            .AnyAsync(l => l.ContaId == contaId && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
 
-        return new ConferenciaMes(contaId, ano, mes, saldoAcumulado, temPendencias,
-            await EstaFechadoAsync(ano, mes));
+        var mesFechado = await _db.MesesFechados
+            .AnyAsync(m => m.ContaId == contaId && m.Ano == ano && m.Mes == mes);
+
+        return new ConferenciaMes(contaId, nomeConta, ano, mes, saldoAcumulado, temPendencias, mesFechado);
     }
 
-    /// <summary>
-    /// Fecha o mês (e os anteriores abertos, em cascata). Com diferença entre saldo real e
-    /// acumulado, cria lançamento de acerto confirmado na categoria "Acerto de saldo".
-    /// </summary>
     public async Task FecharAsync(Guid contaId, int ano, int mes, decimal saldoReal)
     {
-        if (await EstaFechadoAsync(ano, mes))
-            throw new InvalidOperationException("Este mês já está fechado.");
+        if (await EstaFechadoAsync(contaId, ano, mes))
+            throw new InvalidOperationException("Este mês já está fechado para esta conta.");
 
         var inicio = new DateOnly(ano, mes, 1);
         var fim = inicio.AddMonths(1).AddDays(-1);
 
         var pendentes = await _db.Lancamentos
-            .CountAsync(l => !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+            .CountAsync(l => l.ContaId == contaId && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
         if (pendentes > 0)
             throw new InvalidOperationException($"Existem {pendentes} lançamento(s) não confirmado(s) neste mês.");
 
@@ -71,21 +82,40 @@ public class FechamentoService
             });
         }
 
-        var pisoBruto = await _db.Lancamentos.MinAsync(l => (DateOnly?)l.Data);
-        var periodo = pisoBruto is null ? new DateOnly(ano, mes, 1) : new DateOnly(pisoBruto.Value.Year, pisoBruto.Value.Month, 1);
-        var limite = new DateOnly(ano, mes, 1);
-
-        while (periodo <= limite)
+        _db.MesesFechados.Add(new MesFechado
         {
-            if (!await EstaFechadoAsync(periodo.Year, periodo.Month))
-                _db.MesesFechados.Add(new MesFechado { Ano = periodo.Year, Mes = periodo.Month, DataFechamento = DateTime.Now, SaldoAcumulado = saldoAcumulado });
-
-            periodo = periodo.AddMonths(1);
-        }
+            ContaId = contaId,
+            Ano = ano,
+            Mes = mes,
+            DataFechamento = DateTime.Now,
+            SaldoAcumulado = saldoReal
+        });
 
         await _db.SaveChangesAsync();
     }
 
-    private Task<bool> EstaFechadoAsync(int ano, int mes)
-        => _db.MesesFechados.AnyAsync(m => m.Ano == ano && m.Mes == mes);
+    public async Task ReabrirAsync(int ano, int mes)
+    {
+        var registros = await _db.MesesFechados
+            .Where(m => m.Ano == ano && m.Mes == mes)
+            .ToListAsync();
+
+        if (registros.Count == 0)
+            throw new InvalidOperationException("Nenhum fechamento encontrado para este mês.");
+
+        _db.MesesFechados.RemoveRange(registros);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<(int Ano, int Mes)?> ObterUltimoMesFechadoAsync()
+    {
+        var ultimo = await _db.MesesFechados
+            .OrderByDescending(m => m.Ano).ThenByDescending(m => m.Mes)
+            .FirstOrDefaultAsync();
+
+        return ultimo is null ? null : (ultimo.Ano, ultimo.Mes);
+    }
+
+    public Task<bool> EstaFechadoAsync(Guid contaId, int ano, int mes)
+        => _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == ano && m.Mes == mes);
 }

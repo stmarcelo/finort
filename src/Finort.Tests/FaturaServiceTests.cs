@@ -240,8 +240,9 @@ public class FaturaServiceTests
         try
         {
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
+            var contaId = ContaUnica(db);
             foreach (var mes in new[] { 7, 8, 9 })
-                db.MesesFechados.Add(new MesFechado { Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
+                db.MesesFechados.Add(new MesFechado { ContaId = contaId, Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             // data em outubro, ref setembro → piso = setembro → reabre set e mantém jul/ago
@@ -337,8 +338,9 @@ public class FaturaServiceTests
         try
         {
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
+            var contaId = ContaUnica(db);
             foreach (var mes in new[] { 10, 11 })
-                db.MesesFechados.Add(new MesFechado { Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
+                db.MesesFechados.Add(new MesFechado { ContaId = contaId, Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             // fatura set/2026; pagamento em outubro → pernas origem + destino + rollover

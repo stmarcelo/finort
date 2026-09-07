@@ -35,15 +35,21 @@ public static class ProvisaoAgenda
         if (provisoes.Count == 0)
             return resultado;
 
-        var mesesFechados = (await db.MesesFechados.ToListAsync())
-            .Select(m => m.Ano * 12 + m.Mes)
-            .ToHashSet();
+        var mesesFechadosPorConta = (await db.MesesFechados.ToListAsync())
+            .GroupBy(m => m.ContaId)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.Ano * 12 + m.Mes).ToHashSet());
 
         foreach (var provisao in provisoes)
         {
             // Sem último sincronismo: o próximo login materializará; não projetar.
             if (provisao.UltimoAnoLancado is null || provisao.UltimoMesLancado is null)
                 continue;
+
+            var contaId = provisao.ContaId ?? provisao.CartaoCredito?.ContaId;
+            HashSet<int>? mesesFechadosConta = null;
+            if (contaId.HasValue)
+                mesesFechadosPorConta.TryGetValue(contaId.Value, out mesesFechadosConta);
+            var mesesFechados = mesesFechadosConta ?? new HashSet<int>();
 
             var intervalo = IntervaloEmMeses(provisao.Frequencia);
             var periodo = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)

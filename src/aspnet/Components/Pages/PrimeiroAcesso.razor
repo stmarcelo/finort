@@ -3,12 +3,15 @@
 @layout LoginLayout
 @inherits AppComponentBase
 @using System.Security.Claims
+@using Finort.Components.Dialogs
 @inject AuthService AuthService
 @inject ScopedAuthenticationStateProvider Auth
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject ProvisaoService ProvisaoService
+@inject BackupRestoreService BackupService
+@inject IDialogService DialogService
 
 <div class="login-split">
     <div class="login-image">
@@ -38,6 +41,13 @@
             </MudText>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
                        Class="mt-4" Disabled="@(!_podeSalvar || _processando)" OnClick="Salvar">Criar acesso</MudButton>
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="text-muted">
+                Já tem um backup?
+                <MudLink OnClick="IniciarRestauracao" Class="cursor-pointer">Restaure aqui</MudLink>
+            </MudText>
+            <MudFileUpload T="IBrowserFile" FilesChanged="ArquivoSelecionado" @ref="_fileUpload"
+                           Accept=".cfbak" MaxFileSize="@(200_000_000L)" />
         </div>
     </div>
 </div>
@@ -51,6 +61,8 @@
     private bool _jaExiste;
     private bool _podeSalvar;
     private bool _senhaForte;
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+    private byte[]? _arquivoRestauracao;
 
     private void Validar()
     {
@@ -73,6 +85,68 @@
             Navigation.NavigateTo("/login");
         }
         return Task.CompletedTask;
+    }
+
+    private async Task IniciarRestauracao()
+    {
+        await _fileUpload!.OpenFilePickerAsync();
+    }
+
+    private async Task ArquivoSelecionado(IBrowserFile arquivo)
+    {
+        if (!arquivo.Name.EndsWith(".cfbak", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Selecione um arquivo .cfbak válido.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await using var stream = arquivo.OpenReadStream(200_000_000L);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _arquivoRestauracao = ms.ToArray();
+        }
+        catch
+        {
+            Snackbar.Add("Arquivo muito grande ou ilegível.", Severity.Error);
+            _arquivoRestauracao = null;
+            return;
+        }
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var parameters = new DialogParameters<SenhaBackupDialog> { { x => x.ModoCadastro, false } };
+        var dialog = await DialogService.ShowAsync<SenhaBackupDialog>("Senha de backup", parameters, options);
+        var result = await dialog.Result;
+        var senha = result is { Canceled: false, Data: string s } && !string.IsNullOrEmpty(s) ? s : null;
+        if (senha is null) { _arquivoRestauracao = null; return; }
+
+        var validacao = await BackupService.ValidarBackupAsync(_arquivoRestauracao, senha);
+        if (!validacao.Ok)
+        {
+            Snackbar.Add(validacao.Erro!, Severity.Error);
+            _arquivoRestauracao = null;
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox("Confirmar restauração",
+            "ATENÇÃO: tudo será substituído pelos dados do backup, inclusive a senha de login. Você será desconectado. Continuar?",
+            "Restaurar agora");
+        if (confirm != true) { _arquivoRestauracao = null; return; }
+
+        var resultado = await BackupService.RestaurarAsync(_arquivoRestauracao, senha);
+        if (resultado.Ok)
+        {
+            Snackbar.Add("Backup restaurado. Faça login novamente.", Severity.Success);
+            try { await JS.InvokeVoidAsync("authHelpers.logout"); } catch { }
+            Auth.SignOut();
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        else
+        {
+            Snackbar.Add(resultado.Erro!, Severity.Error);
+            _arquivoRestauracao = null;
+        }
     }
 
     private async Task Salvar()

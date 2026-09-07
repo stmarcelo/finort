@@ -51,6 +51,7 @@ else
 
                     @{
                         var (real, previsto) = Saldos(c.Id);
+                        var resumo = ObterResumo(c.Id);
                     }
                     <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
                         <MudText Typo="Typo.body2" Class="text-muted">Saldo real</MudText>
@@ -64,6 +65,12 @@ else
                             R$ @previsto.ToString("N2")
                         </MudText>
                     </MudStack>
+                    @if (resumo?.UltimoMesFechado.HasValue == true && resumo?.UltimoAnoFechado.HasValue == true)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-1" Style="color:var(--finort-muted);">
+                            Fechamento @resumo.UltimoMesFechado.Value.ToString("D2")/@resumo.UltimoAnoFechado  R$ @(resumo.SaldoFechado?.ToString("N2") ?? "0,00")
+                        </MudText>
+                    }
                 </MudPaper>
             </MudItem>
         }
@@ -73,6 +80,7 @@ else
 @code {
     private List<Conta> _contas = new();
     private Dictionary<Guid, (decimal Real, decimal Previsto)> _saldos = new();
+    private Dictionary<Guid, ContaResumo> _resumos = new();
     private bool _carregando = true;
 
     protected override async Task OnInitializedAsync() => await CarregarAsync();
@@ -85,6 +93,7 @@ else
             _contas = await ContaService.ListarAsync();
             var resumo = await ContaService.ListarResumoAsync();
             _saldos = resumo.ToDictionary(r => r.Id, r => (r.SaldoReal, r.SaldoPrevisto));
+            _resumos = resumo.ToDictionary(r => r.Id);
         }
         catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
         finally { _carregando = false; }
@@ -92,6 +101,9 @@ else
 
     private (decimal Real, decimal Previsto) Saldos(Guid contaId)
         => _saldos.TryGetValue(contaId, out var s) ? s : (0m, 0m);
+
+    private ContaResumo? ObterResumo(Guid contaId)
+        => _resumos.TryGetValue(contaId, out var r) ? r : null;
 
     private async Task AbrirDialog(Conta? conta)
     {

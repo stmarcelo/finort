@@ -29,7 +29,7 @@ public class LancamentoService
         Guid? projetoId = null)
     {
         Validar(valor, data);
-        await GarantirMesAbertoAsync(data);
+        await GarantirMesAbertoAsync(data, contaId);
         var lancamento = new Lancamento
         {
             Data = data,
@@ -51,7 +51,7 @@ public class LancamentoService
         Guid? projetoId = null)
     {
         Validar(valor, data);
-        await GarantirMesAbertoAsync(data);
+        await GarantirMesAbertoAsync(data, contaId);
         var lancamento = new Lancamento
         {
             Data = data,
@@ -72,7 +72,7 @@ public class LancamentoService
         Guid contaOrigemId, Guid contaDestinoId, DateOnly data, decimal valor)
     {
         Validar(valor, data);
-        await GarantirMesAbertoAsync(data);
+        await GarantirMesAbertoAsync(data, contaOrigemId);
         var transferencia = await _db.Subcategorias.FirstOrDefaultAsync(s => s.IsProtected && s.Nome == "Transferência")
             ?? throw new InvalidOperationException("Categoria de transferência não encontrada no seed.");
 
@@ -134,8 +134,8 @@ public class LancamentoService
             ?? throw new InvalidOperationException("Lançamento não encontrado.");
 
         await GarantirNaoConfirmadoAsync(new[] { lancamento });
-        await GarantirMesAbertoAsync(lancamento.Data);
-        await GarantirMesAbertoAsync(data);
+        await GarantirMesAbertoAsync(lancamento.Data, lancamento.ContaId);
+        await GarantirMesAbertoAsync(data, contaId);
 
         lancamento.Data = data;
         lancamento.Valor = lancamento.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
@@ -181,7 +181,7 @@ public class LancamentoService
         var reembolso = await _db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
         if (reembolso is null || reembolso.Confirmado) return;
 
-        await GarantirMesAbertoAsync(reembolso.Data);
+        await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
         reembolso.Data = data;
         reembolso.Valor = Math.Abs(valor);
         reembolso.PessoaId = pessoaId;
@@ -198,8 +198,10 @@ public class LancamentoService
         await GarantirNaoPagamentoFaturaAsync(pernas);
 
         await GarantirNaoConfirmadoAsync(pernas);
-        await GarantirMesAbertoAsync(pernas[0].Data);
-        await GarantirMesAbertoAsync(data);
+        await GarantirMesAbertoAsync(pernas[0].Data, contaOrigemId);
+        await GarantirMesAbertoAsync(pernas[1].Data, contaDestinoId);
+        await GarantirMesAbertoAsync(data, contaOrigemId);
+        await GarantirMesAbertoAsync(data, contaDestinoId);
 
         foreach (var perna in pernas)
         {
@@ -216,7 +218,7 @@ public class LancamentoService
         var pernas = await ObterPernasAsync(id);
         await GarantirNaoPagamentoFaturaAsync(pernas);
         foreach (var perna in pernas) await GarantirFaturaAbertaAsync(perna);
-        foreach (var perna in pernas) await GarantirMesAbertoAsync(perna.Data);
+        foreach (var perna in pernas) await GarantirMesAbertoAsync(perna.Data, perna.ContaId);
         await GarantirNaoConfirmadoAsync(pernas);
 
         var proventoIds = pernas.Select(p => p.Id).ToList();
@@ -231,7 +233,7 @@ public class LancamentoService
             .Where(l => reembolsoIds.Contains(l.Id))
             .ToListAsync();
         foreach (var reembolso in reembolsos.Where(r => !r.Confirmado))
-            await GarantirMesAbertoAsync(reembolso.Data);
+            await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
 
         _db.Lancamentos.RemoveRange(pernas.Concat(reembolsos.Where(r => !r.Confirmado)));
         await _db.SaveChangesAsync();
@@ -246,7 +248,7 @@ public class LancamentoService
                 "Vincule uma conta ou um cartão antes de confirmar o lançamento.");
         await GarantirNaoPagamentoFaturaAsync(new[] { lancamento });
         await GarantirFaturaAbertaAsync(lancamento);
-        await GarantirMesAbertoAsync(lancamento.Data);
+        await GarantirMesAbertoAsync(lancamento.Data, lancamento.ContaId);
         lancamento.Confirmado = !lancamento.Confirmado;
         await _db.SaveChangesAsync();
     }
@@ -281,7 +283,7 @@ public class LancamentoService
         Guid cartaoId, DateOnly dataCompra, decimal valorTotal, Guid categoriaId, Guid? subcategoriaId,
         Guid? pessoaId, int? parcelas, Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
-        Guid? projetoId = null)
+        Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null)
     {
         Validar(valorTotal, dataCompra);
         if (ehEntrada && (parcelas is not null || reembolsoPessoaId is not null))
@@ -304,12 +306,12 @@ public class LancamentoService
             datasVencimento.Add(baseVencimento.AddMonths(i));
         }
 
-        foreach (var data in datasVencimento) await GarantirMesAbertoAsync(data);
+        foreach (var data in datasVencimento) await GarantirMesAbertoAsync(data, null);
         if (reembolsoPessoaId.HasValue)
             foreach (var i in Enumerable.Range(0, quantidade))
             {
                 var vencimentoReembolso = reembolsoVencimento?.AddMonths(i) ?? datasVencimento[i].AddDays(-1);
-                await GarantirMesAbertoAsync(vencimentoReembolso);
+                await GarantirMesAbertoAsync(vencimentoReembolso, reembolsoContaId);
             }
 
         var criados = new List<Lancamento>();
@@ -338,13 +340,15 @@ public class LancamentoService
             if (reembolsoPessoaId.HasValue)
             {
                 var vencimentoReembolso = reembolsoVencimento?.AddMonths(i) ?? dataVencimento.AddDays(-1);
+                var categoriaReembolsoId = reembolsoCategoriaId ?? renda.Id;
                 var reembolso = new Lancamento
                 {
                     Data = vencimentoReembolso,
                     Tipo = LancamentoTipo.Receita,
                     Valor = valores[i],
                     ContaId = reembolsoContaId,
-                    CategoriaId = renda.Id,
+                    CategoriaId = categoriaReembolsoId,
+                    SubcategoriaId = reembolsoSubcategoriaId,
                     PessoaId = reembolsoPessoaId,
                     ProjetoId = projetoId,
                     ParcelaAtual = quantidade > 1 ? i + 1 : null,
@@ -353,6 +357,8 @@ public class LancamentoService
                 _db.Lancamentos.Add(reembolso);
                 await _db.SaveChangesAsync();
                 despesa.ReembolsoId = reembolso.Id;
+                despesa.ReembolsoCategoriaId = reembolsoCategoriaId;
+                despesa.ReembolsoSubcategoriaId = reembolsoSubcategoriaId;
             }
 
             _db.Lancamentos.Add(despesa);
@@ -363,29 +369,58 @@ public class LancamentoService
         return criados;
     }
 
-    public async Task AtualizarDespesaCartaoAsync(
-        Guid lancamentoId, Guid cartaoId, DateOnly data, decimal valor,
-        Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, Guid? projetoId,
-        DateOnly? dataVencimentoCartao = null)
+    public async Task<List<Lancamento>> AtualizarDespesaCartaoAsync(
+        Guid lancamentoId, Guid cartaoId, DateOnly dataCompra, decimal valorTotal,
+        Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, int? parcelas,
+        Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento,
+        DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
+        Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null)
     {
         var antigo = await _db.Lancamentos.FindAsync(lancamentoId)
             ?? throw new InvalidOperationException("Lançamento não encontrado.");
         if (antigo.Tipo != LancamentoTipo.Despesa || antigo.CartaoCreditoId is null)
             throw new InvalidOperationException("Lançamento não é despesa de cartão.");
 
+        if (ehEntrada && (parcelas is not null || reembolsoPessoaId is not null))
+            throw new ArgumentException("Entrada na fatura não suporta parcelamento nem reembolso.");
+        if (parcelas is < 1 or > 48)
+            throw new ArgumentException("Quantidade de parcelas inválida.");
+
         var cartao = await _db.CartoesCredito.FindAsync(cartaoId)
             ?? throw new InvalidOperationException("Cartão não encontrado.");
 
-        antigo.CartaoCreditoId = cartaoId;
-        antigo.Data = data;
-        antigo.Valor = -Math.Abs(valor);
-        antigo.CategoriaId = categoriaId;
-        antigo.SubcategoriaId = subcategoriaId;
-        antigo.PessoaId = pessoaId;
-        antigo.ProjetoId = projetoId;
-        antigo.DataVencimentoCartao = dataVencimentoCartao ?? CartaoCreditoService.CalcularVencimento(cartao, data);
+        // Collect all lancamentos in the same parcelamento group to delete
+        var lancamentosParaExcluir = new List<Lancamento>();
+        if (antigo.ParcelamentoId.HasValue)
+        {
+            lancamentosParaExcluir = await _db.Lancamentos
+                .Where(l => l.ParcelamentoId == antigo.ParcelamentoId.Value)
+                .ToListAsync();
+        }
+        else
+        {
+            lancamentosParaExcluir.Add(antigo);
+        }
 
+        // Delete linked reimbursements first
+        foreach (var l in lancamentosParaExcluir)
+        {
+            if (l.ReembolsoId.HasValue)
+            {
+                var reembolso = await _db.Lancamentos.FindAsync(l.ReembolsoId.Value);
+                if (reembolso is not null)
+                    _db.Lancamentos.Remove(reembolso);
+            }
+        }
+        _db.Lancamentos.RemoveRange(lancamentosParaExcluir);
         await _db.SaveChangesAsync();
+
+        // Create new installments with updated data
+        return await CriarDespesaCartaoAsync(
+            cartaoId, dataCompra, valorTotal, categoriaId, subcategoriaId,
+            pessoaId, parcelas, reembolsoPessoaId, reembolsoVencimento,
+            vencimentoExato, reembolsoContaId, ehEntrada, projetoId,
+            reembolsoCategoriaId, reembolsoSubcategoriaId);
     }
 
     public async Task<List<Lancamento>> CriarParceladoAsync(
@@ -400,7 +435,7 @@ public class LancamentoService
         var valores = DividirValor(valorTotal, parcelas);
         var criados = new List<Lancamento>();
 
-        for (var i = 0; i < parcelas; i++) await GarantirMesAbertoAsync(primeiraData.AddMonths(i));
+        for (var i = 0; i < parcelas; i++) await GarantirMesAbertoAsync(primeiraData.AddMonths(i), contaId);
 
         for (var i = 0; i < parcelas; i++)
         {
@@ -445,7 +480,7 @@ public class LancamentoService
         var recorrenciaId = repeticoes > 1 ? Guid.NewGuid() : (Guid?)null;
         var criados = new List<Lancamento>();
 
-        for (var i = 0; i < repeticoes; i++) await GarantirMesAbertoAsync(primeiraData.AddMonths(intervalo * i));
+        for (var i = 0; i < repeticoes; i++) await GarantirMesAbertoAsync(primeiraData.AddMonths(intervalo * i), contaId);
 
         for (var i = 0; i < repeticoes; i++)
         {
@@ -479,7 +514,7 @@ public class LancamentoService
             throw new ArgumentException("Informe um valor maior que zero.");
 
         await GarantirFaturaAbertaAsync(lancamento);
-        await GarantirMesAbertoAsync(lancamento.Data);
+        await GarantirMesAbertoAsync(lancamento.Data, lancamento.ContaId);
         await GarantirNaoConfirmadoAsync(new[] { lancamento });
 
         lancamento.Valor = lancamento.Valor < 0
@@ -499,7 +534,7 @@ public class LancamentoService
             throw new InvalidOperationException("Grupo não encontrado.");
 
         foreach (var item in grupo) await GarantirFaturaAbertaAsync(item);
-        foreach (var item in grupo) await GarantirMesAbertoAsync(item.Data);
+        foreach (var item in grupo) await GarantirMesAbertoAsync(item.Data, item.ContaId);
 
         var removiveis = grupo.Where(g => !g.Confirmado).ToList();
         if (removiveis.Count == 0)
@@ -511,7 +546,7 @@ public class LancamentoService
             .Where(l => reembolsoIds.Contains(l.Id))
             .ToListAsync();
         foreach (var reembolso in reembolsos.Where(r => !r.Confirmado))
-            await GarantirMesAbertoAsync(reembolso.Data);
+            await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
 
         _db.Lancamentos.RemoveRange(removiveis.Concat(reembolsos.Where(r => !r.Confirmado)));
         await _db.SaveChangesAsync();
@@ -559,11 +594,12 @@ public class LancamentoService
             throw new InvalidOperationException("A fatura deste lançamento já está fechada.");
     }
 
-    private async Task GarantirMesAbertoAsync(DateOnly data)
+    private async Task GarantirMesAbertoAsync(DateOnly data, Guid? contaId)
     {
-        var fechado = await _db.MesesFechados.AnyAsync(m => m.Ano == data.Year && m.Mes == data.Month);
+        if (contaId is null) return;
+        var fechado = await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId.Value && m.Ano == data.Year && m.Mes == data.Month);
         if (fechado)
-            throw new InvalidOperationException("Este mês está fechado e não pode mais ser alterado.");
+            throw new InvalidOperationException("Este mês está fechado para esta conta e não pode mais ser alterado.");
     }
 
     private async Task SincronizarReembolsoAsync(Lancamento despesa)
@@ -572,7 +608,7 @@ public class LancamentoService
 
         var reembolso = await _db.Lancamentos.FindAsync(despesa.ReembolsoId.Value);
         if (reembolso is null || reembolso.Confirmado) return;
-        await GarantirMesAbertoAsync(reembolso.Data);
+        await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
 
         reembolso.Valor = Math.Abs(despesa.Valor);
     }

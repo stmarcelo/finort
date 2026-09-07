@@ -44,8 +44,8 @@
             }
         </div>
 
-        <MudCheckBox @bind-Value="_comReembolso" Label="Terá reembolso" />
-        @if (_comReembolso)
+        <MudCheckBox @bind-Value="ComReembolso" Label="Terá reembolso" />
+        @if (ComReembolso)
         {
             <MudGrid Class="mt-n2">
                 <MudItem xs="12" sm="6">
@@ -56,6 +56,16 @@
                 <MudItem xs="12" sm="6">
                     <ContaSelect Label="Conta do reembolso (crédito)" Placeholder="Opcional"
                                  @bind-Value="_reembolsoContaId" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <CategoriaSelect Label="Categoria do reembolso" Required="true"
+                                     RequiredError="Selecione a categoria do reembolso."
+                                     @bind-Value="_reembolsoCategoriaId" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <SubcategoriaSelect Label="Subcategoria do reembolso"
+                                        CategoriaId="@_reembolsoCategoriaId"
+                                        @bind-Value="_reembolsoSubcategoriaId" />
                 </MudItem>
             </MudGrid>
         }

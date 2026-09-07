@@ -3,6 +3,7 @@ namespace Finort.Models.Financeiro;
 public class MesFechado
 {
     public Guid Id { get; set; }
+    public Guid ContaId { get; set; }
 
     public int Mes { get; set; }
     public int Ano { get; set; }

@@ -420,7 +420,7 @@ public class InvestimentoServiceTests
             var movimento = await service.RegistrarMovimentoAsync(ativo.Id,
                 new DateOnly(2026, 8, 20), MovimentoTipo.Compra, 10m, 5m, null);
             foreach (var mes in new[] { 8, 9 })
-                db.MesesFechados.Add(new MesFechado { Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
+                db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             await service.EstornarMovimentoAsync(movimento.Id);

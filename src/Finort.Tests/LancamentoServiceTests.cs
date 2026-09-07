@@ -222,7 +222,7 @@ public class LancamentoServiceTests
         try
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            db.MesesFechados.Add(new MesFechado { Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -242,7 +242,7 @@ public class LancamentoServiceTests
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var lancamento = await service.CriarReceitaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null);
 
-            db.MesesFechados.Add(new MesFechado { Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             await Assert.ThrowsAsync<InvalidOperationException>(
@@ -262,7 +262,7 @@ public class LancamentoServiceTests
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var lancamento = await service.CriarDespesaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null);
 
-            db.MesesFechados.Add(new MesFechado { Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.ExcluirAsync(lancamento.Id));
@@ -280,7 +280,7 @@ public class LancamentoServiceTests
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var proximoMes = hoje.AddMonths(1);
-            db.MesesFechados.Add(new MesFechado { Ano = proximoMes.Year, Mes = proximoMes.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = proximoMes.Year, Mes = proximoMes.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
             await Assert.ThrowsAsync<InvalidOperationException>(

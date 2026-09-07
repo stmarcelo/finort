@@ -39,7 +39,7 @@ public class ProvisaoService
         if (lancarMesCorrente)
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            if (!await EstaFechadoAsync(hoje.Year, hoje.Month))
+            if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
                 await LancarAsync(provisao, hoje.Year, hoje.Month);
             provisao.UltimoMesLancado = hoje.Month;
             provisao.UltimoAnoLancado = hoje.Year;
@@ -83,7 +83,7 @@ public class ProvisaoService
         {
             if (provisao.UltimoAnoLancado is null || provisao.UltimoMesLancado is null)
             {
-                if (!await EstaFechadoAsync(hoje.Year, hoje.Month))
+                if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
                     criados += await LancarAsync(provisao, hoje.Year, hoje.Month);
 
                 provisao.UltimoMesLancado = hoje.Month;
@@ -98,7 +98,7 @@ public class ProvisaoService
 
             while (atual <= limite)
             {
-                if (!await EstaFechadoAsync(atual.Year, atual.Month))
+                if (!await EstaFechadoAsync(provisao.ContaId, atual.Year, atual.Month))
                     criados += await LancarAsync(provisao, atual.Year, atual.Month);
 
                 provisao.UltimoMesLancado = atual.Month;
@@ -169,6 +169,9 @@ public class ProvisaoService
         return 1;
     }
 
-    private async Task<bool> EstaFechadoAsync(int ano, int mes)
-        => await _db.MesesFechados.AnyAsync(m => m.Ano == ano && m.Mes == mes);
+    private async Task<bool> EstaFechadoAsync(Guid? contaId, int ano, int mes)
+    {
+        if (contaId is null) return false;
+        return await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId.Value && m.Ano == ano && m.Mes == mes);
+    }
 }

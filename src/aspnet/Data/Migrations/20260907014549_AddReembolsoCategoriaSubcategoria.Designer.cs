@@ -3,6 +3,7 @@ using System;
 using Finort.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finort.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907014549_AddReembolsoCategoriaSubcategoria")]
+    partial class AddReembolsoCategoriaSubcategoria
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -584,9 +587,6 @@ namespace Finort.Migrations
                     b.Property<int>("Ano")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("ContaId")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("DataFechamento")
                         .HasColumnType("TEXT");
 
@@ -598,7 +598,7 @@ namespace Finort.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContaId", "Mes", "Ano")
+                    b.HasIndex("Mes", "Ano")
                         .IsUnique();
 
                     b.ToTable("MesesFechados");

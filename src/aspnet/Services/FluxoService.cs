@@ -98,13 +98,17 @@ public class FluxoService
         var mesAnterior = mes == 1 ? 12 : mes - 1;
         var anoAnterior = mes == 1 ? ano - 1 : ano;
 
-        var mesFechadoAnterior = await _db.MesesFechados
-            .FirstOrDefaultAsync(m => m.Mes == mesAnterior && m.Ano == anoAnterior);
+        var chave = ano * 12 + mes;
+        var fechamentosPorConta = await _db.MesesFechados
+            .Where(m => m.Ano * 12 + m.Mes < chave)
+            .GroupBy(m => m.ContaId)
+            .Select(g => g.OrderByDescending(m => m.Ano).ThenByDescending(m => m.Mes).First())
+            .ToListAsync();
 
         decimal saldoAnterior;
-        if (mesFechadoAnterior != null)
+        if (fechamentosPorConta.Count > 0)
         {
-            saldoAnterior = mesFechadoAnterior.SaldoAcumulado;
+            saldoAnterior = fechamentosPorConta.Sum(m => m.SaldoAcumulado);
         }
         else
         {

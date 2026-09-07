@@ -492,7 +492,7 @@ $RECYCLE.BIN/
 # Superpowers SDD scratch workspaces
 .superpowers/
 
-Docs/
+[Dd]ocs/
 
 setup.key
 

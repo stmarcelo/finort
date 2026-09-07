@@ -165,8 +165,8 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<string>("Ultimos4Digitos")
                         .IsRequired()
-                        .HasMaxLength(4)
-                        .HasColumnType("varchar(4)");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("Id");
 
@@ -499,7 +499,13 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<Guid?>("RecorrenciaId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("ReembolsoCategoriaId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid?>("ReembolsoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("ReembolsoSubcategoriaId")
                         .HasColumnType("char(36)");
 
                     b.Property<Guid?>("ReferenciaId")
@@ -536,6 +542,10 @@ namespace Finort.Data.Migrations.MySql
                     b.HasIndex("ProvisaoId");
 
                     b.HasIndex("RecorrenciaId");
+
+                    b.HasIndex("ReembolsoCategoriaId");
+
+                    b.HasIndex("ReembolsoSubcategoriaId");
 
                     b.HasIndex("ReferenciaId");
 
@@ -1255,6 +1265,14 @@ namespace Finort.Data.Migrations.MySql
                         .HasForeignKey("ProjetoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Finort.Models.Financeiro.Categoria", "ReembolsoCategoria")
+                        .WithMany()
+                        .HasForeignKey("ReembolsoCategoriaId");
+
+                    b.HasOne("Finort.Models.Financeiro.Subcategoria", "ReembolsoSubcategoria")
+                        .WithMany()
+                        .HasForeignKey("ReembolsoSubcategoriaId");
+
                     b.HasOne("Finort.Models.Financeiro.Subcategoria", "Subcategoria")
                         .WithMany()
                         .HasForeignKey("SubcategoriaId")
@@ -1269,6 +1287,10 @@ namespace Finort.Data.Migrations.MySql
                     b.Navigation("Pessoa");
 
                     b.Navigation("Projeto");
+
+                    b.Navigation("ReembolsoCategoria");
+
+                    b.Navigation("ReembolsoSubcategoria");
 
                     b.Navigation("Subcategoria");
                 });

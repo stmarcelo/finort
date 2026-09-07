@@ -120,11 +120,14 @@ public class CalendarioServiceTests
         try
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            db.Provisoes.Add(NovaProvisaoMensal(db, dia: 10, valor: 200m));
+            var conta = await new ContaService(db).CriarAsync("Conta", null, null, null);
+            var provisao = NovaProvisaoMensal(db, dia: 10, valor: 200m);
+            provisao.ContaId = conta.Id;
+            db.Provisoes.Add(provisao);
             await db.SaveChangesAsync();
             await new ProvisaoService(db).SincronizarAsync();
             var alvo = hoje.AddMonths(1);
-            db.MesesFechados.Add(new MesFechado { Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
             var service = new CalendarioService(db, new FaturaService(db), new LembreteService(db));
 

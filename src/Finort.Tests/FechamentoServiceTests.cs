@@ -37,7 +37,7 @@ public class FechamentoServiceTests
             await db.SaveChangesAsync();
             var service = new FechamentoService(db);
 
-            var c = await service.ObterConferenciaAsync(conta.Id, hoje.Year, hoje.Month);
+            var c = await service.ObterConferenciaAsync(conta.Id, conta.Nome, hoje.Year, hoje.Month);
 
             Assert.Equal(70m, c.SaldoAcumulado);
             Assert.False(c.TemPendencias);
@@ -72,7 +72,7 @@ public class FechamentoServiceTests
             await db.SaveChangesAsync();
             var service = new FechamentoService(db);
 
-            var c = await service.ObterConferenciaAsync(conta.Id, hoje.Year, hoje.Month);
+            var c = await service.ObterConferenciaAsync(conta.Id, conta.Nome, hoje.Year, hoje.Month);
 
             Assert.True(c.TemPendencias);
         }
@@ -86,7 +86,7 @@ public class FechamentoServiceTests
         try
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            db.MesesFechados.Add(new MesFechado { Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
             var service = new FechamentoService(db);
 
@@ -191,7 +191,7 @@ public class FechamentoServiceTests
     }
 
     [Fact]
-    public async Task Fechar_CascataFechaTodosOsMesesAnterioresAbertos()
+    public async Task Fechar_FechaApenasOMesInformado()
     {
         var (db, file, conta) = await SetupAsync();
         try
@@ -205,11 +205,72 @@ public class FechamentoServiceTests
 
             await service.FecharAsync(conta.Id, hoje.Year, hoje.Month, saldoReal: 1000m);
 
-            var esperados = new HashSet<int>();
-            for (var p = new DateOnly(tresMesesAtras.Year, tresMesesAtras.Month, 1); p <= inicioMes; p = p.AddMonths(1))
-                esperados.Add(p.Year * 12 + p.Month);
-            var reais = db.MesesFechados.ToList().Select(m => m.Ano * 12 + m.Mes).ToHashSet();
-            Assert.True(esperados.SetEquals(reais));
+            Assert.Single(db.MesesFechados.ToList());
+            Assert.True(db.MesesFechados.Any(m => m.ContaId == conta.Id && m.Ano == hoje.Year && m.Mes == hoje.Month));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task Reabrir_RemoveTodosOsRegistrosDoMes()
+    {
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var conta2 = new Conta { Nome = "Outro banco" };
+            db.Contas.Add(conta2);
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta2.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+            var service = new FechamentoService(db);
+
+            await service.ReabrirAsync(hoje.Year, hoje.Month);
+
+            Assert.Empty(db.MesesFechados.ToList());
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterUltimoMesFechado_RetornaMesMaisRecente()
+    {
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month - 1, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+            var service = new FechamentoService(db);
+
+            var resultado = await service.ObterUltimoMesFechadoAsync();
+
+            Assert.NotNull(resultado);
+            Assert.Equal(hoje.Year, resultado!.Value.Ano);
+            Assert.Equal(hoje.Month, resultado.Value.Mes);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task Fechar_CloseOnlyTargetAccount()
+    {
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var inicioMes = new DateOnly(hoje.Year, hoje.Month, 1);
+            var conta2 = new Conta { Nome = "Outro banco" };
+            db.Contas.Add(conta2);
+            db.Lancamentos.Add(Novo(inicioMes.AddDays(1), 100m, true, CategoriaId(db), conta.Id));
+            await db.SaveChangesAsync();
+            var service = new FechamentoService(db);
+
+            await service.FecharAsync(conta.Id, hoje.Year, hoje.Month, saldoReal: 100m);
+
+            Assert.Single(db.MesesFechados.ToList());
+            Assert.Equal(conta.Id, db.MesesFechados.First().ContaId);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

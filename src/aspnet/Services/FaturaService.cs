@@ -198,7 +198,7 @@ public class FaturaService
             ReferenciaId = referenciaId
         };
 
-        await ReabrirMesesAPartirDeAsync(piso);
+        await ReabrirMesesAPartirDeAsync(contaOrigemId, piso);
         _db.Lancamentos.AddRange(origem, destino);
         if (rollover is not null) _db.Lancamentos.Add(rollover);
         await _db.SaveChangesAsync();
@@ -216,11 +216,11 @@ public class FaturaService
     }
 
     /// <summary>Reabre o mês do piso e todos os posteriores, removendo MesFechado em cascata.</summary>
-    private async Task ReabrirMesesAPartirDeAsync(DateOnly piso)
+    private async Task ReabrirMesesAPartirDeAsync(Guid contaId, DateOnly piso)
     {
         var chave = piso.Year * 12 + piso.Month;
         var alvo = await _db.MesesFechados
-            .Where(m => m.Ano * 12 + m.Mes >= chave)
+            .Where(m => m.ContaId == contaId && m.Ano * 12 + m.Mes >= chave)
             .ToListAsync();
         _db.MesesFechados.RemoveRange(alvo);
     }
@@ -268,8 +268,9 @@ public class FaturaService
             throw new InvalidOperationException("Pagamento não encontrado.");
 
         var piso = pernas.Min(l => new DateOnly(l.Data.Year, l.Data.Month, 1));
+        var contaId = pernas.FirstOrDefault(l => l.ContaId is not null)?.ContaId;
         _db.Lancamentos.RemoveRange(pernas);
-        await ReabrirMesesAPartirDeAsync(piso);
+        await ReabrirMesesAPartirDeAsync(contaId ?? Guid.Empty, piso);
         await _db.SaveChangesAsync();
     }
 

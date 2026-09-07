@@ -49,6 +49,14 @@ public class Lancamento
     /// <summary>No despesa: aponta para o lançamento de receita do reembolso.</summary>
     public Guid? ReembolsoId { get; set; }
 
+    /// <summary>Categoria do lançamento de reembolso.</summary>
+    public Guid? ReembolsoCategoriaId { get; set; }
+    public Categoria? ReembolsoCategoria { get; set; }
+
+    /// <summary>Subcategoria do lançamento de reembolso.</summary>
+    public Guid? ReembolsoSubcategoriaId { get; set; }
+    public Subcategoria? ReembolsoSubcategoria { get; set; }
+
     /// <summary>Preenchido quando o lançamento foi gerado por uma provisão.</summary>
     public Guid? ProvisaoId { get; set; }
 

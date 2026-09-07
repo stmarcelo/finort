@@ -11,4 +11,13 @@ public class ContaResumo
 
     /// <summary>Soma de todos os lançamentos (confirmados + provisões).</summary>
     public decimal SaldoPrevisto { get; set; }
+
+    /// <summary>Mês do último fechamento (null se nunca fechou).</summary>
+    public int? UltimoMesFechado { get; set; }
+
+    /// <summary>Ano do último fechamento (null se nunca fechou).</summary>
+    public int? UltimoAnoFechado { get; set; }
+
+    /// <summary>Saldo acumulado no último fechamento.</summary>
+    public decimal? SaldoFechado { get; set; }
 }

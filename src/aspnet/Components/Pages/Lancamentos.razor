@@ -332,6 +332,15 @@
 
     private async Task Excluir(Lancamento lancamento)
     {
+        bool ehParcelamento = lancamento.ParcelamentoId.HasValue;
+        bool ehRecorrencia = lancamento.RecorrenciaId.HasValue;
+
+        if (ehParcelamento || ehRecorrencia)
+        {
+            await ExcluirGrupo(lancamento, ehParcelamento);
+            return;
+        }
+
         var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
             $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?", "Excluir",
             null, "Cancelar",
@@ -341,6 +350,43 @@
         try
         {
             await LancamentoService.ExcluirAsync(lancamento.Id);
+            await CarregarAsync();
+        }
+        catch (LancamentoConfirmadoException ex)
+        {
+            var nomes = string.Join("; ", ex.Confirmados.Select(l => $"{l.Data:dd/MM/yyyy} — {l.Valor.ToString("N2")}"));
+            Snackbar.Add($"Não é possível excluir lançamento(s) confirmado(s): {nomes}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ExcluirGrupo(Lancamento lancamento, bool ehParcelamento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir grupo",
+            "Deseja excluir também os lançamentos futuros não confirmados?",
+            "Sim, excluir todos", "Não, apenas este", "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+
+        if (confirm is null) return;
+
+        try
+        {
+            bool excluirTodos = confirm == true;
+            if (excluirTodos)
+            {
+                Guid? grupoId = ehParcelamento ? lancamento.ParcelamentoId : lancamento.RecorrenciaId;
+                if (grupoId.HasValue)
+                    await LancamentoService.ExcluirGrupoAsync(grupoId.Value, ehParcelamento);
+                else
+                    await LancamentoService.ExcluirAsync(lancamento.Id);
+            }
+            else
+            {
+                await LancamentoService.ExcluirAsync(lancamento.Id);
+            }
             await CarregarAsync();
         }
         catch (LancamentoConfirmadoException ex)

@@ -150,7 +150,7 @@ public class FluxoServiceTests
             var alvo = hoje.AddMonths(1);
             var cat = CategoriaId(db);
             var mesPassado = hoje.AddMonths(-1);
-            db.MesesFechados.Add(new MesFechado { Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
             db.Lancamentos.Add(Novo(hoje, 1000m, LancamentoTipo.Receita, cat, conta.Id));
             var provisao = new Provisao
             {

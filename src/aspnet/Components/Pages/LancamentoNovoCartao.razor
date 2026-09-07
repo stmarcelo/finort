@@ -40,7 +40,8 @@
                 d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
                 d.Parcelas, d.ReembolsoPessoaId, reembolsoVencimento: null,
                 vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: d.ReembolsoContaId,
-                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
+                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId,
+                reembolsoCategoriaId: d.ReembolsoCategoriaId, reembolsoSubcategoriaId: d.ReembolsoSubcategoriaId);
             Snackbar.Add("Lançamento salvo.", Severity.Success);
             Navigation.NavigateTo("/lancamentos");
         }

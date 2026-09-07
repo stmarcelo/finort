@@ -46,8 +46,10 @@ public class ProvisaoAgendaTests
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var alvo = hoje.AddMonths(1);
-            db.MesesFechados.Add(new MesFechado { Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
+            var conta = await new ContaService(db).CriarAsync("Conta", null, null, null);
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = alvo.Year, Mes = alvo.Month, DataFechamento = DateTime.Now });
             var provisao = NovaProvisao(db, dia: 10, valor: 200m);
+            provisao.ContaId = conta.Id;
             provisao.UltimoMesLancado = hoje.Month;
             provisao.UltimoAnoLancado = hoje.Year;
             db.Provisoes.Add(provisao);

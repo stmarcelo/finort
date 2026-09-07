@@ -105,6 +105,7 @@ public class ProvisaoServiceTests
             db.Provisoes.Add(provisao);
             db.MesesFechados.Add(new MesFechado
             {
+                ContaId = conta.Id,
                 Mes = hoje.Month,
                 Ano = hoje.Year,
                 DataFechamento = DateTime.Now

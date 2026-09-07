@@ -33,17 +33,28 @@ public class ContaService
             })
             .ToListAsync();
 
+        var ultimosFechamentos = await _db.MesesFechados
+            .GroupBy(m => m.ContaId)
+            .Select(g => g.OrderByDescending(m => m.Ano).ThenByDescending(m => m.Mes).First())
+            .ToListAsync();
+
         var mapa = saldos.ToDictionary(s => s.ContaId);
+        var fechamentoPorConta = ultimosFechamentos.ToDictionary(f => f.ContaId);
         return contas.Select(c =>
         {
             mapa.TryGetValue(c.Id, out var s);
+            fechamentoPorConta.TryGetValue(c.Id, out var fechamento);
+
             return new ContaResumo
             {
                 Id = c.Id,
                 Nome = c.Nome,
                 Banco = c.Banco,
                 SaldoReal = s?.Real ?? 0m,
-                SaldoPrevisto = s?.Previsto ?? 0m
+                SaldoPrevisto = s?.Previsto ?? 0m,
+                UltimoMesFechado = fechamento?.Mes,
+                UltimoAnoFechado = fechamento?.Ano,
+                SaldoFechado = fechamento?.SaldoAcumulado
             };
         }).ToList();
     }

@@ -353,9 +353,17 @@ public class InvestimentoService
 
         var piso = new DateOnly(movimento.Data.Year, movimento.Data.Month, 1);
         var chave = piso.Year * 12 + piso.Month;
-        var mesesFechados = await _db.MesesFechados
-            .Where(mf => mf.Ano * 12 + mf.Mes >= chave)
-            .ToListAsync();
+        Guid? contaId = null;
+        if (movimento.LancamentoId is not null)
+        {
+            var lancamento = await _db.Lancamentos.FirstAsync(l => l.Id == movimento.LancamentoId);
+            contaId = lancamento.ContaId;
+        }
+        var mesesFechadosQuery = _db.MesesFechados
+            .Where(mf => mf.Ano * 12 + mf.Mes >= chave);
+        if (contaId.HasValue)
+            mesesFechadosQuery = mesesFechadosQuery.Where(mf => mf.ContaId == contaId.Value);
+        var mesesFechados = await mesesFechadosQuery.ToListAsync();
         _db.MesesFechados.RemoveRange(mesesFechados);
 
         _db.InvestimentosMovimentos.Remove(movimento);
