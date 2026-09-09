@@ -14,4 +14,6 @@ public sealed record FluxoMensal(
     decimal SaldoMes,
     decimal SaldoAcumulado,
     bool ReceitasPagas = false,
-    bool DespesasPagas = false);
+    bool DespesasPagas = false,
+    decimal TotalReembolsos = 0m,
+    string LabelReembolsos = "Reembolsos");

@@ -391,16 +391,51 @@
 
     private async Task ExcluirLancamento(Lancamento lancamento)
     {
-        var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
-            $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?", "Excluir",
-            null, "Cancelar",
-            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
-        if (confirm != true) return;
+        bool excluirGrupo = false;
+
+        if (lancamento.ParcelamentoId.HasValue)
+        {
+            var temFuturos = await LancamentoService.TemLancamentosFuturosNoGrupoAsync(
+                lancamento.Id, lancamento.ParcelamentoId.Value);
+
+            if (temFuturos)
+            {
+                var confirm = await DialogService.ShowMessageBox("Excluir parcelas",
+                    $"Excluir esta parcela ({lancamento.ParcelaAtual}/{lancamento.TotalParcelas}) e todas as parcelas futuras não confirmadas?",
+                    "Excluir todas", "Excluir apenas esta", "Cancelar",
+                    new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+                if (confirm is null) return;
+                excluirGrupo = confirm == true;
+            }
+            else
+            {
+                var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
+                    $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?",
+                    "Excluir", null, "Cancelar",
+                    new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+                if (confirm != true) return;
+            }
+        }
+        else
+        {
+            var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
+                $"Excluir lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Valor.ToString("N2")})?",
+                "Excluir", null, "Cancelar",
+                new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+            if (confirm != true) return;
+        }
 
         try
         {
-            await LancamentoService.ExcluirAsync(lancamento.Id);
-            Snackbar.Add("Lançamento excluído.", Severity.Success);
+            if (excluirGrupo && lancamento.ParcelamentoId.HasValue)
+            {
+                await LancamentoService.ExcluirGrupoAsync(lancamento.ParcelamentoId.Value, ehParcelamento: true);
+            }
+            else
+            {
+                await LancamentoService.ExcluirAsync(lancamento.Id);
+            }
+            Snackbar.Add("Lançamento(s) excluído(s).", Severity.Success);
             await CarregarAsync();
         }
         catch (LancamentoConfirmadoException ex)

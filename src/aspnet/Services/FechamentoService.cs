@@ -36,13 +36,21 @@ public class FechamentoService
             .Where(l => l.ContaId == contaId && l.Confirmado && l.Data <= fim)
             .SumAsync(l => (decimal?)l.Valor) ?? 0m;
 
-        var temPendencias = await _db.Lancamentos
-            .AnyAsync(l => l.ContaId == contaId && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+        // Launches with this account, not credit card
+        var temPendenciasConta = await _db.Lancamentos
+            .AnyAsync(l => l.ContaId == contaId && l.CartaoCreditoId == null
+                && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+
+        // Launches without any account, not credit card
+        var temPendenciasSemConta = await _db.Lancamentos
+            .AnyAsync(l => l.ContaId == null && l.CartaoCreditoId == null
+                && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
 
         var mesFechado = await _db.MesesFechados
             .AnyAsync(m => m.ContaId == contaId && m.Ano == ano && m.Mes == mes);
 
-        return new ConferenciaMes(contaId, nomeConta, ano, mes, saldoAcumulado, temPendencias, mesFechado);
+        return new ConferenciaMes(contaId, nomeConta, ano, mes, saldoAcumulado,
+            temPendenciasConta || temPendenciasSemConta, mesFechado);
     }
 
     public async Task FecharAsync(Guid contaId, int ano, int mes, decimal saldoReal)
@@ -54,9 +62,18 @@ public class FechamentoService
         var fim = inicio.AddMonths(1).AddDays(-1);
 
         var pendentes = await _db.Lancamentos
-            .CountAsync(l => l.ContaId == contaId && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+            .CountAsync(l => l.ContaId == contaId && l.CartaoCreditoId == null
+                && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
         if (pendentes > 0)
             throw new InvalidOperationException($"Existem {pendentes} lançamento(s) não confirmado(s) neste mês.");
+
+        var pendentesSemConta = await _db.Lancamentos
+            .CountAsync(l => l.ContaId == null && l.CartaoCreditoId == null
+                && !l.Confirmado && l.Data >= inicio && l.Data <= fim);
+        if (pendentesSemConta > 0)
+            throw new InvalidOperationException(
+                $"Existem {pendentesSemConta} lançamento(s) sem conta vinculada não confirmado(s). " +
+                "Vincule uma conta ou confirme/exclua-os antes de fechar o mês.");
 
         var saldoAcumulado = await _db.Lancamentos
             .Where(l => l.ContaId == contaId && l.Confirmado && l.Data <= fim)

@@ -32,12 +32,15 @@ public class FaturaServiceTests
             await lancamentoService.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 8, 6), 50m,
                 Renda(db).Id, null, null, null, null, null);
 
-            // compra dia 6 >= melhorDia 5 → vencimento mês+1 = set/2026
+            // compra dia 6 >= melhorDia 5 → vencimento mês+2 = out/2026
             var setembro = await service.ObterLancamentosAsync(cartao.Id, 2026, 9);
             var agosto = await service.ObterLancamentosAsync(cartao.Id, 2026, 8);
 
-            Assert.Single(setembro);
+            Assert.Empty(setembro);
             Assert.Empty(agosto);
+
+            var outubro = await service.ObterLancamentosAsync(cartao.Id, 2026, 10);
+            Assert.Single(outubro);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -51,8 +54,8 @@ public class FaturaServiceTests
             await lancamentoService.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 8, 6), 30.25m,
                 Renda(db).Id, null, null, null, null, null);
 
-            // compra dia 6 >= melhorDia 5 → vencimento mês+1 = set/2026
-            var total = await service.SomarAsync(cartao.Id, 2026, 9);
+            // compra dia 6 >= melhorDia 5 → vencimento mês+2 = out/2026
+            var total = await service.SomarAsync(cartao.Id, 2026, 10);
 
             Assert.Equal(-30.25m, total);
         }
@@ -68,12 +71,12 @@ public class FaturaServiceTests
             await lancamentoService.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 8, 6), 50m,
                 Renda(db).Id, null, null, null, null, null);
 
-            // compra dia 6 >= melhorDia 5 → vencimento mês+1 = set/2026
+            // compra dia 6 >= melhorDia 5 → vencimento mês+2 = out/2026
             var ex = await Assert.ThrowsAsync<FaturaComPendentesException>(
-                () => service.FecharAsync(cartao.Id, 2026, 9));
+                () => service.FecharAsync(cartao.Id, 2026, 10));
 
             Assert.Single(ex.Pendentes);
-            Assert.False(await service.EhFechadaAsync(cartao.Id, 2026, 9));
+            Assert.False(await service.EhFechadaAsync(cartao.Id, 2026, 10));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -88,14 +91,14 @@ public class FaturaServiceTests
                 75m, Renda(db).Id, null, null, null, null, null);
             foreach (var d in despesas) await lancamentoService.AlternarConfirmadoAsync(d.Id);
 
-            // compra dia 6 >= melhorDia 5 → vencimento mês+1 = set/2026
-            var fatura = await service.FecharAsync(cartao.Id, 2026, 9);
+            // compra dia 6 >= melhorDia 5 → vencimento mês+2 = out/2026
+            var fatura = await service.FecharAsync(cartao.Id, 2026, 10);
 
             Assert.True(fatura.Fechada);
             Assert.NotNull(fatura.DataFechamento);
             Assert.Equal(-75m, fatura.ValorTotal);
-            Assert.True(await service.EhFechadaAsync(cartao.Id, 2026, 9));
-            Assert.NotNull(await service.ObterFechadaAsync(cartao.Id, 2026, 9));
+            Assert.True(await service.EhFechadaAsync(cartao.Id, 2026, 10));
+            Assert.NotNull(await service.ObterFechadaAsync(cartao.Id, 2026, 10));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -106,18 +109,20 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra dia 6 >= melhorDia 5 → vencimento mês+2
+            // mes=7: compra 06/06 → vencimento 08/2026; mes=8: 06/07 → 09; mes=9: 06/08 → 10
             for (var mes = 7; mes <= 9; mes++)
             {
                 var despesas = await lancamentoService.CriarDespesaCartaoAsync(
                     cartao.Id, new DateOnly(2026, mes - 1, 6), 10m * mes,
                     Renda(db).Id, null, null, null, null, null);
                 foreach (var d in despesas) await lancamentoService.AlternarConfirmadoAsync(d.Id);
-                await service.FecharAsync(cartao.Id, 2026, mes);
+                await service.FecharAsync(cartao.Id, 2026, mes + 1);
             }
 
             var historico = await service.ListarFechadasAsync(cartao.Id);
 
-            Assert.Equal(new[] { 9, 8, 7 }, historico.Select(f => f.MesReferencia));
+            Assert.Equal(new[] { 10, 9, 8 }, historico.Select(f => f.MesReferencia));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -144,10 +149,11 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
 
-            // fatura set/2026 (vencimento 10/09); pagamento em outubro → destino clampado ao mês de referência
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; pagamento em outubro → destino clampado ao mês de referência
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 75m);
 
             Assert.Equal(2, pernas.Count);
@@ -163,7 +169,7 @@ public class FaturaServiceTests
             Assert.Equal(75m, destino.Valor);
             Assert.Null(destino.ContaId);
             Assert.Equal(2026, destino.Data.Year);
-            Assert.Equal(9, destino.Data.Month);
+            Assert.Equal(10, destino.Data.Month);
 
             Assert.All(pernas, p =>
             {
@@ -185,8 +191,9 @@ public class FaturaServiceTests
             await lancamentoService.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 8, 6), 50m,
                 Renda(db).Id, null, null, null, null, null);
 
+            // compra 06/08 → vencimento out/2026
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db), new DateOnly(2026, 10, 5), 50m));
+                () => service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db), new DateOnly(2026, 10, 5), 50m));
 
             Assert.Contains("Somente faturas fechadas", ex.Message);
         }
@@ -199,17 +206,18 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
 
-            // fatura set/2026; rollover cai na fatura seguinte (out/2026)
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; rollover cai na fatura seguinte (nov/2026)
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 50m);
 
             var rollover = pernas.Single(p => p.CartaoCreditoId != null && p.Valor < 0m);
             Assert.Equal(-25m, rollover.Valor);
             Assert.True(rollover.Confirmado);
             Assert.Equal(2026, rollover.Data.Year);
-            Assert.Equal(10, rollover.Data.Month);
+            Assert.Equal(11, rollover.Data.Month);
             Assert.Equal(pernas[0].ReferenciaId, rollover.ReferenciaId);
         }
         finally { TestDbContext.Cleanup(db, file); }
@@ -221,10 +229,11 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
 
-            // fatura set/2026; pagamento integral em outubro, sem rollover
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; pagamento integral em outubro, sem rollover
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 75m);
 
             Assert.DoesNotContain(pernas, p => p.CartaoCreditoId != null && p.Valor < 0m);
@@ -239,17 +248,18 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
             var contaId = ContaUnica(db);
-            foreach (var mes in new[] { 7, 8, 9 })
+            foreach (var mes in new[] { 8, 9, 10 })
                 db.MesesFechados.Add(new MesFechado { ContaId = contaId, Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
-            // data em outubro, ref setembro → piso = setembro → reabre set e mantém jul/ago
-            await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db), new DateOnly(2026, 10, 5), 75m);
+            // data em outubro, ref outubro → piso = outubro → reabre out e mantém ago/set
+            await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db), new DateOnly(2026, 10, 5), 75m);
 
             var fechados = db.MesesFechados.ToList().Select(m => m.Mes).OrderBy(m => m).ToList();
-            Assert.Equal(new[] { 7, 8 }, fechados);
+            Assert.Equal(new[] { 8, 9 }, fechados);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -260,20 +270,21 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
-            // fatura seguinte (out/2026) já fechada → rollover pula para nov/2026
+            // fatura seguinte (nov/2026) já fechada → rollover pula para dez/2026
             db.Faturas.Add(new Fatura
             {
-                CartaoCreditoId = cartao.Id, AnoReferencia = 2026, MesReferencia = 10,
+                CartaoCreditoId = cartao.Id, AnoReferencia = 2026, MesReferencia = 11,
                 ValorTotal = -999m, Fechada = true, DataFechamento = DateTime.Now
             });
             await db.SaveChangesAsync();
 
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 50m);
 
             var rollover = pernas.Single(p => p.CartaoCreditoId != null && p.Valor < 0m);
-            Assert.Equal(11, rollover.Data.Month);
+            Assert.Equal(12, rollover.Data.Month);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -284,17 +295,18 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
 
-            // fatura set/2026; dois pagamentos parciais sucessivos em outubro
-            var grupo1 = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; dois pagamentos parciais sucessivos em outubro
+            var grupo1 = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 30m);
-            var grupo2 = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            var grupo2 = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 15), 20m);
 
             Assert.NotEqual(grupo1[0].ReferenciaId, grupo2[0].ReferenciaId);
 
-            var pagamentos = await service.ObterPagamentosAsync(cartao.Id, 2026, 9);
+            var pagamentos = await service.ObterPagamentosAsync(cartao.Id, 2026, 10);
             Assert.Equal(2, pagamentos.Count);
             Assert.Equal(50m, pagamentos.Sum(p => p.ValorPago));
 
@@ -316,12 +328,13 @@ public class FaturaServiceTests
         try
         {
             var conta = db.Contas.First();
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
-            // fatura set/2026; pagamentos em 05/10 e 15/10
-            await service.PagarAsync(cartao.Id, 2026, 9, conta.Id, new DateOnly(2026, 10, 5), 30m);
-            await service.PagarAsync(cartao.Id, 2026, 9, conta.Id, new DateOnly(2026, 10, 15), 20m);
+            // fatura out/2026; pagamentos em 05/10 e 15/10
+            await service.PagarAsync(cartao.Id, 2026, 10, conta.Id, new DateOnly(2026, 10, 5), 30m);
+            await service.PagarAsync(cartao.Id, 2026, 10, conta.Id, new DateOnly(2026, 10, 15), 20m);
 
-            var pagamentos = await service.ObterPagamentosAsync(cartao.Id, 2026, 9);
+            var pagamentos = await service.ObterPagamentosAsync(cartao.Id, 2026, 10);
 
             Assert.Equal(2, pagamentos.Count);
             Assert.Equal(new DateOnly(2026, 10, 15), pagamentos[0].DataPagamento);
@@ -337,14 +350,15 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
             var contaId = ContaUnica(db);
             foreach (var mes in new[] { 10, 11 })
                 db.MesesFechados.Add(new MesFechado { ContaId = contaId, Ano = 2026, Mes = mes, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
 
-            // fatura set/2026; pagamento em outubro → pernas origem + destino + rollover
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; pagamento em outubro → pernas origem + destino + rollover
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 50m);
             Assert.Equal(3, pernas.Count);
 
@@ -352,7 +366,7 @@ public class FaturaServiceTests
 
             Assert.Empty(db.Lancamentos.Where(l => l.Tipo == LancamentoTipo.Transferencia).ToList());
             Assert.Single(db.Lancamentos.ToList());
-            Assert.Empty(db.MesesFechados.Where(m => m.Ano == 2026 && m.Mes >= 9).ToList());
+            Assert.Empty(db.MesesFechados.Where(m => m.Ano == 2026 && m.Mes >= 10).ToList());
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -363,28 +377,28 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
-            // faturas fechadas: jun -100, jul -50, ago -40 (compra dia 6 >= melhorDia 5 → venc mês+1)
+            // faturas fechadas: jul -100, ago -50, set -40 (compra dia 6 >= melhorDia 5 → venc mês+2)
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 5, 100m);
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 6, 50m);
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 7, 40m);
-            // jun paga integral; jul parcial (rollover cai em set pois ago já tem fatura fechada)
-            await service.PagarAsync(cartao.Id, 2026, 6, ContaUnica(db), new DateOnly(2026, 7, 1), 100m);
-            await service.PagarAsync(cartao.Id, 2026, 7, ContaUnica(db), new DateOnly(2026, 8, 1), 20m);
+            // jul paga integral; ago parcial (rollover cai em out pois set já tem fatura fechada)
+            await service.PagarAsync(cartao.Id, 2026, 7, ContaUnica(db), new DateOnly(2026, 8, 1), 100m);
+            await service.PagarAsync(cartao.Id, 2026, 8, ContaUnica(db), new DateOnly(2026, 9, 1), 20m);
 
             var situacoes = await service.ObterSituacoesAsync(cartao.Id);
 
-            var junho = situacoes.Single(s => s.MesReferencia == 6);
             var julho = situacoes.Single(s => s.MesReferencia == 7);
             var agosto = situacoes.Single(s => s.MesReferencia == 8);
-            Assert.True(junho.Paga);
-            Assert.False(junho.Parcial);
-            Assert.Equal(100m, junho.Pago);
-            Assert.False(julho.Paga);
-            Assert.True(julho.Parcial);
-            Assert.Equal(20m, julho.Pago);
+            var setembro = situacoes.Single(s => s.MesReferencia == 9);
+            Assert.True(julho.Paga);
+            Assert.False(julho.Parcial);
+            Assert.Equal(100m, julho.Pago);
             Assert.False(agosto.Paga);
-            Assert.False(agosto.Parcial);
-            Assert.Equal(0m, agosto.Pago);
+            Assert.True(agosto.Parcial);
+            Assert.Equal(20m, agosto.Pago);
+            Assert.False(setembro.Paga);
+            Assert.False(setembro.Parcial);
+            Assert.Equal(0m, setembro.Pago);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -395,9 +409,10 @@ public class FaturaServiceTests
         var (db, file, lancamentoService, service, cartao) = await SetupAsync();
         try
         {
+            // compra 06/08 → vencimento out/2026
             await FecharFaturaDeTesteAsync(lancamentoService, service, cartao, Renda(db), 2026, 8, 75m);
-            // fatura set/2026; pagamento em outubro
-            var pernas = await service.PagarAsync(cartao.Id, 2026, 9, ContaUnica(db),
+            // fatura out/2026; pagamento em outubro
+            var pernas = await service.PagarAsync(cartao.Id, 2026, 10, ContaUnica(db),
                 new DateOnly(2026, 10, 5), 75m);
             var destino = pernas.Single(p => p.CartaoCreditoId != null);
 

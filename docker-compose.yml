@@ -4,6 +4,8 @@ services:
     container_name: finort
     ports:
       - "5298:5298"
+    environment:
+      - TZ=America/Sao_Paulo
     volumes:
       - finort-data:/app/data
     restart: unless-stopped

@@ -129,14 +129,38 @@ public class CartaoCreditoService
         await _db.SaveChangesAsync();
     }
 
-    /// <summary>Ciclo fatura: dia &lt; melhorDia → vencimento neste mês; dia &gt;= melhorDia → vencimento mês seguinte.</summary>
     public static DateOnly CalcularVencimento(CartaoCredito cartao, DateOnly dataCompra)
     {
-        var mes = dataCompra.Day < cartao.MelhorDiaCompra
-            ? dataCompra
-            : dataCompra.AddMonths(1);
-        var ultimoDia = DateTime.DaysInMonth(mes.Year, mes.Month);
-        return new DateOnly(mes.Year, mes.Month, Math.Min(cartao.DiaVencimento, ultimoDia));
+        var dl = dataCompra.Day;
+        var md = cartao.MelhorDiaCompra;
+        var dv = cartao.DiaVencimento;
+
+        // pf-a: md/ml-1 até md-1/ml
+        var pfAInicio = dataCompra.AddMonths(-1);
+        pfAInicio = new DateOnly(pfAInicio.Year, pfAInicio.Month, md);
+        var pfAFim = new DateOnly(dataCompra.Year, dataCompra.Month, md).AddDays(-1);
+
+        // pf-b: md/ml até md-1/ml+1
+        var pfBInicio = new DateOnly(dataCompra.Year, dataCompra.Month, md);
+        var pfBFim = new DateOnly(dataCompra.Year, dataCompra.Month, md).AddMonths(1).AddDays(-1);
+
+        DateOnly vcto;
+        if (dataCompra >= pfAInicio && dataCompra <= pfAFim)
+        {
+            vcto = new DateOnly(pfAFim.Year, pfAFim.Month,
+                Math.Min(dv, DateTime.DaysInMonth(pfAFim.Year, pfAFim.Month)));
+        }
+        else
+        {
+            vcto = new DateOnly(pfBFim.Year, pfBFim.Month,
+                Math.Min(dv, DateTime.DaysInMonth(pfBFim.Year, pfBFim.Month)));
+        }
+
+        // Se dv < md, antecipa +1 mês
+        if (dv < md)
+            vcto = vcto.AddMonths(1);
+
+        return vcto;
     }
 
     private static void ValidarDias(int melhorDiaCompra, int diaVencimento)

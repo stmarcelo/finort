@@ -22,38 +22,84 @@ public class FluxoService
         var inicioMes = new DateOnly(ano, mes, 1);
         var fimMes = inicioMes.AddMonths(1).AddDays(-1);
 
-        // Janela de despesas: deslocada D dias para evitar dupla contagem entre meses
-        // Mês M mostra de M/1+D até M/last+D (dias 1..D ficam no mês anterior)
-        var inicioMesDespesas = inicioMes.AddDays(diasAntecipacao);
-        var fimMesDespesas = fimMes.AddDays(diasAntecipacao);
+        var proximoMes = mes == 12 ? 1 : mes + 1;
+        var proximoAno = mes == 12 ? ano + 1 : ano;
+
+        // Janela de despesas/reembolsos: mês atual a partir de D+1 + mês seguinte até D
+        // Mês M mostra de M/(D+1) até (M+1)/D
+        // M-1 mostra de M/1 até M/D (antecipados)
+        DateOnly inicioJanela;
+        DateOnly fimJanela;
+        if (diasAntecipacao > 0)
+        {
+            inicioJanela = new DateOnly(ano, mes, Math.Min(diasAntecipacao + 1, DateTime.DaysInMonth(ano, mes)));
+            var ultimoDiaProximo = DateTime.DaysInMonth(proximoAno, proximoMes);
+            fimJanela = new DateOnly(proximoAno, proximoMes,
+                Math.Min(diasAntecipacao, ultimoDiaProximo));
+        }
+        else
+        {
+            inicioJanela = inicioMes;
+            fimJanela = fimMes;
+        }
 
         var lancamentos = await _db.Lancamentos
-            .Where(l => l.Data <= fimMesDespesas)
+            .Where(l => l.Data <= fimJanela)
             .Select(l => new
             {
+                l.Id,
                 l.Data,
                 l.DataVencimentoCartao,
                 l.Tipo,
                 l.Valor,
                 l.Confirmado,
                 l.CartaoCreditoId,
+                l.ReembolsoId,
                 BancoCartao = l.CartaoCredito != null ? l.CartaoCredito.Banco : null,
                 DigitosCartao = l.CartaoCredito != null ? l.CartaoCredito.Ultimos4Digitos : null
             })
             .ToListAsync();
 
-        var projecoesMes = await ProvisaoAgenda.ProjetarAsync(_db, inicioMes, fimMesDespesas);
-        var projecoesAnteriores = await ProvisaoAgenda.ProjetarAsync(_db, PisoHistorico, inicioMesDespesas.AddDays(-1));
+        var projecoesMes = await ProvisaoAgenda.ProjetarAsync(_db, inicioJanela, fimJanela);
+        var projecoesAnteriores = await ProvisaoAgenda.ProjetarAsync(_db, PisoHistorico, inicioMes.AddDays(-1));
 
-        // Despesas de conta: janela deslocada por D
+        // Despesas de conta: mês atual + mês seguinte até diasAntecipacao
         var despesasDoMes = lancamentos
-            .Where(l => l.Data >= inicioMesDespesas && l.Data <= fimMesDespesas && l.Tipo == LancamentoTipo.Despesa)
+            .Where(l => l.Data >= inicioJanela && l.Data <= fimJanela && l.Tipo == LancamentoTipo.Despesa)
             .ToList();
 
-        // Receitas: sempre no mês original (sem antecipação)
-        var receitasDoMes = lancamentos
-            .Where(l => l.Data >= inicioMes && l.Data <= fimMes && l.Tipo == LancamentoTipo.Receita)
+        // IDs de receitas que são reembolsos (apontadas por ReembolsoId de despesas de cartão)
+        var idsReembolso = lancamentos
+            .Where(l => l.ReembolsoId.HasValue)
+            .Select(l => l.ReembolsoId!.Value)
+            .ToHashSet();
+
+        // Receitas normais: janela original do mês (sem reembolsos)
+        var receitasNormais = lancamentos
+            .Where(l => l.Data >= inicioMes && l.Data <= fimMes
+                        && l.Tipo == LancamentoTipo.Receita && !idsReembolso.Contains(l.Id))
             .ToList();
+
+        // Reembolsos: buscar despesas de cartão na janela e pegar seus ReembolsoId
+        // (o reembolso acompanha o vencimento do cartão, não sua própria data)
+        var despesasCartaoNaJanela = lancamentos
+            .Where(l => l.CartaoCreditoId != null && l.Tipo == LancamentoTipo.Despesa
+                        && l.DataVencimentoCartao >= inicioJanela && l.DataVencimentoCartao <= fimJanela
+                        && l.ReembolsoId.HasValue)
+            .Select(l => l.ReembolsoId!.Value)
+            .ToHashSet();
+
+        var reembolsosLista = lancamentos
+            .Where(l => despesasCartaoNaJanela.Contains(l.Id))
+            .ToList();
+        var totalReembolsos = reembolsosLista.Sum(l => l.Valor);
+
+        // Label para exibição
+        var labelReembolsos = diasAntecipacao > 0
+            ? $"Reembolsos (inclui até {fimJanela.Day:D2}/{fimJanela.Month:D2})"
+            : "Reembolsos";
+
+        var receitasDoMes = receitasNormais.Concat(reembolsosLista).ToList();
 
         var receitas = receitasDoMes.Sum(l => l.Valor)
             + projecoesMes.Where(p => p.Data <= fimMes).Sum(p => p.Provisao.Onde == ProvisaoOnde.Receita ? p.Provisao.Valor : 0m);
@@ -63,16 +109,16 @@ public class FluxoService
         var despesasPagas = despesasDoMes.Count > 0 && despesasDoMes.All(l => l.Confirmado);
 
         var despesas = -despesasDoMes.Sum(l => l.Valor)
-            + projecoesMes.Where(p => p.Data >= inicioMesDespesas && p.Data <= fimMesDespesas && p.Provisao.Onde != ProvisaoOnde.Receita)
+            + projecoesMes.Where(p => p.Data >= inicioJanela && p.Data <= fimJanela && p.Provisao.Onde != ProvisaoOnde.Receita)
                 .Sum(p => p.Provisao.Valor);
 
         // Cartões de crédito: usar DataVencimentoCartao para atribuição ao mês
         var despesasCartaoMes = lancamentos
             .Where(l => l.CartaoCreditoId != null && l.Tipo == LancamentoTipo.Despesa &&
-                        l.DataVencimentoCartao >= inicioMesDespesas && l.DataVencimentoCartao <= fimMesDespesas)
+                        l.DataVencimentoCartao >= inicioJanela && l.DataVencimentoCartao <= fimJanela)
             .ToList();
         var projecoesCartaoMes = projecoesMes
-            .Where(p => p.Data >= inicioMesDespesas && p.Data <= fimMesDespesas &&
+            .Where(p => p.Data >= inicioJanela && p.Data <= fimJanela &&
                         p.Provisao.Onde == ProvisaoOnde.DebitoCartao && p.Provisao.CartaoCreditoId != null)
             .ToList();
 
@@ -112,7 +158,7 @@ public class FluxoService
         }
         else
         {
-            saldoAnterior = lancamentos.Where(l => l.Data < inicioMesDespesas).Sum(l => l.Valor)
+            saldoAnterior = lancamentos.Where(l => l.Data < inicioMes).Sum(l => l.Valor)
                 + projecoesAnteriores.Sum(SinalProjecao);
         }
 
@@ -120,7 +166,9 @@ public class FluxoService
 
         return new FluxoMensal(ano, mes, receitas, despesas, itensComStatus,
             saldoAnterior, saldoMes, saldoAnterior + saldoMes,
-            ReceitasPagas: receitasPagas, DespesasPagas: despesasPagas);
+            ReceitasPagas: receitasPagas, DespesasPagas: despesasPagas,
+            TotalReembolsos: totalReembolsos,
+            LabelReembolsos: labelReembolsos);
     }
 
     private async Task<bool> FaturaPagaAsync(Guid cartaoId, int ano, int mes)

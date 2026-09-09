@@ -73,12 +73,16 @@ else
                 <CellTemplate>
                     @if (!context.Item.MesFechado && !context.Item.TemPendencias)
                     {
-                        <div class="d-flex align-center gap-1">
+                        <div class="d-flex align-center gap-0">
+                            <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                                           Color="@(_saldosNegativos[context.Item.ContaId] ? Color.Error : Color.Default)"
+                                           Class="@(context.Item.MesFechado ? "" : "saldo-neg-btn")"
+                                           OnClick="@(() => _saldosNegativos[context.Item.ContaId] = !_saldosNegativos.GetValueOrDefault(context.Item.ContaId))" />
                             <MudMoneyInput @bind-Value="_saldosReais[context.Item.ContaId]"
                                            Variant="@gVariant" Margin="Margin.Dense"
-                                           Label="Saldo real" Style="max-width:150px" />
-                            <MudSwitch @bind-Value="_saldosNegativos[context.Item.ContaId]" Label="Neg"
-                                       Color="Color.Error" />
+                                           Label="Saldo real" Style="max-width:150px"
+                                           HelperText="Negativo? Clique no sinal"
+                                           Class="@(_saldosNegativos[context.Item.ContaId] ? "saldo-negativo" : "")" />
                         </div>
                     }
                     else if (context.Item.MesFechado)

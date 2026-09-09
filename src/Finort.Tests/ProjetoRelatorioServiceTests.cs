@@ -22,7 +22,7 @@ public class ProjetoRelatorioServiceTests : IDisposable
         db.SaveChanges();
         var projeto = await new ProjetoService(db).CriarAsync("Site", new DateOnly(2026, 1, 5), 10000m, pessoa.Id);
         var renda = db.Categorias.First(c => c.Nome == "Receita");
-        var mercadoSub = db.Subcategorias.First(s => s.Nome == "Mercado");
+        var mercadoSub = db.Subcategorias.First(s => s.Nome == "Mercado / Feira / Açougue");
         var alimentacao = db.Categorias.First(c => c.Nome == "Alimentação");
 
         db.Lancamentos.AddRange(
@@ -62,7 +62,7 @@ public class ProjetoRelatorioServiceTests : IDisposable
         Assert.Equal([new(2026,2,1), new(2026,2,3), new(2026,2,4)], r.Linhas.Select(l => l.Data));
 
         var fatia = Assert.Single(r.DespesasPorCategoria);
-        Assert.Equal("Alimentação > Mercado", fatia.Rotulo);
+        Assert.Equal("Alimentação > Mercado / Feira / Açougue", fatia.Rotulo);
         Assert.Equal(200m, fatia.Valor);
         Assert.Equal(100.0, fatia.Percentual);
     }

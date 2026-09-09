@@ -113,6 +113,27 @@ public class LancamentoService
             && !l.Confirmado);
     }
 
+    public async Task<bool> TemLancamentosConfirmadosNoGrupoAsync(Guid lancamentoId, Guid grupoId)
+    {
+        // Check if any lancamento in the group is confirmed
+        var temConfirmados = await _db.Lancamentos.AnyAsync(l =>
+            l.Id != lancamentoId
+            && (l.ParcelamentoId == grupoId || l.RecorrenciaId == grupoId)
+            && l.Confirmado);
+
+        if (temConfirmados) return true;
+
+        // Also check if any reimbursement linked to group members is confirmed
+        var reembolsoIds = await _db.Lancamentos
+            .Where(l => l.Id != lancamentoId
+                && (l.ParcelamentoId == grupoId || l.RecorrenciaId == grupoId)
+                && l.ReembolsoId.HasValue)
+            .Select(l => l.ReembolsoId!.Value)
+            .ToListAsync();
+
+        return await _db.Lancamentos.AnyAsync(l => reembolsoIds.Contains(l.Id) && l.Confirmado);
+    }
+
     public async Task<List<Lancamento>> ObterPernasAsync(Guid id)
     {
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -374,7 +395,8 @@ public class LancamentoService
         Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, int? parcelas,
         Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
-        Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null)
+        Guid? projetoId = null,         Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null,
+        bool atualizarFuturos = false)
     {
         var antigo = await _db.Lancamentos.FindAsync(lancamentoId)
             ?? throw new InvalidOperationException("Lançamento não encontrado.");
@@ -389,13 +411,36 @@ public class LancamentoService
         var cartao = await _db.CartoesCredito.FindAsync(cartaoId)
             ?? throw new InvalidOperationException("Cartão não encontrado.");
 
-        // Collect all lancamentos in the same parcelamento group to delete
+        // Non-first installment: update in-place, preserving ParcelamentoId and ReembolsoId
+        if (antigo.ParcelamentoId.HasValue && antigo.ParcelaAtual is > 1 && !atualizarFuturos)
+        {
+            antigo.Data = dataCompra;
+            antigo.Valor = -Math.Abs(valorTotal);
+            antigo.DataCompra = dataCompra;
+            antigo.DataVencimentoCartao = vencimentoExato
+                ?? CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
+
+            await _db.SaveChangesAsync();
+            return new List<Lancamento> { antigo };
+        }
+
+        // First installment or non-parceled: delete-and-recreate strategy
         var lancamentosParaExcluir = new List<Lancamento>();
         if (antigo.ParcelamentoId.HasValue)
         {
-            lancamentosParaExcluir = await _db.Lancamentos
-                .Where(l => l.ParcelamentoId == antigo.ParcelamentoId.Value)
-                .ToListAsync();
+            if (atualizarFuturos)
+            {
+                // Delete all unconfirmed future installments + current
+                lancamentosParaExcluir = await _db.Lancamentos
+                    .Where(l => l.ParcelamentoId == antigo.ParcelamentoId.Value
+                        && (!l.Confirmado || l.Id == lancamentoId))
+                    .ToListAsync();
+            }
+            else
+            {
+                // Delete only current
+                lancamentosParaExcluir.Add(antigo);
+            }
         }
         else
         {
@@ -408,7 +453,7 @@ public class LancamentoService
             if (l.ReembolsoId.HasValue)
             {
                 var reembolso = await _db.Lancamentos.FindAsync(l.ReembolsoId.Value);
-                if (reembolso is not null)
+                if (reembolso is not null && !reembolso.Confirmado)
                     _db.Lancamentos.Remove(reembolso);
             }
         }

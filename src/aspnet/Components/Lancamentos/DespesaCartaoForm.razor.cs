@@ -45,6 +45,7 @@ public partial class DespesaCartaoForm : AppComponentBase
     private DateOnly? _previewVencimento;
     private int _vencimentoAno;
     private int _vencimentoMes;
+    private bool _isFirstInstallment = true;
 
     private bool ComReembolso
     {
@@ -111,10 +112,28 @@ public partial class DespesaCartaoForm : AppComponentBase
         _pessoaId = lancamento.PessoaId;
         _projetoId = lancamento.ProjetoId;
 
-        if (lancamento.TotalParcelas.HasValue && lancamento.TotalParcelas.Value > 1)
+        if (lancamento.ParcelamentoId.HasValue && lancamento.TotalParcelas.HasValue && lancamento.TotalParcelas.Value > 1)
         {
-            _parcelado = true;
-            _quantidadeParcelas = lancamento.TotalParcelas.Value;
+            // Check if this is the first installment (parcelaAtual == 1)
+            _isFirstInstallment = lancamento.ParcelaAtual == 1;
+            if (_isFirstInstallment)
+            {
+                // First installment: open with parcelado enabled, total value, and all fields
+                _parcelado = true;
+                _quantidadeParcelas = lancamento.TotalParcelas.Value;
+                _valor = Math.Abs(lancamento.Valor) * lancamento.TotalParcelas.Value;
+            }
+            else
+            {
+                // Non-first installment: keep parcelado disabled, don't allow changes
+                _parcelado = false;
+                _quantidadeParcelas = lancamento.TotalParcelas.Value;
+            }
+        }
+        else
+        {
+            _isFirstInstallment = true;
+            _parcelado = false;
         }
 
         if (lancamento.ReembolsoId.HasValue)

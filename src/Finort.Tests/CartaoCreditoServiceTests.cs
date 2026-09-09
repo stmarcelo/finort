@@ -49,12 +49,12 @@ public class CartaoCreditoServiceTests
     }
 
     [Theory]
-    // compra dia 1 < melhorDia 5 → vencimento neste mês
+    // compra dia 1 < melhorDia 5 e <= vencimento 10 → vencimento neste mês
     [InlineData("2026-08-01", 2026, 8, 10)]
-    // compra dia 5 >= melhorDia 5 → vencimento mês seguinte
-    [InlineData("2026-08-05", 2026, 9, 10)]
-    // compra dia 6 >= melhorDia 5 → vencimento mês seguinte
-    [InlineData("2026-08-06", 2026, 9, 10)]
+    // compra dia 5 >= melhorDia 5 → vencimento mês+2
+    [InlineData("2026-08-05", 2026, 10, 10)]
+    // compra dia 6 >= melhorDia 5 → vencimento mês+2
+    [InlineData("2026-08-06", 2026, 10, 10)]
     public void CalcularVencimento_UsaMelhorDiaEVencimento(
         string compra, int anoEsperado, int mesEsperado, int diaEsperado)
     {
@@ -70,10 +70,10 @@ public class CartaoCreditoServiceTests
     {
         var cartao = new CartaoCredito { MelhorDiaCompra = 1, DiaVencimento = 31 };
 
-        // compra 02/12/2025 (dia >= melhorDia 1) → vencimento mês seguinte = jan/2026 → clamp no último dia
+        // compra 02/12/2025 (dia >= melhorDia 1) → vencimento mês+2 = fev/2026 → clamp no último dia
         var vencimento = CartaoCreditoService.CalcularVencimento(cartao, new DateOnly(2025, 12, 2));
 
-        Assert.Equal(new DateOnly(2026, 1, 31), vencimento);
+        Assert.Equal(new DateOnly(2026, 2, 28), vencimento);
     }
 
     [Fact]
@@ -136,5 +136,61 @@ public class CartaoCreditoServiceTests
             Assert.False((await service.ObterAsync(cartao.Id))!.Ativo);
         }
         finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public void CalcularVencimento_DiaCompraMaiorQueVencimento_VaiProMesSeguinte()
+    {
+        var cartao = new CartaoCredito { MelhorDiaCompra = 20, DiaVencimento = 10 };
+        var dataCompra = new DateOnly(2026, 9, 12);
+
+        var resultado = CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
+
+        Assert.Equal(new DateOnly(2026, 10, 10), resultado);
+    }
+
+    [Fact]
+    public void CalcularVencimento_DiaCompraMenorQueAmbos_VaiProMesmo()
+    {
+        var cartao = new CartaoCredito { MelhorDiaCompra = 15, DiaVencimento = 10 };
+        var dataCompra = new DateOnly(2026, 9, 5);
+
+        var resultado = CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
+
+        Assert.Equal(new DateOnly(2026, 9, 10), resultado);
+    }
+
+    [Fact]
+    public void CalcularVencimento_DiaCompraMaiorQueMelhorDia_VaiProMesSeguinte()
+    {
+        var cartao = new CartaoCredito { MelhorDiaCompra = 15, DiaVencimento = 10 };
+        var dataCompra = new DateOnly(2026, 9, 18);
+
+        var resultado = CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
+
+        // 18 >= 15 (MelhorDiaCompra) → mês+2
+        Assert.Equal(new DateOnly(2026, 11, 10), resultado);
+    }
+
+    [Theory]
+    // MelhorDiaCompra=27, DiaVencimento=4
+    // compra 26/05: 26 < 27 e 26 > 4 → mês+1 = 04/06
+    [InlineData("2026-05-26", 2026, 6, 4)]
+    // compra 27/05: 27 >= 27 → mês+2 = 04/07
+    [InlineData("2026-05-27", 2026, 7, 4)]
+    // compra 28/05: 28 >= 27 → mês+2 = 04/07
+    [InlineData("2026-05-28", 2026, 7, 4)]
+    // compra 26/06: 26 < 27 e 26 > 4 → mês+1 = 04/07
+    [InlineData("2026-06-26", 2026, 7, 4)]
+    // compra 27/06: 27 >= 27 → mês+2 = 04/08
+    [InlineData("2026-06-27", 2026, 8, 4)]
+    public void CalcularVencimento_CicloCompleto_MelhorDia27_Vencimento4(
+        string compra, int anoEsperado, int mesEsperado, int diaEsperado)
+    {
+        var cartao = new CartaoCredito { MelhorDiaCompra = 27, DiaVencimento = 4 };
+
+        var vencimento = CartaoCreditoService.CalcularVencimento(cartao, DateOnly.Parse(compra));
+
+        Assert.Equal(new DateOnly(anoEsperado, mesEsperado, diaEsperado), vencimento);
     }
 }

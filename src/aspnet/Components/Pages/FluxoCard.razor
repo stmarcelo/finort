@@ -1,8 +1,8 @@
 @namespace Finort.Components.Pages
 @using System.Globalization
 
-<div class="surface-card pa-4 fluxo-card @(Mudo ? "fluxo-card-mudo" : "")">
-    <div class="d-flex align-center justify-center mb-2">
+<MudCard Class="fluxo-card">
+    <MudCardHeader Class="d-flex align-center justify-center">
         @if (MostrarNavegacao)
         {
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="() => OnNavegar.InvokeAsync(-1)" />
@@ -14,47 +14,56 @@
         {
             <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" OnClick="() => OnNavegar.InvokeAsync(1)" />
         }
-    </div>
-    @if (DiasAntecipacao > 0 && MostrarNavegacao)
-    {
-        var proximoMes = MesReferencia == 12 ? 1 : MesReferencia + 1;
-        var proximoAno = MesReferencia == 12 ? AnoReferencia + 1 : AnoReferencia;
-        var ultimoDia = DateTime.DaysInMonth(proximoAno, proximoMes);
-        var diaFinal = Math.Min(DiasAntecipacao, ultimoDia);
-        <MudText Typo="Typo.caption" Class="d-block text-center mb-2" Style="opacity:0.7">
-            Inclui despesas até @diaFinal.ToString("D2")/@proximoMes.ToString("D2")
-        </MudText>
-    }
-    <div class="fluxo-linha">
-        <span class="fluxo-label">Receitas</span>
-        <span class="fluxo-valor pos @(Dados.ReceitasPagas ? "fluxo-pago" : "")">@Dados.TotalReceitas.ToString("N2")</span>
-    </div>
-    <div class="fluxo-linha">
-        <span class="fluxo-label">Despesas</span>
-        <span class="fluxo-valor neg @(Dados.DespesasPagas ? "fluxo-pago" : "")">@Dados.TotalDespesas.ToString("N2")</span>
-    </div>
-    @foreach (var cartao in Dados.TotaisPorCartao)
-    {
+    </MudCardHeader>
+    <MudCardContent Class="@ClasseMudo">
+        @if (DiasAntecipacao > 0 && MostrarNavegacao)
+        {
+            var proximoMes = MesReferencia == 12 ? 1 : MesReferencia + 1;
+            var proximoAno = MesReferencia == 12 ? AnoReferencia + 1 : AnoReferencia;
+            var ultimoDia = DateTime.DaysInMonth(proximoAno, proximoMes);
+            var diaFinal = Math.Min(DiasAntecipacao, ultimoDia);
+            <MudText Typo="Typo.caption" Class="d-block text-center mb-2" Style="opacity:0.7">
+                Inclui despesas até @diaFinal.ToString("D2")/@proximoMes.ToString("D2")
+            </MudText>
+        }
         <div class="fluxo-linha">
-            <span class="fluxo-label">@cartao.Nome</span>
-            <span class="fluxo-valor neg @(cartao.Pago ? "fluxo-pago" : "")">@cartao.Total.ToString("N2")</span>
+            <span class="fluxo-label">Receitas</span>
+            <span class="fluxo-valor pos @(Dados.ReceitasPagas ? "fluxo-pago" : "")">@Dados.TotalReceitas.ToString("N2")</span>
         </div>
-    }
-    <div class="fluxo-linha">
-        <span class="fluxo-label">Saldo anterior</span>
-        <span class="fluxo-valor">@Dados.SaldoAnterior.ToString("N2")</span>
-    </div>
-    <div class="fluxo-divisor"></div>
-    <div class="fluxo-saldo-mes @ClasseSaldo">
-        <span class="fluxo-label">Saldo do mês</span>
-        <span>@Dados.SaldoMes.ToString("N2")</span>
-    </div>
-    <div class="fluxo-divisor"></div>
-    <div class="fluxo-linha">
-        <span class="fluxo-label">Saldo</span>
-        <span class="fluxo-valor @ClasseAcumulado">@Dados.SaldoAcumulado.ToString("N2")</span>
-    </div>
-</div>
+        @if (Dados.TotalReembolsos > 0)
+        {
+            <div class="fluxo-linha">
+                <span class="fluxo-label" style="padding-left:12px;font-size:0.85em;opacity:0.8">@Dados.LabelReembolsos</span>
+                <span class="fluxo-valor pos" style="font-size:0.85em;opacity:0.8">@Dados.TotalReembolsos.ToString("N2")</span>
+            </div>
+        }
+        <div class="fluxo-linha">
+            <span class="fluxo-label">Despesas</span>
+            <span class="fluxo-valor neg @(Dados.DespesasPagas ? "fluxo-pago" : "")">@Dados.TotalDespesas.ToString("N2")</span>
+        </div>
+        @foreach (var cartao in Dados.TotaisPorCartao)
+        {
+            <div class="fluxo-linha">
+                <span class="fluxo-label">@cartao.Nome</span>
+                <span class="fluxo-valor neg @(cartao.Pago ? "fluxo-pago" : "")">@cartao.Total.ToString("N2")</span>
+            </div>
+        }
+        <div class="fluxo-linha">
+            <span class="fluxo-label">Saldo anterior</span>
+            <span class="fluxo-valor">@Dados.SaldoAnterior.ToString("N2")</span>
+        </div>
+        <div class="fluxo-divisor"></div>
+        <div class="fluxo-saldo-mes @ClasseSaldo">
+            <span class="fluxo-label">Saldo do mês</span>
+            <span>@Dados.SaldoMes.ToString("N2")</span>
+        </div>
+        <div class="fluxo-divisor"></div>
+        <div class="fluxo-linha">
+            <span class="fluxo-label">Saldo</span>
+            <span class="fluxo-valor @ClasseAcumulado">@Dados.SaldoAcumulado.ToString("N2")</span>
+        </div>
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Parameter] public FluxoMensal Dados { get; set; } = null!;
@@ -72,4 +81,7 @@
 
     private string ClasseAcumulado
         => Dados.SaldoAcumulado > 0 ? "pos" : Dados.SaldoAcumulado < 0 ? "neg" : "";
+
+    private string ClasseMudo
+        => Mudo ? "pa-4 fluxo-card-mudo" : "pa-4";
 }

@@ -83,14 +83,16 @@
         new("login", "Login e Primeiro Acesso", Icons.Material.Filled.Login, new()
         {
             "Quando você abre o sistema pela primeira vez, ele pede para criar seu acesso. Você informa seu nome, email, uma senha com pelo menos 8 caracteres.",
+            "Se você já possui um backup, pode restaurá-lo logo no primeiro acesso — basta selecionar o arquivo .cfbak e informar a senha de backup.",
             "Para entrar no sistema, basta digitar sua senha na tela de login. Se você errar a senha 5 vezes seguidas, o sistema bloqueia aquele endereço de rede por 60 segundos por segurança.",
             "Se esqueceu sua senha, clique em 'Esqueci minha senha' na tela de login. O sistema enviará um link para seu email (é necessário ter o SMTP configurado). O link expira em 30 minutos."
         }, new()),
 
         new("dashboard", "Dashboard", Icons.Material.Filled.Insights, new()
         {
-            "O dashboard é a tela que aparece quando você clica em 'Dashboard' no menu lateral. Ele mostra um resumo financeiro do mês.",
-            "No topo, você vê gráficos de pizza mostrando para onde seu dinheiro está indo (despesas por categoria) e de onde ele vem (receitas por categoria). Abaixo, há tabelas com as 10 maiores despesas e receitas do mês.",
+            "O dashboard é a tela que aparece quando você clica em 'Dashboard' no menu lateral. Ele mostra um resumo financeiro completo do mês.",
+            "No topo há cards de resumo: total de receitas, total de despesas, saldo do mês e saldo acumulado. Abaixo, gráficos de pizza mostram a distribuição de despesas e receitas por categoria.",
+            "Também aparecem tabelas com as 10 maiores despesas e receitas do mês, facilitando a visualização dos maiores compromissos.",
             "Se você tem investimentos cadastrados, aparece um gráfico de barras com o patrimônio total.",
             "Use as setas ao lado do nome do mês para navegar entre meses. Meses futuros são baseados em projeções (provisões), por isso aparece o aviso 'Projeção'."
         }, new()),
@@ -106,7 +108,8 @@
 
         new("lancamentos", "Lista de Lançamentos", Icons.Material.Filled.ReceiptLong, new()
         {
-            "A lista de lançamentos mostra todas as suas entradas e saídas financeiras. É aqui que você visualiza, edita e confirma seus lançamentos."
+            "A lista de lançamentos mostra todas as suas entradas e saídas financeiras. É aqui que você visualiza, edita e confirma seus lançamentos.",
+            "Ao criar um novo lançamento, o sistema foca automaticamente no primeiro campo do formulário para agilizar o preenchimento."
         }, new()
         {
             new("Filtros", new()
@@ -137,22 +140,23 @@
             "Uma receita é uma entrada de dinheiro: salário, freelances, vendas, reembolsos, etc.",
             "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou, a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
             "O campo 'Projeto' só aparece depois que você seleciona uma pessoa. Se a pessoa tem apenas um projeto, ele é selecionado automaticamente.",
-            "Se a receita será dividida em parcelas (ex: parcelas de um serviço), marque 'Parcelado' e configure quantas parcelas e a frequência (mensal, trimestral, semestral, anual)."
+            "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
         }, new()),
 
         new("despesa", "Despesa", Icons.Material.Filled.TrendingDown, new()
         {
             "Uma despesa é uma saída de dinheiro: aluguel, supermercado, conta de luz, etc.",
             "O processo é igual ao da receita: data, valor, conta, categoria, subcategoria (opcional), pessoa (opcional) e projeto (opcional).",
-            "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'."
+            "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'.",
+            "Despesas podem ser marcadas para se repetir (recorrência). Defina quantas vezes a despesa deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
         }, new()),
 
         new("cartaoentrada", "Despesa no Cartão", Icons.Material.Filled.CreditCard, new()
         {
             "Quando você faz uma compra no cartão de crédito, registre como 'Despesa de cartão' (não como despesa normal). Isso permite que o sistema gerencie a fatura do cartão corretamente.",
             "Selecione o cartão, a data da compra, a categoria e o valor. Configure quantas parcelas será dividido.",
-            "Opção 'Entrada': se marcada, o sistema também cria um lançamento na conta bancária vinculada ao cartão, representando o débito que sairá da conta.",
-             "Reembolso: se uma pessoa reembolsa essa despesa, marque como reembolsável. O sistema rastreia isso para relatórios.",
+            "Opção 'Entrada na fatura': se marcada, o valor é descontado do total da fatura. Isso é útil quando o estorno é feito pelo próprio operador do cartão.",
+            "Opção 'Reembolso': se uma pessoa reembolsa essa despesa, marque como reembolsável. O sistema gera automaticamente um lançamento de receita para a pessoa (devedor) com data 1 dia antes do vencimento da fatura do cartão.",
             "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra."
         }, new()),
 
@@ -177,16 +181,18 @@
                 "Esse recurso define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual.",
                 "Exemplo: com 5 dias de antecipação em setembro, despesas e faturas de cartão com vencimento até 05/10 aparecem no fluxo de setembro. Outubro, por sua vez, começa em 06/10.",
                 "Regra: cada lançamento pertence a apenas um mês. O mês que antecipa inclui os dias extras; o mês seguinte começa depois deles.",
-                "Para despesas de cartão de crédito, a data considerada é o vencimento da fatura (DataVencimentoCartao), não a data da compra."
+                "Para despesas de cartão de crédito, a data considerada é o vencimento da fatura (DataVencimentoCartao), não a data da compra.",
+                "A antecipação também se aplica a receitas de reembolso: reembolsos com data de vencimento dentro dos dias antecipados são incluídos no fluxo do mês atual."
             })
         }),
 
         new("contas", "Contas Bancárias", Icons.Material.Filled.AccountBalance, new()
         {
-            "Cadastre aqui suas contas bancárias: nome da conta, banco, agência e número da conta.",
+            "Cadastre aqui suas contas bancárias: nome da conta, banco, agência, número da conta e limite (opcional).",
             "Cada conta mostra dois saldos: o saldo real (só contando lançamentos confirmados) e o saldo projetado (contando todos os lançamentos, inclusive não confirmados).",
             "O saldo real é o que você deve ver no seu extrato bancário. Se bateu, confirme os lançamentos. Se não bateu, pode ser que algum lançamento esteja faltando ou com valor errado.",
-            "Use o botão de fechar mês para ajustar diferenças entre o saldo do sistema e o saldo real do banco."
+            "O cartão de crédito vinculado mostra o último mês fechado e o valor fechado da fatura.",
+            "O fechar mês (seção 'Fechar Mês') não serve para ajustar saldo — serve para confirmar que o mês foi revisado e fechado, bloqueando novos lançamentos naquela conta para o mês fechado."
         }, new()),
 
         new("cartoes", "Cartões de Crédito", Icons.Material.Filled.CreditCard, new()
@@ -214,6 +220,11 @@
             new("Fatura – Histórico", new()
             {
                 "Acesse o histórico clicando no ícone de relatório ao lado do cartão. Lá você vê todas as faturas fechadas, com status (paga ou pendente) e valor."
+            }),
+            new("Edição de Parcelado", new()
+            {
+                "Para alterar parcelas de uma despesa de cartão, edite a primeira parcela do grupo. As alterações serão aplicadas a todas as parcelas futuras não confirmadas.",
+                "Ao editar, o formulário abre com os dados atuais da parcela. Altere valor, categoria ou pessoa conforme necessário."
             })
         }),
 
@@ -221,7 +232,7 @@
         {
             "Categorias organizam seus lançamentos por tipo de gasto ou entrada. Exemplos: Moradia, Alimentação, Transporte, Salário.",
             "Subcategorias detalham ainda mais. Ex: dentro de 'Alimentação', pode ter 'Supermercado', 'Restaurante', 'Delivery'.",
-            "O sistema já vem com 13 categorias e 57 subcategorias pré-cadastradas. Elas têm um ícone de cadeado, indicando que são protegidas e não podem ser excluídas.",
+            "O sistema já vem com categorias e subcategorias pré-cadastradas. Elas têm um ícone de cadeado, indicando que são protegidas e não podem ser excluídas.",
             "Você pode criar novas categorias e subcategorias. Só não pode excluir uma categoria ou subcategoria que tenha lançamentos vinculados."
         }, new()),
 
@@ -259,7 +270,7 @@
         new("provisoes", "Provisões", Icons.Material.Filled.EventRepeat, new()
         {
             "Provisões são compromissos recorrentes que você já sabe que vão acontecer, mas ainda não foram registrados como lançamento. Ex: aluguel todo dia 5, academia todo mês, parcela do seguro semestral.",
-            "Ao criar uma provisão, você define: tipo (débito em conta, débito em cartão ou receita), frequência (mensal, trimestral, semestral, anual), dia do mês, valor e categoria.",
+            "Ao criar uma provisão, você define: tipo (débito em conta, débito em cartão, débito sem conta ou receita), frequência (mensal, trimestral, semestral, anual), dia do mês, valor e categoria.",
             "O sistema projeta as provisões no calendário e no fluxo, mostrando o que você espera gastar/receber no futuro, sem criar lançamentos reais.",
             "Quando chega o mês, você pode clicar em 'Sincronizar' para que o sistema crie os lançamentos reais das provisões daquele mês. Isso evita ter que lançar manualmente coisas recorrentes."
         }, new()),
@@ -308,11 +319,10 @@
 
         new("fecharmes", "Fechar Mês", Icons.Material.Filled.EventBusy, new()
         {
-            "Fechar um mês é como 'trancar' aquele período, garantindo que os dados estão corretos e consistentes.",
-            "Na tela de Fechar Mês, selecione a conta que deseja conferir. O sistema mostra o saldo acumulado (calculado pelo sistema) e o saldo real que você informa do banco.",
-            "Se houver diferença, o sistema sugere criar uma entrada de ajuste (ex: uma despesa de R$ 5 que esqueceu de registrar).",
-            "Ao confirmar, o sistema fecha todos os meses anteriores que ainda estavam abertos, em cascata. Isso bloqueia edição de lançamentos antigos para manter a integridade.",
-            "Não é possível fechar um mês que tenha lançamentos não confirmados. Confirme todos primeiro."
+            "Fechar um mês é como 'trancar' aquele período, garantindo que os dados foram revisados e estão corretos.",
+            "A tela mostra todas as contas bancárias e permite fechar mês por mês, conta por conta.",
+            "Ao confirmar o fechamento de uma conta no mês, o sistema bloqueia novos lançamentos naquela conta para o mês fechado. Lançamentos já existentes continuam visíveis mas não podem ser editados.",
+            "IMPORTANTE: Se existirem lançamentos sem conta vinculada que não foram confirmados, nenhuma conta poderá ser fechada. Vincule uma conta ou confirme/exclua esses lançamentos antes de fechar."
         }, new()),
 
         new("configuracoes", "Configurações", Icons.Material.Filled.Settings, new()
@@ -334,6 +344,12 @@
                 "Para restaurar um backup, selecione o arquivo e informe a senha. ATENÇÃO: isso substitui TODOS os dados atuais, inclusive sua senha de login. Você será desconectado.",
                 "A senha de backup é diferente da senha de login e NÃO pode ser recuperada pelo sistema — por segurança, apenas um verificador irreversível (hash) é armazenado. Clique em 'Alterar senha de backup' e autentique com sua senha de login para defini-la novamente.",
                 "Se você alterar a senha de backup, backups antigos gerados com a senha antiga não poderão mais ser restaurados."
+            }),
+            new("Apagar Todos os Dados", new()
+            {
+                "O botão 'Apagar todos os dados' remove permanentemente todos os seus dados do sistema (lançamentos, contas, cartões, pessoas, configurações, etc.).",
+                "Essa ação é irreversível. Um backup é gerado automaticamente antes da exclusão para sua segurança.",
+                "Use apenas quando quiser recomeçar do zero."
             })
         }),
 

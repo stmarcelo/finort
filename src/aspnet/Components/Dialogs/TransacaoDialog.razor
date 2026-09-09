@@ -4,6 +4,8 @@
 @using Finort.Models.Financeiro
 @inject LancamentoService LancamentoService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <MudDialog>
     <TitleContent>
@@ -29,6 +31,13 @@
     </DialogActions>
 </MudDialog>
 
+<script>
+    window.finortFocusFirstField = function () {
+        var el = document.querySelector('.mud-select input, .mud-autocomplete input, input:not([type=hidden])');
+        if (el) el.focus();
+    };
+</script>
+
 @code {
     [Parameter] public string TipoTransacao { get; set; } = "receita";
     [Parameter] public Guid? LancamentoId { get; set; }
@@ -48,6 +57,17 @@
         "transferencia" => LancamentoId.HasValue ? "Editar transferência" : "Nova transferência",
         _ => "Novo lançamento"
     };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || LancamentoId.HasValue) return;
+        await Task.Delay(150);
+        try
+        {
+            await JS.InvokeVoidAsync("finortFocusFirstField");
+        }
+        catch { /* Server prerendering — ignore */ }
+    }
 
     protected override void OnInitialized()
     {
@@ -74,14 +94,45 @@
     {
         try
         {
+            bool atualizarFuturos = false;
             if (LancamentoId.HasValue)
             {
+                var lancamento = await LancamentoService.ObterAsync(LancamentoId.Value);
+                if (lancamento?.ParcelamentoId.HasValue == true && lancamento.ParcelaAtual == 1)
+                {
+                    var temFuturos = await LancamentoService.TemLancamentosFuturosNoGrupoAsync(
+                        LancamentoId.Value, lancamento.ParcelamentoId.Value);
+
+                    // Check if any installment or reimbursement is confirmed
+                    var temConfirmados = await LancamentoService.TemLancamentosConfirmadosNoGrupoAsync(
+                        LancamentoId.Value, lancamento.ParcelamentoId.Value);
+
+                    if (temConfirmados)
+                    {
+                        await DialogService.ShowMessageBox(
+                            "Não é possível propagar alterações",
+                            "Existem parcelas ou reembolsos confirmados. A alteração será aplicada apenas a este lançamento.",
+                            "OK");
+                    }
+                    else if (temFuturos)
+                    {
+                        var confirm = await DialogService.ShowMessageBox(
+                            "Alterar parcelas futuras",
+                            "Deseja aplicar as alterações também nas parcelas futuras não confirmadas?",
+                            "Sim", "Não", "Cancelar",
+                            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+                        if (confirm is null) return;
+                        atualizarFuturos = confirm == true;
+                    }
+                }
+
                 await LancamentoService.AtualizarDespesaCartaoAsync(
                     LancamentoId.Value, d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId,
                     d.PessoaId, d.Parcelas, d.ReembolsoPessoaId, reembolsoVencimento: null,
                     vencimentoExato: d.DataVencimentoCartao, reembolsoContaId: d.ReembolsoContaId,
                     ehEntrada: d.EhEntrada, projetoId: d.ProjetoId,
-                    reembolsoCategoriaId: d.ReembolsoCategoriaId, reembolsoSubcategoriaId: d.ReembolsoSubcategoriaId);
+                    reembolsoCategoriaId: d.ReembolsoCategoriaId, reembolsoSubcategoriaId: d.ReembolsoSubcategoriaId,
+                    atualizarFuturos: atualizarFuturos);
                 Snackbar.Add("Lançamento atualizado.", Severity.Success);
             }
             else

@@ -49,7 +49,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 ## Funcionalidades
 
 ### Autenticação e conta
-- Primeiro acesso guiado: criação de usuário (nome, email, senha ≥ 8 caracteres) em `/configurar`.
+- Primeiro acesso guiado: criação de usuário (nome, email, senha ≥ 8 caracteres) em `/configurar`, com opção de restaurar backup `.cfbak` logo no primeiro acesso.
 - Login por senha com hash PBKDF2 (ASP.NET Identity `PasswordHasher`) — a senha nunca é armazenada em texto plano.
 - Bloqueio contra força bruta: 5 tentativas incorretas = 60 s de bloqueio.
 - **Cloudflare Turnstile**: após 2 tentativas com senha incorreta, o login exige um desafio non-interactive do Cloudflare (siteverify server-side); se as chaves não estiverem configuradas, o desafio é desligado e o login funciona apenas com senha (padrão em dev local).
@@ -64,19 +64,24 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 
 ### Lançamentos financeiros
 - Tipos: **Receita**, **Despesa**, **Transferência** e **Despesa no Cartão**.
-- Parcelamento e recorrência (mensal, trimestral, semestral, anual).
+- Parcelamento (despesas) e recorrência (mensal, trimestral, semestral, anual) para receitas e despesas — receitas não possuem parcelamento.
 - Vínculo com pessoa, categoria/subcategoria, conta, projeto e flag de reembolso.
 - Confirmação item a item (conciliação com extrato) com guarda: lançamentos confirmados de meses fechados não podem ser editados/excluídos.
 - Filtros por conta, cartão, pessoa, tipo e mês; subtotais diários.
+- Foco automático no primeiro campo ao criar novo lançamento.
 
 ### Cartões de crédito
 - CRUD com banco, últimos 4 dígitos, melhor dia de compra, dia de vencimento, limite e conta vinculada.
 - Fatura: conferência de itens, fechamento (exige todos confirmados), pagamento (cria débito na conta + cobre diferença em parcela futura), histórico e estorno.
+- Entrada na fatura: desconta o valor do total da fatura (útil para estornos feitos pelo operador do cartão).
+- Reembolso: gera automaticamente um lançamento de receita para a pessoa (devedor) com data 1 dia antes do vencimento da fatura.
+- Edição de parcelado: ao editar a primeira parcela, as alterações são aplicadas a todas as parcelas futuras não confirmadas.
 - A fatura do mês aparece automaticamente no calendário na data de vencimento.
 
 ### Contas bancárias
-- CRUD com nome, banco, agência e conta/dígito.
+- CRUD com nome, banco, agência, conta/dígito e limite.
 - Saldo real (confirmados) e saldo projetado (todos) por conta.
+- Cartão de crédito vinculado mostra último mês fechado e valor fechado da fatura.
 
 ### Pessoas e lembretes
 - CRUD de pessoas com cor de exibição e observação; a lista mostra o total de lembretes por pessoa (sino com badge).
@@ -84,20 +89,21 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Lembretes aparecem no calendário, sempre no topo dos compromissos do dia.
 
 ### Categorias e subcategorias
-- Seeds com 13 categorias e 57 subcategorias protegidas.
+- Seeds com categorias e subcategorias pré-cadastradas e protegidas.
 - Bloqueio de exclusão quando há lançamentos vinculados.
 
 ### Provisões
-- Recorrências previstas (débito em conta, débito em cartão ou receita) com frequência e dia configuráveis.
+- Recorrências previstas (débito em conta, débito em cartão, débito sem conta ou receita) com frequência e dia configuráveis.
 - Projeção em memória no calendário, fluxo e dashboard — sem gravar no banco.
 - Sincronização gera os lançamentos reais dos meses abertos até o mês atual.
 
 ### Fluxo mensal (`/fluxo`)
 - Carrossel mês anterior / corrente / próximo com receitas, despesas, totais por cartão e saldo acumulado.
 - Pagamento de fatura refletido no mês em que ocorreu.
-- **Dias de antecipação**: ajuste (0–15) que define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual. Exemplo: com 5 dias em setembro, despesas e faturas com vencimento até 05/10 aparecem no fluxo de setembro, e outubro começa em 06/10. Cada lançamento pertence a apenas um mês. Configuração persistida no banco de dados.
+- **Dias de antecipação**: ajuste (0–15) que define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual. Exemplo: com 5 dias em setembro, despesas e faturas com vencimento até 05/10 aparecem no fluxo de setembro, e outubro começa em 06/10. A antecipação também se aplica a receitas de reembolso. Cada lançamento pertence a apenas um mês. Configuração persistida no banco de dados.
 
 ### Dashboard (`/dashboard`)
+- Cards de resumo no topo: total de receitas, total de despesas, saldo do mês e saldo acumulado.
 - Pizza de despesas e receitas por categoria, top-10 maiores lançamentos e patrimônio de investimentos.
 - Meses futuros exibidos como projeção.
 
@@ -111,8 +117,9 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Relatório com totais, tabela de lançamentos, pizza de despesas e exportação em PDF (`GET /api/relatorios/projeto/{id}/pdf`).
 
 ### Fechamento de mês (`/fechar-mes`)
-- Conciliação do saldo do sistema com o saldo real do banco por conta, com criação de ajuste.
-- Fechamento em cascata dos meses anteriores; bloqueio se houver lançamentos não confirmados.
+- Mostra todas as contas bancárias e permite fechar mês por mês, conta por conta.
+- O fechamento confirma que o mês foi revisado e bloqueia novos lançamentos naquela conta para o mês fechado. Lançamentos existentes continuam visíveis mas não podem ser editados.
+- Bloqueio: lançamentos sem conta vinculada (ContaId nulo) não confirmados impedem o fechamento de qualquer conta no mês.
 
 ### Acesso rápido
 - Campo de busca na AppBar (atalho para todas as páginas), com teclado, sugestões e limpeza automática após a seleção.
@@ -125,11 +132,12 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 ### Backup e restauração
 - Formato `.cfbak`: container binário com magic header, salt aleatório, nonce, PBKDF2-SHA256 (210.000 iterações) e **AES-256-GCM** — cifra autenticada.
 - Geração via `VACUUM INTO` + criptografia + download; restauração com validação em etapas (magic, decrypt, `integrity_check`, tabelas essenciais), dupla confirmação e safety copy do banco atual.
+- Restauração disponível também no primeiro acesso, sem precisar estar logado.
 - Logout forçado após restaurar.
 
 ### Layout e navegação
 - AppBar com logotipo, acesso rápido e menu de usuário (Perfil, Configurações, Ajuda, Sobre, Sair).
-- Drawer com navegação completa e FAB de nova transação.
+- Drawer com navegação completa, FAB de nova transação e botão de apagar todos os dados nas Configurações.
 - Manual de uso integrado em `/manual` com busca por seções.
 - Verificação de atualização no dialog "Sobre" (informativa, cache de 24 h).
 
@@ -168,6 +176,8 @@ A forma mais simples de rodar é com **Docker Compose**. Baixe o `docker-compose
 curl -O https://raw.githubusercontent.com/stmarcelo/finort/main/docker-compose.yml
 docker compose up -d
 ```
+
+O container já vem configurado com o timezone de São Paulo (`America/Sao_Paulo`).
 
 O app estará disponível em `http://localhost:5298`. Na primeira execução, o sistema redireciona para `/configurar` onde você cria o usuário administrador.
 

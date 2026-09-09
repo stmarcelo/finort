@@ -593,6 +593,9 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<int>("Ano")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("DataFechamento")
                         .HasColumnType("datetime(6)");
 
@@ -604,7 +607,7 @@ namespace Finort.Data.Migrations.MySql
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Mes", "Ano")
+                    b.HasIndex("ContaId", "Mes", "Ano")
                         .IsUnique();
 
                     b.ToTable("MesesFechados");
@@ -783,21 +786,7 @@ namespace Finort.Data.Migrations.MySql
                             Id = new Guid("20000000-0000-0000-0000-000000000006"),
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
                             IsProtected = false,
-                            Nome = "Mercado"
-                        },
-                        new
-                        {
-                            Id = new Guid("20000000-0000-0000-0000-000000000007"),
-                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
-                            IsProtected = false,
-                            Nome = "Açougue"
-                        },
-                        new
-                        {
-                            Id = new Guid("20000000-0000-0000-0000-000000000008"),
-                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
-                            IsProtected = false,
-                            Nome = "Feira"
+                            Nome = "Mercado / Feira / Açougue"
                         },
                         new
                         {

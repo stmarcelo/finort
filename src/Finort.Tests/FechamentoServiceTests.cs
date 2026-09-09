@@ -274,4 +274,68 @@ public class FechamentoServiceTests
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
+
+    [Fact]
+    public async Task Fechar_LancamentosSemConta_NaoConfirmados_Bloqueia()
+    {
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var inicioMes = new DateOnly(hoje.Year, hoje.Month, 1);
+            var cat = CategoriaId(db);
+            var cartao = new CartaoCredito
+            {
+                Banco = "Nubank", Ultimos4Digitos = "1234",
+                MelhorDiaCompra = 1, DiaVencimento = 10, Limite = 5000m, Ativo = true
+            };
+            db.CartoesCredito.Add(cartao);
+            await db.SaveChangesAsync();
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = inicioMes, Valor = -100m, Confirmado = false,
+                CategoriaId = cat, CartaoCreditoId = cartao.Id
+            });
+            await db.SaveChangesAsync();
+            var service = new FechamentoService(db);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.FecharAsync(conta.Id, hoje.Year, hoje.Month, 100m));
+
+            Assert.Contains("lançamento", ex.Message);
+            Assert.Empty(db.MesesFechados.ToList());
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterConferencia_LancamentosSemConta_MarcaPendencias()
+    {
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var inicioMes = new DateOnly(hoje.Year, hoje.Month, 1);
+            var cat = CategoriaId(db);
+            var cartao = new CartaoCredito
+            {
+                Banco = "Nubank", Ultimos4Digitos = "5678",
+                MelhorDiaCompra = 1, DiaVencimento = 10, Limite = 5000m, Ativo = true
+            };
+            db.CartoesCredito.Add(cartao);
+            await db.SaveChangesAsync();
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = inicioMes, Valor = -50m, Confirmado = false,
+                CategoriaId = cat, CartaoCreditoId = cartao.Id
+            });
+            await db.SaveChangesAsync();
+            var service = new FechamentoService(db);
+
+            var c = await service.ObterConferenciaAsync(conta.Id, conta.Nome, hoje.Year, hoje.Month);
+
+            Assert.True(c.TemPendencias);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

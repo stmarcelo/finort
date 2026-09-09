@@ -452,6 +452,18 @@ h1:focus {
     opacity: .55;
 }
 
+.saldo-negativo .mud-input {
+    color: var(--mud-palette-error) !important;
+}
+
+.saldo-negativo input {
+    color: var(--mud-palette-error) !important;
+}
+
+.saldo-neg-btn {
+    margin-right: -4px;
+}
+
 .fluxo-linha {
     display: flex;
     justify-content: space-between;
