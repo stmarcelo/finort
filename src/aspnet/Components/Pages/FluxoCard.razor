@@ -8,7 +8,7 @@
             <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="() => OnNavegar.InvokeAsync(-1)" />
         }
         <MudText Typo="Typo.subtitle1" Class="font-weight-bold">
-            @(new DateTime(AnoReferencia, MesReferencia, 1).ToString("MMMM/yyyy", CulturaPtBr))
+            @TituloMes
         </MudText>
         @if (MostrarNavegacao)
         {
@@ -59,7 +59,7 @@
         </div>
         <div class="fluxo-divisor"></div>
         <div class="fluxo-linha">
-            <span class="fluxo-label">Saldo</span>
+            <span class="fluxo-label">Saldo acumulado</span>
             <span class="fluxo-valor @ClasseAcumulado">@Dados.SaldoAcumulado.ToString("N2")</span>
         </div>
     </MudCardContent>
@@ -75,6 +75,11 @@
     [Parameter] public int DiasAntecipacao { get; set; }
 
     private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    private string TituloMes
+        => AnoReferencia is >= 1 and <= 9999 && MesReferencia is >= 1 and <= 12
+            ? new DateTime(AnoReferencia, MesReferencia, 1).ToString("MMMM/yyyy", CulturaPtBr)
+            : string.Empty;
 
     private string ClasseSaldo
         => Dados.SaldoMes > 0 ? "pos" : Dados.SaldoMes < 0 ? "neg" : "";

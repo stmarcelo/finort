@@ -41,8 +41,13 @@ public class ProvisaoService
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
                 await LancarAsync(provisao, hoje.Year, hoje.Month);
-            provisao.UltimoMesLancado = hoje.Month;
-            provisao.UltimoAnoLancado = hoje.Year;
+
+            var proximoMes = hoje.AddMonths(1);
+            if (!await EstaFechadoAsync(provisao.ContaId, proximoMes.Year, proximoMes.Month))
+                await LancarAsync(provisao, proximoMes.Year, proximoMes.Month);
+
+            provisao.UltimoMesLancado = proximoMes.Month;
+            provisao.UltimoAnoLancado = proximoMes.Year;
             await _db.SaveChangesAsync();
         }
 
@@ -81,20 +86,58 @@ public class ProvisaoService
 
         foreach (var provisao in provisoes)
         {
+            if (provisao.Frequencia == ProvisaoFrequencia.Mensal)
+            {
+                var mesCorrente = new DateOnly(hoje.Year, hoje.Month, 1);
+                if (provisao.UltimoAnoLancado is not null && provisao.UltimoMesLancado is not null)
+                {
+                    var ultimoLancamento = new DateOnly(
+                        provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1);
+                    if (ultimoLancamento > mesCorrente)
+                        continue;
+
+                    if (ultimoLancamento == mesCorrente)
+                    {
+                        var proximoMesJaLancado = hoje.AddMonths(1);
+                        if (!await EstaFechadoAsync(provisao.ContaId, proximoMesJaLancado.Year, proximoMesJaLancado.Month))
+                            criados += await LancarAsync(provisao, proximoMesJaLancado.Year, proximoMesJaLancado.Month);
+
+                        provisao.UltimoMesLancado = proximoMesJaLancado.Month;
+                        provisao.UltimoAnoLancado = proximoMesJaLancado.Year;
+                        continue;
+                    }
+                }
+
+                if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
+                    criados += await LancarAsync(provisao, hoje.Year, hoje.Month);
+
+                var proximoMesMensal = hoje.AddMonths(1);
+                if (!await EstaFechadoAsync(provisao.ContaId, proximoMesMensal.Year, proximoMesMensal.Month))
+                    criados += await LancarAsync(provisao, proximoMesMensal.Year, proximoMesMensal.Month);
+
+                provisao.UltimoMesLancado = proximoMesMensal.Month;
+                provisao.UltimoAnoLancado = proximoMesMensal.Year;
+                continue;
+            }
+
             if (provisao.UltimoAnoLancado is null || provisao.UltimoMesLancado is null)
             {
                 if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
                     criados += await LancarAsync(provisao, hoje.Year, hoje.Month);
 
-                provisao.UltimoMesLancado = hoje.Month;
-                provisao.UltimoAnoLancado = hoje.Year;
+                var proximoMes = hoje.AddMonths(1);
+                if (!await EstaFechadoAsync(provisao.ContaId, proximoMes.Year, proximoMes.Month))
+                    criados += await LancarAsync(provisao, proximoMes.Year, proximoMes.Month);
+
+                provisao.UltimoMesLancado = proximoMes.Month;
+                provisao.UltimoAnoLancado = proximoMes.Year;
                 continue;
             }
 
             var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
             var atual = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)
                 .AddMonths(intervalo);
-            var limite = new DateOnly(hoje.Year, hoje.Month, 1);
+            var limite = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(1);
 
             while (atual <= limite)
             {
@@ -113,6 +156,10 @@ public class ProvisaoService
 
     private async Task<int> LancarAsync(Provisao provisao, int ano, int mes)
     {
+        var cartao = provisao.CartaoCreditoId.HasValue
+            ? await _db.CartoesCredito.FindAsync(provisao.CartaoCreditoId.Value)
+            : null;
+
         if (provisao.Onde == ProvisaoOnde.DebitoCartao && provisao.CartaoCreditoId.HasValue)
         {
             var faturaFechada = await _db.Faturas.AnyAsync(f =>
@@ -126,6 +173,19 @@ public class ProvisaoService
 
         var ultimoDia = DateTime.DaysInMonth(ano, mes);
         var data = new DateOnly(ano, mes, Math.Min(provisao.Dia, ultimoDia));
+
+        if (provisao.Onde == ProvisaoOnde.DebitoCartao && provisao.CartaoCreditoId.HasValue)
+        {
+            var duplicado = await _db.Lancamentos.AnyAsync(l =>
+                l.CartaoCreditoId == provisao.CartaoCreditoId.Value &&
+                l.Data == data &&
+                l.CategoriaId == provisao.CategoriaId &&
+                l.SubcategoriaId == provisao.SubcategoriaId &&
+                l.PessoaId == provisao.PessoaId &&
+                l.Valor == -provisao.Valor);
+            if (duplicado)
+                return 0;
+        }
 
         var lancamento = provisao.Onde switch
         {
@@ -158,6 +218,10 @@ public class ProvisaoService
             },
             _ => throw new InvalidOperationException("Origem de provisão desconhecida.")
         };
+
+        if (lancamento.CartaoCreditoId.HasValue && cartao is not null)
+            lancamento.DataVencimentoCartao = new DateOnly(ano, mes,
+                Math.Min(cartao.DiaVencimento, ultimoDia));
 
         lancamento.CategoriaId = provisao.CategoriaId;
         lancamento.SubcategoriaId = provisao.SubcategoriaId;

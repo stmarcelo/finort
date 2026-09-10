@@ -37,18 +37,24 @@ public class ProvisaoServiceTests
             var salva = await service.CriarAsync(provisao, lancarMesCorrente: true);
 
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            var lancamento = Assert.Single(db.Lancamentos.Where(l => l.ProvisaoId == salva.Id).ToList());
-            Assert.Equal(-200m, lancamento.Valor);
-            Assert.Equal(LancamentoTipo.Despesa, lancamento.Tipo);
-            Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 10), lancamento.Data);
-            Assert.Equal(hoje.Month, salva.UltimoMesLancado);
-            Assert.Equal(hoje.Year, salva.UltimoAnoLancado);
+            var lancamentos = db.Lancamentos.Where(l => l.ProvisaoId == salva.Id).OrderBy(l => l.Data).ToList();
+            Assert.Equal(2, lancamentos.Count);
+            Assert.All(lancamentos, lancamento =>
+            {
+                Assert.Equal(-200m, lancamento.Valor);
+                Assert.Equal(LancamentoTipo.Despesa, lancamento.Tipo);
+                Assert.Equal(10, lancamento.Data.Day);
+            });
+            Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 10), lancamentos[0].Data);
+            Assert.Equal(new DateOnly(hoje.AddMonths(1).Year, hoje.AddMonths(1).Month, 10), lancamentos[1].Data);
+            Assert.Equal(hoje.AddMonths(1).Month, salva.UltimoMesLancado);
+            Assert.Equal(hoje.AddMonths(1).Year, salva.UltimoAnoLancado);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
 
     [Fact]
-    public async Task SincronizarAsync_NuncaLancada_LancaSoMesCorrente()
+    public async Task SincronizarAsync_NuncaLancada_LancaMesCorrenteEProximo()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
@@ -59,8 +65,8 @@ public class ProvisaoServiceTests
 
             var criados = await service.SincronizarAsync();
 
-            Assert.Equal(1, criados);
-            Assert.Single(db.Lancamentos.ToList());
+            Assert.Equal(2, criados);
+            Assert.Equal(2, db.Lancamentos.Count());
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -90,7 +96,7 @@ public class ProvisaoServiceTests
     }
 
     [Fact]
-    public async Task SincronizarAsync_MesFechado_PulaMasMarcaSincronizado()
+    public async Task SincronizarAsync_MesFechado_PulaMesFechadoELancaProximo()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
@@ -114,9 +120,13 @@ public class ProvisaoServiceTests
 
             await service.SincronizarAsync();
 
-            Assert.Empty(db.Lancamentos.ToList());
+            // Current month is fechado, but next month should be launched
+            var lancamentos = db.Lancamentos.ToList();
+            Assert.Single(lancamentos);
+            var proximoMes = hoje.AddMonths(1);
+            Assert.Equal(proximoMes.Month, lancamentos[0].Data.Month);
             var apos = await service.ObterAsync(provisao.Id);
-            Assert.Equal(hoje.Month, apos!.UltimoMesLancado);
+            Assert.Equal(proximoMes.Month, apos!.UltimoMesLancado);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -134,16 +144,17 @@ public class ProvisaoServiceTests
 
             await service.SincronizarAsync();
 
-            var lancamento = Assert.Single(db.Lancamentos.ToList());
-            Assert.Equal(LancamentoTipo.Receita, lancamento.Tipo);
-            Assert.Equal(200m, lancamento.Valor);
-            Assert.Equal(conta.Id, lancamento.ContaId);
+            var lancamentos = db.Lancamentos.ToList();
+            Assert.Equal(2, lancamentos.Count);
+            Assert.All(lancamentos, l => Assert.Equal(LancamentoTipo.Receita, l.Tipo));
+            Assert.All(lancamentos, l => Assert.Equal(200m, l.Valor));
+            Assert.All(lancamentos, l => Assert.Equal(conta.Id, l.ContaId));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
 
     [Fact]
-    public async Task SincronizarAsync_FaturaDoCartaoFechada_PulaLancamentoMasMarcaSincronizado()
+    public async Task SincronizarAsync_FaturaDoCartaoFechada_PulaMesFechadoELancaProximo()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
@@ -178,11 +189,128 @@ public class ProvisaoServiceTests
 
             var criados = await service.SincronizarAsync();
 
-            Assert.Equal(0, criados);
-            Assert.Empty(db.Lancamentos.ToList());
+            // Current month fatura fechada, but next month should be launched
+            Assert.Equal(1, criados);
+            var lancamentos = db.Lancamentos.ToList();
+            Assert.Single(lancamentos);
+            var proximoMes = hoje.AddMonths(1);
+            Assert.Equal(proximoMes.Month, lancamentos[0].Data.Month);
+            Assert.Equal(
+                new DateOnly(proximoMes.Year, proximoMes.Month, cartao.DiaVencimento),
+                lancamentos[0].DataVencimentoCartao);
             var apos = await service.ObterAsync(provisao.Id);
-            Assert.Equal(hoje.Month, apos!.UltimoMesLancado);
-            Assert.Equal(hoje.Year, apos.UltimoAnoLancado);
+            Assert.Equal(proximoMes.Month, apos!.UltimoMesLancado);
+            Assert.Equal(proximoMes.Year, apos.UltimoAnoLancado);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task SincronizarAsync_MensalComUltimoMesAnterior_GaranteCorrenteEProximo()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var cartao = new CartaoCredito
+            {
+                Banco = "Cartão 1", Ultimos4Digitos = "0001",
+                MelhorDiaCompra = 27, DiaVencimento = 4, Limite = 1000m, Ativo = true,
+                ContaId = conta.Id
+            };
+            db.CartoesCredito.Add(cartao);
+            var provisao = NovaProvisao(conta);
+            provisao.Onde = ProvisaoOnde.DebitoCartao;
+            provisao.CartaoCreditoId = cartao.Id;
+            provisao.Dia = 1;
+            provisao.Valor = 19.90m;
+            provisao.CategoriaId = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var mesAnterior = hoje.AddMonths(-1);
+            provisao.UltimoMesLancado = mesAnterior.Month;
+            provisao.UltimoAnoLancado = mesAnterior.Year;
+            db.Provisoes.Add(provisao);
+            await db.SaveChangesAsync();
+
+            await service.SincronizarAsync();
+
+            var lancamentos = db.Lancamentos.Where(l => l.CartaoCreditoId == cartao.Id).OrderBy(l => l.Data).ToList();
+            Assert.Equal(2, lancamentos.Count);
+            Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 1), lancamentos[0].Data);
+            Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 4), lancamentos[0].DataVencimentoCartao);
+            var proximo = hoje.AddMonths(1);
+            Assert.Equal(new DateOnly(proximo.Year, proximo.Month, 1), lancamentos[1].Data);
+            Assert.Equal(new DateOnly(proximo.Year, proximo.Month, 4), lancamentos[1].DataVencimentoCartao);
+            Assert.Equal(proximo.Month, (await service.ObterAsync(provisao.Id))!.UltimoMesLancado);
+            Assert.Equal(proximo.Year, (await service.ObterAsync(provisao.Id))!.UltimoAnoLancado);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task SincronizarAsync_MensalComUltimoLancamentoNoMesAtual_LancaSomenteProximo()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var provisao = NovaProvisao(conta);
+            provisao.CategoriaId = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            provisao.UltimoMesLancado = hoje.Month;
+            provisao.UltimoAnoLancado = hoje.Year;
+            db.Provisoes.Add(provisao);
+            await db.SaveChangesAsync();
+
+            var criados = await service.SincronizarAsync();
+
+            Assert.Equal(1, criados);
+            var proximo = hoje.AddMonths(1);
+            var lancamento = Assert.Single(db.Lancamentos);
+            Assert.Equal(new DateOnly(proximo.Year, proximo.Month, provisao.Dia), lancamento.Data);
+            Assert.Equal(proximo.Month, (await service.ObterAsync(provisao.Id))!.UltimoMesLancado);
+            Assert.Equal(proximo.Year, (await service.ObterAsync(provisao.Id))!.UltimoAnoLancado);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task SincronizarAsync_CartaoNaoDuplicaLancamentoComMesmosDados()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var cartao = new CartaoCredito
+            {
+                Banco = "Nubank", Ultimos4Digitos = "1234",
+                MelhorDiaCompra = 5, DiaVencimento = 10, Limite = 1000m, Ativo = true,
+                ContaId = conta.Id
+            };
+            db.CartoesCredito.Add(cartao);
+            var categoriaId = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var provisao = NovaProvisao(conta);
+            provisao.Onde = ProvisaoOnde.DebitoCartao;
+            provisao.CartaoCreditoId = cartao.Id;
+            provisao.CategoriaId = categoriaId;
+            provisao.UltimoMesLancado = hoje.AddMonths(-1).Month;
+            provisao.UltimoAnoLancado = hoje.AddMonths(-1).Year;
+            db.Provisoes.Add(provisao);
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(hoje.Year, hoje.Month, provisao.Dia),
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -provisao.Valor,
+                CategoriaId = categoriaId,
+                CartaoCreditoId = cartao.Id,
+                DataVencimentoCartao = CartaoCreditoService.CalcularVencimento(cartao, new DateOnly(hoje.Year, hoje.Month, provisao.Dia))
+            });
+            await db.SaveChangesAsync();
+
+            var criados = await service.SincronizarAsync();
+
+            Assert.Equal(1, criados);
+            Assert.Equal(2, db.Lancamentos.Count(l => l.CartaoCreditoId == cartao.Id));
+            Assert.Single(db.Lancamentos.Where(l => l.CartaoCreditoId == cartao.Id && l.Data.Month == hoje.Month));
+            Assert.Single(db.Lancamentos.Where(l => l.CartaoCreditoId == cartao.Id && l.Data.Month == hoje.AddMonths(1).Month));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -200,7 +328,7 @@ public class ProvisaoServiceTests
             await service.ExcluirAsync(provisao.Id);
 
             Assert.Null(await service.ObterAsync(provisao.Id));
-            Assert.Single(db.Lancamentos.ToList());
+            Assert.Equal(2, db.Lancamentos.Count());
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

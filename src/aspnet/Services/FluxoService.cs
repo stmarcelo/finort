@@ -17,7 +17,10 @@ public class FluxoService
     }
 
     /// <summary>Agregados do mês: totais sem transferências, por cartão, saldo anterior e acumulado.</summary>
-    public async Task<FluxoMensal> ObterCardAsync(int ano, int mes, int diasAntecipacao = 0)
+    public Task<FluxoMensal> ObterCardAsync(int ano, int mes, int diasAntecipacao = 0)
+        => ObterCardInternoAsync(ano, mes, diasAntecipacao, 0);
+
+    private async Task<FluxoMensal> ObterCardInternoAsync(int ano, int mes, int diasAntecipacao, int profundidade)
     {
         var inicioMes = new DateOnly(ano, mes, 1);
         var fimMes = inicioMes.AddMonths(1).AddDays(-1);
@@ -44,7 +47,9 @@ public class FluxoService
         }
 
         var lancamentos = await _db.Lancamentos
-            .Where(l => l.Data <= fimJanela)
+            .Where(l => l.CartaoCreditoId != null
+                ? l.DataVencimentoCartao <= fimJanela
+                : l.Data <= fimJanela)
             .Select(l => new
             {
                 l.Id,
@@ -53,6 +58,7 @@ public class FluxoService
                 l.Tipo,
                 l.Valor,
                 l.Confirmado,
+                l.ContaId,
                 l.CartaoCreditoId,
                 l.ReembolsoId,
                 BancoCartao = l.CartaoCredito != null ? l.CartaoCredito.Banco : null,
@@ -63,9 +69,11 @@ public class FluxoService
         var projecoesMes = await ProvisaoAgenda.ProjetarAsync(_db, inicioJanela, fimJanela);
         var projecoesAnteriores = await ProvisaoAgenda.ProjetarAsync(_db, PisoHistorico, inicioMes.AddDays(-1));
 
-        // Despesas de conta: mês atual + mês seguinte até diasAntecipacao
+        // Despesas de conta: janela (da+1/m até da/m+1), SEM despesas de cartão
+        // (faturas de cartão são exibidas separadamente e subtraídas do saldo do mês)
         var despesasDoMes = lancamentos
-            .Where(l => l.Data >= inicioJanela && l.Data <= fimJanela && l.Tipo == LancamentoTipo.Despesa)
+            .Where(l => l.Data >= inicioJanela && l.Data <= fimJanela
+                        && l.Tipo == LancamentoTipo.Despesa && l.CartaoCreditoId == null)
             .ToList();
 
         // IDs de receitas que são reembolsos (apontadas por ReembolsoId de despesas de cartão)
@@ -74,9 +82,9 @@ public class FluxoService
             .Select(l => l.ReembolsoId!.Value)
             .ToHashSet();
 
-        // Receitas normais: janela original do mês (sem reembolsos)
+        // Receitas normais: janela (da+1/m até da/m+1), sem reembolsos
         var receitasNormais = lancamentos
-            .Where(l => l.Data >= inicioMes && l.Data <= fimMes
+            .Where(l => l.Data >= inicioJanela && l.Data <= fimJanela
                         && l.Tipo == LancamentoTipo.Receita && !idsReembolso.Contains(l.Id))
             .ToList();
 
@@ -102,24 +110,30 @@ public class FluxoService
         var receitasDoMes = receitasNormais.Concat(reembolsosLista).ToList();
 
         var receitas = receitasDoMes.Sum(l => l.Valor)
-            + projecoesMes.Where(p => p.Data <= fimMes).Sum(p => p.Provisao.Onde == ProvisaoOnde.Receita ? p.Provisao.Valor : 0m);
+            + projecoesMes.Where(p => p.Data >= inicioJanela && p.Data <= fimJanela
+                                      && p.Provisao.Onde == ProvisaoOnde.Receita)
+                .Sum(p => p.Provisao.Valor);
 
         var receitasReais = receitasDoMes;
         var receitasPagas = receitasReais.Count > 0 && receitasReais.All(l => l.Confirmado);
         var despesasPagas = despesasDoMes.Count > 0 && despesasDoMes.All(l => l.Confirmado);
 
         var despesas = -despesasDoMes.Sum(l => l.Valor)
-            + projecoesMes.Where(p => p.Data >= inicioJanela && p.Data <= fimJanela && p.Provisao.Onde != ProvisaoOnde.Receita)
+            + projecoesMes.Where(p => p.Data >= inicioJanela && p.Data <= fimJanela
+                                      && p.Provisao.Onde != ProvisaoOnde.Receita
+                                      && p.Provisao.Onde != ProvisaoOnde.DebitoCartao)
                 .Sum(p => p.Provisao.Valor);
 
         // Cartões de crédito: usar DataVencimentoCartao para atribuição ao mês
         var despesasCartaoMes = lancamentos
             .Where(l => l.CartaoCreditoId != null && l.Tipo == LancamentoTipo.Despesa &&
+                        l.DataVencimentoCartao.HasValue &&
                         l.DataVencimentoCartao >= inicioJanela && l.DataVencimentoCartao <= fimJanela)
             .ToList();
         var projecoesCartaoMes = projecoesMes
-            .Where(p => p.Data >= inicioJanela && p.Data <= fimJanela &&
-                        p.Provisao.Onde == ProvisaoOnde.DebitoCartao && p.Provisao.CartaoCreditoId != null)
+            .Where(p => p.Provisao.Onde == ProvisaoOnde.DebitoCartao &&
+                        p.Provisao.CartaoCreditoId != null &&
+                        DataVencimentoCartao(p) >= inicioJanela && DataVencimentoCartao(p) <= fimJanela)
             .ToList();
 
         var itensCartao = despesasCartaoMes
@@ -144,25 +158,60 @@ public class FluxoService
         var mesAnterior = mes == 1 ? 12 : mes - 1;
         var anoAnterior = mes == 1 ? ano - 1 : ano;
 
+        // Saldo anterior: por conta. Fechada → SaldoAcumulado do último fechamento;
+        // aberta → lançamentos do último fechamento (ou início) até o fim do mês -1.
         var chave = ano * 12 + mes;
-        var fechamentosPorConta = await _db.MesesFechados
+        var fimMesAnterior = new DateOnly(anoAnterior, mesAnterior, DateTime.DaysInMonth(anoAnterior, mesAnterior));
+        var contas = await _db.Contas.Select(c => c.Id).ToListAsync();
+        var fechamentosMesAnterior = await _db.MesesFechados
+            .Where(f => f.Ano == anoAnterior && f.Mes == mesAnterior)
+            .ToListAsync();
+        var fechamentos = await _db.MesesFechados
             .Where(m => m.Ano * 12 + m.Mes < chave)
-            .GroupBy(m => m.ContaId)
-            .Select(g => g.OrderByDescending(m => m.Ano).ThenByDescending(m => m.Mes).First())
+            .OrderBy(m => m.Ano).ThenBy(m => m.Mes)
             .ToListAsync();
 
         decimal saldoAnterior;
-        if (fechamentosPorConta.Count > 0)
+        if (fechamentosMesAnterior.Count == 0 && profundidade < 120)
         {
-            saldoAnterior = fechamentosPorConta.Sum(m => m.SaldoAcumulado);
+            var cardAnterior = await ObterCardInternoAsync(anoAnterior, mesAnterior, diasAntecipacao, profundidade + 1);
+            saldoAnterior = cardAnterior.SaldoAcumulado;
         }
         else
         {
-            saldoAnterior = lancamentos.Where(l => l.Data < inicioMes).Sum(l => l.Valor)
-                + projecoesAnteriores.Sum(SinalProjecao);
+            saldoAnterior = 0m;
+            foreach (var contaId in contas)
+            {
+                var ultimoFechamento = fechamentos.LastOrDefault(f => f.ContaId == contaId);
+                if (ultimoFechamento is not null)
+                {
+                    saldoAnterior += ultimoFechamento.SaldoAcumulado;
+                    var dataUltimoFechamento = new DateOnly(ultimoFechamento.Ano, ultimoFechamento.Mes, 1)
+                        .AddMonths(1);
+                    saldoAnterior += lancamentos
+                        .Where(l => l.ContaId == contaId && l.Data >= dataUltimoFechamento && l.Data <= fimMesAnterior)
+                        .Sum(l => l.Valor);
+                }
+                else
+                {
+                    saldoAnterior += lancamentos
+                        .Where(l => l.ContaId == contaId && l.Data < inicioMes)
+                        .Sum(l => l.Valor);
+                }
+            }
+
+            // Lançamentos sem conta (ex.: DebitoSemConta) contam no saldo anterior;
+            // compras de cartão não (impacto aparece na fatura do mês de vencimento)
+            saldoAnterior += lancamentos
+                .Where(l => l.ContaId == null && l.CartaoCreditoId == null && l.Data < inicioMes)
+                .Sum(l => l.Valor);
+
+            saldoAnterior += projecoesAnteriores.Sum(SinalProjecao);
         }
 
-        var saldoMes = receitas - despesas;
+        // Saldo do mês = receitas - despesas - faturas dos cartões
+        var totalCartoes = itensComStatus.Sum(c => c.Total);
+        var saldoMes = receitas - despesas - totalCartoes;
 
         return new FluxoMensal(ano, mes, receitas, despesas, itensComStatus,
             saldoAnterior, saldoMes, saldoAnterior + saldoMes,
@@ -186,6 +235,12 @@ public class FluxoService
             .SumAsync(l => (decimal?)l.Valor) ?? 0m;
         return pago >= Math.Abs(fatura.ValorTotal);
     }
+
+    private static DateOnly DataVencimentoCartao((DateOnly Data, Provisao Provisao) projecao)
+        => projecao.Provisao.CartaoCredito is { } cartao
+            ? new DateOnly(projecao.Data.Year, projecao.Data.Month,
+                Math.Min(cartao.DiaVencimento, DateTime.DaysInMonth(projecao.Data.Year, projecao.Data.Month)))
+            : projecao.Data;
 
     private static decimal SinalProjecao((DateOnly Data, Provisao Provisao) projecao)
         => projecao.Provisao.Onde == ProvisaoOnde.Receita

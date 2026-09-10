@@ -163,6 +163,35 @@ public class CartaoCreditoService
         return vcto;
     }
 
+    /// <summary>Calcula o período da fatura para um mês de vencimento informado.
+    /// Retorna (inicio, fim) inclusive.</summary>
+    public static (DateOnly Inicio, DateOnly Fim) CalcularPeriodoFatura(CartaoCredito cartao, int anoVcto, int mesVcto)
+    {
+        var md = cartao.MelhorDiaCompra;
+        var dv = cartao.DiaVencimento;
+
+        DateOnly inicio;
+        DateOnly fim;
+
+        if (dv >= md)
+        {
+            // Período: md/m-1 até md-1/m
+            inicio = new DateOnly(anoVcto, mesVcto, 1).AddMonths(-1);
+            inicio = new DateOnly(inicio.Year, inicio.Month, md);
+            fim = new DateOnly(anoVcto, mesVcto, md).AddDays(-1);
+        }
+        else
+        {
+            // Período: md/m-2 até md-1/m-1
+            inicio = new DateOnly(anoVcto, mesVcto, 1).AddMonths(-2);
+            inicio = new DateOnly(inicio.Year, inicio.Month, md);
+            fim = new DateOnly(anoVcto, mesVcto, 1).AddMonths(-1);
+            fim = new DateOnly(fim.Year, fim.Month, Math.Min(md - 1, DateTime.DaysInMonth(fim.Year, fim.Month)));
+        }
+
+        return (inicio, fim);
+    }
+
     private static void ValidarDias(int melhorDiaCompra, int diaVencimento)
     {
         if (melhorDiaCompra is < 1 or > 31)

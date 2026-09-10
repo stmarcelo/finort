@@ -320,7 +320,9 @@ public class CalendarioServiceTests
             await new ProvisaoService(db).SincronizarAsync();
             var service = new CalendarioService(db, new FaturaService(db), new LembreteService(db));
 
-            var resultado = await service.ObterMesAsync(hoje.Year, hoje.Month);
+            var dataLancamento = new DateOnly(hoje.Year, hoje.Month, 10);
+            var vencimento = CartaoCreditoService.CalcularVencimento(cartao, dataLancamento);
+            var resultado = await service.ObterMesAsync(vencimento.Year, vencimento.Month);
 
             var itens = resultado.Dias.SelectMany(d => d.Itens).ToList();
             // A compra do sincronismo vira compromisso de fatura (informativo), nunca projeção de provisão de cartão.

@@ -1,0 +1,62 @@
+**/[Dd]ocs/
+
+# Build
+**/bin/
+**/obj/
+
+# Visual Studio
+**/.vs/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+
+# Rider
+**/.idea/
+
+# VS Code
+**/.vscode/
+
+# Node (caso use Tailwind, Vite, etc.)
+**/node_modules/
+**/dist/
+
+# Logs
+**/*.log
+
+# Cobertura de testes
+**/TestResults/
+**/coverage/
+**/coverage-report/
+
+# Publicação
+**/publish/
+**/artifacts/
+
+# Ferramentas
+**/.sass-cache/
+**/.cache/
+
+# Banco de dados local
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Arquivos temporários
+**/~*
+**/*.tmp
+**/*.temp
+
+# Git
+**/.git/
+
+# Docker
+**/.docker/
+
+# ReSharper
+**/_ReSharper*/
+**/*.DotSettings.user
+
+# Blazor
+**/wwwroot/_framework/
+**/service-worker-assets.js

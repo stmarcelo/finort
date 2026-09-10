@@ -1,0 +1,1292 @@
+{
+  "global.json": {
+    "mtime": 1786546692.7309115,
+    "ast_hash": "71e014c0cb6560941504c553d3b4f44f",
+    "semantic_hash": "71e014c0cb6560941504c553d3b4f44f"
+  },
+  "src/Finort.Tests/AppThemeTests.cs": {
+    "mtime": 1787870617.4933112,
+    "ast_hash": "7ad34a7969a21cfb701041f5bb17471b",
+    "semantic_hash": "7ad34a7969a21cfb701041f5bb17471b"
+  },
+  "src/Finort.Tests/AppUpdateServiceTests.cs": {
+    "mtime": 1788447000.0168884,
+    "ast_hash": "35065b70283731aefaf0c679d419d79d",
+    "semantic_hash": "35065b70283731aefaf0c679d419d79d"
+  },
+  "src/Finort.Tests/AssemblyInfo.cs": {
+    "mtime": 1787859577.9593656,
+    "ast_hash": "312068e2bd97799bb5d90526200f0b6f",
+    "semantic_hash": "312068e2bd97799bb5d90526200f0b6f"
+  },
+  "src/Finort.Tests/AuthLoginServiceTests.cs": {
+    "mtime": 1788218877.9162686,
+    "ast_hash": "3441906c6d23ffa44d5d06c9dce2174d",
+    "semantic_hash": "3441906c6d23ffa44d5d06c9dce2174d"
+  },
+  "src/Finort.Tests/AuthMigrationTests.cs": {
+    "mtime": 1787859577.9679344,
+    "ast_hash": "b2bdb6cea8ec4fc2af70079db982cdab",
+    "semantic_hash": "b2bdb6cea8ec4fc2af70079db982cdab"
+  },
+  "src/Finort.Tests/AuthServiceTests.cs": {
+    "mtime": 1788214055.5606763,
+    "ast_hash": "69aa834fab03481a50742142ad96877b",
+    "semantic_hash": "69aa834fab03481a50742142ad96877b"
+  },
+  "src/Finort.Tests/BackupCryptoTests.cs": {
+    "mtime": 1787860178.9435728,
+    "ast_hash": "83470eea43639d371c82339b904f2b8f",
+    "semantic_hash": "83470eea43639d371c82339b904f2b8f"
+  },
+  "src/Finort.Tests/BackupRestoreServiceTests.cs": {
+    "mtime": 1787859577.980456,
+    "ast_hash": "29b0b0fd08dd3594f32bc688ec5c0124",
+    "semantic_hash": "29b0b0fd08dd3594f32bc688ec5c0124"
+  },
+  "src/Finort.Tests/CalendarioFaturasTests.cs": {
+    "mtime": 1788667920.1293213,
+    "ast_hash": "8bf518fc741dc0cd1d8e3eaa085ca4f8",
+    "semantic_hash": "8bf518fc741dc0cd1d8e3eaa085ca4f8"
+  },
+  "src/Finort.Tests/CalendarioServiceTests.cs": {
+    "mtime": 1788763385.0104716,
+    "ast_hash": "ec194071ea598972b5ff9841dace3139",
+    "semantic_hash": "ec194071ea598972b5ff9841dace3139"
+  },
+  "src/Finort.Tests/CartaoCreditoServiceTests.cs": {
+    "mtime": 1788918191.373696,
+    "ast_hash": "bc80929faba7a02bfb73b502d1bc830a",
+    "semantic_hash": "bc80929faba7a02bfb73b502d1bc830a"
+  },
+  "src/Finort.Tests/CartaoLimiteDisponivelTests.cs": {
+    "mtime": 1788046504.3135796,
+    "ast_hash": "d3d11f5038b5dcb7053c22202cfb507e",
+    "semantic_hash": "d3d11f5038b5dcb7053c22202cfb507e"
+  },
+  "src/Finort.Tests/CategoriaServiceTests.cs": {
+    "mtime": 1788046504.3156004,
+    "ast_hash": "60c030650af0519c580f0a58f589bdc2",
+    "semantic_hash": "60c030650af0519c580f0a58f589bdc2"
+  },
+  "src/Finort.Tests/ContaResumoTests.cs": {
+    "mtime": 1788046504.3181386,
+    "ast_hash": "1742ba93cec429bdd1fb8aef6a026b29",
+    "semantic_hash": "1742ba93cec429bdd1fb8aef6a026b29"
+  },
+  "src/Finort.Tests/ContaServiceTests.cs": {
+    "mtime": 1788046504.3201442,
+    "ast_hash": "25266ee2da259ef8c98cb76e05e31056",
+    "semantic_hash": "25266ee2da259ef8c98cb76e05e31056"
+  },
+  "src/Finort.Tests/DashboardServiceTests.cs": {
+    "mtime": 1788443812.5868793,
+    "ast_hash": "c66c4474267dc257ce399955f3c2f117",
+    "semantic_hash": "c66c4474267dc257ce399955f3c2f117"
+  },
+  "src/Finort.Tests/DatabaseConfigStoreTests.cs": {
+    "mtime": 1788493308.221726,
+    "ast_hash": "a45a556244f830ca96786dd66a8686bb",
+    "semantic_hash": "a45a556244f830ca96786dd66a8686bb"
+  },
+  "src/Finort.Tests/DatabaseConfigTests.cs": {
+    "mtime": 1787859578.0191212,
+    "ast_hash": "c792e318e0c3f765c72ba4e7e56df72c",
+    "semantic_hash": "c792e318e0c3f765c72ba4e7e56df72c"
+  },
+  "src/Finort.Tests/DatabaseMigratorTests.cs": {
+    "mtime": 1788046558.4494927,
+    "ast_hash": "0246fef5d708c8a1caf77b82d882ba70",
+    "semantic_hash": "0246fef5d708c8a1caf77b82d882ba70"
+  },
+  "src/Finort.Tests/DatabaseSwitchServiceTests.cs": {
+    "mtime": 1788046504.3241408,
+    "ast_hash": "d29f5991cb0e1649ef6c7ad2bf09aa52",
+    "semantic_hash": "d29f5991cb0e1649ef6c7ad2bf09aa52"
+  },
+  "src/Finort.Tests/DbContextOptionsBuilderFactoryTests.cs": {
+    "mtime": 1787859578.0331545,
+    "ast_hash": "9b14e64cb541ed7da187cc1ea3e43b4c",
+    "semantic_hash": "9b14e64cb541ed7da187cc1ea3e43b4c"
+  },
+  "src/Finort.Tests/DespesaCartaoEntradaTests.cs": {
+    "mtime": 1787859578.036638,
+    "ast_hash": "c74f265c79d4230ef4cc2b94d06c86d6",
+    "semantic_hash": "c74f265c79d4230ef4cc2b94d06c86d6"
+  },
+  "src/Finort.Tests/EmailServiceTests.cs": {
+    "mtime": 1787859578.0406566,
+    "ast_hash": "709b722795bffd481191ba9dd54343db",
+    "semantic_hash": "709b722795bffd481191ba9dd54343db"
+  },
+  "src/Finort.Tests/Fase3MigrationTests.cs": {
+    "mtime": 1788667920.1348968,
+    "ast_hash": "40ecacd847894c1e64dc055ecb860a1c",
+    "semantic_hash": "40ecacd847894c1e64dc055ecb860a1c"
+  },
+  "src/Finort.Tests/Fase4aMigrationTests.cs": {
+    "mtime": 1788046504.326141,
+    "ast_hash": "a83d7c7515fe80d145462b0aee529eaa",
+    "semantic_hash": "a83d7c7515fe80d145462b0aee529eaa"
+  },
+  "src/Finort.Tests/Fase5aMigrationTests.cs": {
+    "mtime": 1787859578.0552144,
+    "ast_hash": "f0985f27264f1c3ec4445a5240d891d3",
+    "semantic_hash": "f0985f27264f1c3ec4445a5240d891d3"
+  },
+  "src/Finort.Tests/FaturaServiceTests.cs": {
+    "mtime": 1789017647.0295663,
+    "ast_hash": "841e308ab0ed593116b90459ba8fea87",
+    "semantic_hash": "841e308ab0ed593116b90459ba8fea87"
+  },
+  "src/Finort.Tests/FechamentoServiceTests.cs": {
+    "mtime": 1788918191.3786962,
+    "ast_hash": "44b426bd589807f0602fd107f26ce4e8",
+    "semantic_hash": "44b426bd589807f0602fd107f26ce4e8"
+  },
+  "src/Finort.Tests/Finort.Tests.csproj": {
+    "mtime": 1788443812.6180048,
+    "ast_hash": "f164515c0043157a243de234df12af17",
+    "semantic_hash": "f164515c0043157a243de234df12af17"
+  },
+  "src/Finort.Tests/FluxoPagoTests.cs": {
+    "mtime": 1787859578.0692353,
+    "ast_hash": "dd952174ddcfb1d9f071c014bf05a4b0",
+    "semantic_hash": "dd952174ddcfb1d9f071c014bf05a4b0"
+  },
+  "src/Finort.Tests/FluxoServiceTests.cs": {
+    "mtime": 1788763385.0270896,
+    "ast_hash": "5eaf4917bde782742ffa3b68c7356387",
+    "semantic_hash": "5eaf4917bde782742ffa3b68c7356387"
+  },
+  "src/Finort.Tests/InvestimentoServiceTests.cs": {
+    "mtime": 1788763385.0270896,
+    "ast_hash": "be4139ce2ba1bd5f73137eab001638c6",
+    "semantic_hash": "be4139ce2ba1bd5f73137eab001638c6"
+  },
+  "src/Finort.Tests/LancamentoFiltrosReembolsoTests.cs": {
+    "mtime": 1788046504.3311417,
+    "ast_hash": "b78f9674c09f70cd48346a73a026b18c",
+    "semantic_hash": "b78f9674c09f70cd48346a73a026b18c"
+  },
+  "src/Finort.Tests/LancamentoGuardasTests.cs": {
+    "mtime": 1787968468.4700048,
+    "ast_hash": "c04aa8e6535469e3f47e493e57a8319b",
+    "semantic_hash": "c04aa8e6535469e3f47e493e57a8319b"
+  },
+  "src/Finort.Tests/LancamentoProjetoTests.cs": {
+    "mtime": 1788046504.33414,
+    "ast_hash": "4c0f851fb3b1b19259032089f678506f",
+    "semantic_hash": "4c0f851fb3b1b19259032089f678506f"
+  },
+  "src/Finort.Tests/LancamentoServiceFase4aTests.cs": {
+    "mtime": 1788918191.3802204,
+    "ast_hash": "a8de3a1df5593a29d168f8cede84edc3",
+    "semantic_hash": "a8de3a1df5593a29d168f8cede84edc3"
+  },
+  "src/Finort.Tests/LancamentoServiceTests.cs": {
+    "mtime": 1788763385.0270896,
+    "ast_hash": "f9d76f7c7153151eb3b6c5e79321669a",
+    "semantic_hash": "f9d76f7c7153151eb3b6c5e79321669a"
+  },
+  "src/Finort.Tests/LoginAttemptGuardTests.cs": {
+    "mtime": 1788214754.709625,
+    "ast_hash": "e5d95f706ef5dbb33f42a85e9852cf9b",
+    "semantic_hash": "e5d95f706ef5dbb33f42a85e9852cf9b"
+  },
+  "src/Finort.Tests/MoneyInputFormatterTests.cs": {
+    "mtime": 1787970242.7304678,
+    "ast_hash": "1bccb1fa3c096008c900c6d54c37d74c",
+    "semantic_hash": "1bccb1fa3c096008c900c6d54c37d74c"
+  },
+  "src/Finort.Tests/MySqlAppDbContextTests.cs": {
+    "mtime": 1788214055.5655446,
+    "ast_hash": "7b6cdc90556d25da9486677ad44d6419",
+    "semantic_hash": "7b6cdc90556d25da9486677ad44d6419"
+  },
+  "src/Finort.Tests/PessoaServiceTests.cs": {
+    "mtime": 1788046504.340137,
+    "ast_hash": "a9a7eaeff6c8ab3948efa6af5bed4eb1",
+    "semantic_hash": "a9a7eaeff6c8ab3948efa6af5bed4eb1"
+  },
+  "src/Finort.Tests/ProjetoPdfTests.cs": {
+    "mtime": 1787859578.122715,
+    "ast_hash": "a36545d09f9e03fb7d74a65f454a8897",
+    "semantic_hash": "a36545d09f9e03fb7d74a65f454a8897"
+  },
+  "src/Finort.Tests/ProjetoRelatorioServiceTests.cs": {
+    "mtime": 1788918191.3832316,
+    "ast_hash": "fa4cdb9ab04a0dbe303af0fb076e9212",
+    "semantic_hash": "fa4cdb9ab04a0dbe303af0fb076e9212"
+  },
+  "src/Finort.Tests/ProjetoSelectLogicTests.cs": {
+    "mtime": 1787859578.132748,
+    "ast_hash": "8899be8f2ce1287eb89d9102cdaf3093",
+    "semantic_hash": "8899be8f2ce1287eb89d9102cdaf3093"
+  },
+  "src/Finort.Tests/ProjetoServiceTests.cs": {
+    "mtime": 1787859578.1372635,
+    "ast_hash": "2d5f5a8f01e12136ff419fa68c9468fb",
+    "semantic_hash": "2d5f5a8f01e12136ff419fa68c9468fb"
+  },
+  "src/Finort.Tests/ProjetosMigrationTests.cs": {
+    "mtime": 1787859578.1412716,
+    "ast_hash": "b128b92770b6faf780f61e2cff4e5cfc",
+    "semantic_hash": "b128b92770b6faf780f61e2cff4e5cfc"
+  },
+  "src/Finort.Tests/ProvisaoAgendaTests.cs": {
+    "mtime": 1788763385.038069,
+    "ast_hash": "e19ecda9155aff9aa29cac6a0a3d49a3",
+    "semantic_hash": "e19ecda9155aff9aa29cac6a0a3d49a3"
+  },
+  "src/Finort.Tests/ProvisaoServiceTests.cs": {
+    "mtime": 1789017503.4865372,
+    "ast_hash": "36217bb42538aba5e802fa9d27688f81",
+    "semantic_hash": "36217bb42538aba5e802fa9d27688f81"
+  },
+  "src/Finort.Tests/ScopedAuthenticationStateProviderTests.cs": {
+    "mtime": 1787859578.1569538,
+    "ast_hash": "f7d154986f9519b62e06ae791974e3c2",
+    "semantic_hash": "f7d154986f9519b62e06ae791974e3c2"
+  },
+  "src/Finort.Tests/SecretProtectorTests.cs": {
+    "mtime": 1788187880.652052,
+    "ast_hash": "755da7858dfff63ac391cc7030e6cd9c",
+    "semantic_hash": "755da7858dfff63ac391cc7030e6cd9c"
+  },
+  "src/Finort.Tests/SeedCliGuardTests.cs": {
+    "mtime": 1788198415.325505,
+    "ast_hash": "75648357e801240ee951615fea51de2c",
+    "semantic_hash": "75648357e801240ee951615fea51de2c"
+  },
+  "src/Finort.Tests/TestDbContext.cs": {
+    "mtime": 1787859578.1629665,
+    "ast_hash": "e6124a69f9fe504c8af90ab0863a1b86",
+    "semantic_hash": "e6124a69f9fe504c8af90ab0863a1b86"
+  },
+  "src/Finort.Tests/TokenServiceTests.cs": {
+    "mtime": 1787859578.167472,
+    "ast_hash": "9fa253f85353119973f0231305ec4d1b",
+    "semantic_hash": "9fa253f85353119973f0231305ec4d1b"
+  },
+  "src/Finort.Tests/TurnstileVerifierTests.cs": {
+    "mtime": 1788215459.7828417,
+    "ast_hash": "ac38c98ca9b3129ffa0f3876f63e5c63",
+    "semantic_hash": "ac38c98ca9b3129ffa0f3876f63e5c63"
+  },
+  "src/Finort.Tests/UpdatePlanTests.cs": {
+    "mtime": 1788443812.6375759,
+    "ast_hash": "524cc57a38ed660a2467e9b9ff312286",
+    "semantic_hash": "524cc57a38ed660a2467e9b9ff312286"
+  },
+  "src/Finort.Tests/appsettings.json": {
+    "mtime": 1787860042.9603884,
+    "ast_hash": "c2fb5bffc132fcad17e690e89f123990",
+    "semantic_hash": "c2fb5bffc132fcad17e690e89f123990"
+  },
+  "src/aspnet/App/AppComponentBase.cs": {
+    "mtime": 1787859565.18743,
+    "ast_hash": "f2936e113e38260e0763cbc33954a4b5",
+    "semantic_hash": "f2936e113e38260e0763cbc33954a4b5"
+  },
+  "src/aspnet/App/AppTheme.cs": {
+    "mtime": 1787870703.5315797,
+    "ast_hash": "75ae2002cbb3d9ad293fc66d4e469502",
+    "semantic_hash": "75ae2002cbb3d9ad293fc66d4e469502"
+  },
+  "src/aspnet/App/GlobalVariant.cs": {
+    "mtime": 1787859565.1954403,
+    "ast_hash": "f451870db59288679c85a44406a6d88d",
+    "semantic_hash": "f451870db59288679c85a44406a6d88d"
+  },
+  "src/aspnet/App/LoginResponse.cs": {
+    "mtime": 1788215942.8274097,
+    "ast_hash": "04d095b81febf318a02ae10c35adc331",
+    "semantic_hash": "04d095b81febf318a02ae10c35adc331"
+  },
+  "src/aspnet/App/LoginState.cs": {
+    "mtime": 1787859565.202109,
+    "ast_hash": "ead8c053bc91fd2950f02eac4dc2ec74",
+    "semantic_hash": "ead8c053bc91fd2950f02eac4dc2ec74"
+  },
+  "src/aspnet/App/MoneyInputFormatter.cs": {
+    "mtime": 1787967996.407345,
+    "ast_hash": "88a19b9a0a4ec92e6067d6098930c8fe",
+    "semantic_hash": "88a19b9a0a4ec92e6067d6098930c8fe"
+  },
+  "src/aspnet/App/ScopedAuthenticationStateProvider.cs": {
+    "mtime": 1787859565.208631,
+    "ast_hash": "e5e5fff142faeaa630ea8a4257d23978",
+    "semantic_hash": "e5e5fff142faeaa630ea8a4257d23978"
+  },
+  "src/aspnet/Components/App.razor": {
+    "mtime": 1788390147.2111914,
+    "ast_hash": "d1c84fc1186635acf7e9d457537c83fe",
+    "semantic_hash": "d1c84fc1186635acf7e9d457537c83fe"
+  },
+  "src/aspnet/Components/CartaoSelect/CartaoSelect.razor": {
+    "mtime": 1787862512.3476112,
+    "ast_hash": "6c4e858260d29b1067804af88642f8b2",
+    "semantic_hash": "6c4e858260d29b1067804af88642f8b2"
+  },
+  "src/aspnet/Components/CategoriaSelect/CategoriaSelect.razor": {
+    "mtime": 1787859707.1861224,
+    "ast_hash": "e2092becfdfb92f6af3ddac7f4d27f37",
+    "semantic_hash": "e2092becfdfb92f6af3ddac7f4d27f37"
+  },
+  "src/aspnet/Components/ContaSelect/ContaSelect.razor": {
+    "mtime": 1787859707.1931622,
+    "ast_hash": "690321c049d70d017e156cf9a1a1bff1",
+    "semantic_hash": "690321c049d70d017e156cf9a1a1bff1"
+  },
+  "src/aspnet/Components/Dialogs/AtualizarCotacaoDialog.razor": {
+    "mtime": 1788667920.1405604,
+    "ast_hash": "c087c0be0c34015fed87413297add3c4",
+    "semantic_hash": "c087c0be0c34015fed87413297add3c4"
+  },
+  "src/aspnet/Components/Dialogs/CartaoDialog.razor": {
+    "mtime": 1788667920.1425686,
+    "ast_hash": "8fbd93816e5a10d3bf49310a67ee7eba",
+    "semantic_hash": "8fbd93816e5a10d3bf49310a67ee7eba"
+  },
+  "src/aspnet/Components/Dialogs/CategoriaDialog.razor": {
+    "mtime": 1787859707.2052398,
+    "ast_hash": "7c36a00d0bd8b3fa240492063122d713",
+    "semantic_hash": "7c36a00d0bd8b3fa240492063122d713"
+  },
+  "src/aspnet/Components/Dialogs/CompromissoDiaDialog.razor": {
+    "mtime": 1788667920.1445718,
+    "ast_hash": "ee97ef3a0771152ac5dbab0760908af4",
+    "semantic_hash": "ee97ef3a0771152ac5dbab0760908af4"
+  },
+  "src/aspnet/Components/Dialogs/ConclusaoProjetoDialog.razor": {
+    "mtime": 1788667920.14659,
+    "ast_hash": "6e5234ec0f72dd4e132b8b338c015fa7",
+    "semantic_hash": "6e5234ec0f72dd4e132b8b338c015fa7"
+  },
+  "src/aspnet/Components/Dialogs/ContaDialog.razor": {
+    "mtime": 1788667920.1480963,
+    "ast_hash": "b6b18ce911f89116872a02a14a5e175b",
+    "semantic_hash": "b6b18ce911f89116872a02a14a5e175b"
+  },
+  "src/aspnet/Components/Dialogs/FaturaHistoricoDialog.razor": {
+    "mtime": 1787968657.7184503,
+    "ast_hash": "24aa869eea0e882e225ced5b5c276144",
+    "semantic_hash": "24aa869eea0e882e225ced5b5c276144"
+  },
+  "src/aspnet/Components/Dialogs/InvestimentoDialog.razor": {
+    "mtime": 1788667920.1506417,
+    "ast_hash": "a6609718ed79fb38185df7426e9361ab",
+    "semantic_hash": "a6609718ed79fb38185df7426e9361ab"
+  },
+  "src/aspnet/Components/Dialogs/MovimentacoesDialog.razor": {
+    "mtime": 1787859707.2288098,
+    "ast_hash": "482793d9f59e575222b536e22174c538",
+    "semantic_hash": "482793d9f59e575222b536e22174c538"
+  },
+  "src/aspnet/Components/Dialogs/MovimentoDialog.razor": {
+    "mtime": 1788667920.1516376,
+    "ast_hash": "0549f61454eb80cb002a23920db5e5c0",
+    "semantic_hash": "0549f61454eb80cb002a23920db5e5c0"
+  },
+  "src/aspnet/Components/Dialogs/NovoLancamentoFaturaDialog.razor": {
+    "mtime": 1788763385.04257,
+    "ast_hash": "fa4fecf1d8617a0bcfc3d1243715c8c2",
+    "semantic_hash": "fa4fecf1d8617a0bcfc3d1243715c8c2"
+  },
+  "src/aspnet/Components/Dialogs/PagamentoDialog.razor": {
+    "mtime": 1788667920.1556544,
+    "ast_hash": "42fad950d92301ebd5f7efbf5c7332ba",
+    "semantic_hash": "42fad950d92301ebd5f7efbf5c7332ba"
+  },
+  "src/aspnet/Components/Dialogs/PessoaDialog.razor": {
+    "mtime": 1788667920.1566412,
+    "ast_hash": "c64e1194bbaba12254374f2334199539",
+    "semantic_hash": "c64e1194bbaba12254374f2334199539"
+  },
+  "src/aspnet/Components/Dialogs/ProjetoDialog.razor": {
+    "mtime": 1788667920.159346,
+    "ast_hash": "7e1d058add7b25466bff6c8f3c144a42",
+    "semantic_hash": "7e1d058add7b25466bff6c8f3c144a42"
+  },
+  "src/aspnet/Components/Dialogs/ProventoDialog.razor": {
+    "mtime": 1788667920.161484,
+    "ast_hash": "494439f6767b4a7b3c6fa5b80f06c0e5",
+    "semantic_hash": "494439f6767b4a7b3c6fa5b80f06c0e5"
+  },
+  "src/aspnet/Components/Dialogs/ProventosDialog.razor": {
+    "mtime": 1788019507.0527382,
+    "ast_hash": "323165ca05b143c4b52a0c01a558cec6",
+    "semantic_hash": "323165ca05b143c4b52a0c01a558cec6"
+  },
+  "src/aspnet/Components/Dialogs/ProvisaoDialog.razor": {
+    "mtime": 1788667920.1634817,
+    "ast_hash": "e4a566d64287a625544db783dc2aa429",
+    "semantic_hash": "e4a566d64287a625544db783dc2aa429"
+  },
+  "src/aspnet/Components/Dialogs/SenhaBackupDialog.razor": {
+    "mtime": 1787859707.281283,
+    "ast_hash": "b21859e7465dfef239c9c0355aab17f3",
+    "semantic_hash": "b21859e7465dfef239c9c0355aab17f3"
+  },
+  "src/aspnet/Components/Dialogs/SenhaLoginDialog.razor": {
+    "mtime": 1787859707.2862854,
+    "ast_hash": "39c225a469ff77ff8bf7551fffeb8a58",
+    "semantic_hash": "39c225a469ff77ff8bf7551fffeb8a58"
+  },
+  "src/aspnet/Components/Dialogs/SobreDialog.razor": {
+    "mtime": 1788447096.3481016,
+    "ast_hash": "7d3647257ca4a518665b82f8c49e841f",
+    "semantic_hash": "7d3647257ca4a518665b82f8c49e841f"
+  },
+  "src/aspnet/Components/Dialogs/SubcategoriaDialog.razor": {
+    "mtime": 1787859707.2923532,
+    "ast_hash": "4423489b21f5db78beb0f6abbac02946",
+    "semantic_hash": "4423489b21f5db78beb0f6abbac02946"
+  },
+  "src/aspnet/Components/Dialogs/TransacaoDialog.razor": {
+    "mtime": 1788918191.3877554,
+    "ast_hash": "ab8305445a02642a6901a94620906f70",
+    "semantic_hash": "ab8305445a02642a6901a94620906f70"
+  },
+  "src/aspnet/Components/Lancamentos/DespesaCartaoForm.razor": {
+    "mtime": 1788918191.3932924,
+    "ast_hash": "28df51d55899b408993fae346d28a102",
+    "semantic_hash": "28df51d55899b408993fae346d28a102"
+  },
+  "src/aspnet/Components/Lancamentos/DespesaCartaoForm.razor.cs": {
+    "mtime": 1789016956.6510808,
+    "ast_hash": "da67f77530274029f8a0efadd8ec45c4",
+    "semantic_hash": "da67f77530274029f8a0efadd8ec45c4"
+  },
+  "src/aspnet/Components/Lancamentos/LancamentoForm.razor": {
+    "mtime": 1788667920.1717265,
+    "ast_hash": "fd980b6645a9e1023717c2bcb76af9b5",
+    "semantic_hash": "fd980b6645a9e1023717c2bcb76af9b5"
+  },
+  "src/aspnet/Components/Lancamentos/LancamentoForm.razor.cs": {
+    "mtime": 1788667920.1737196,
+    "ast_hash": "fec479877bffe9cbb616bad54ccb1fe8",
+    "semantic_hash": "fec479877bffe9cbb616bad54ccb1fe8"
+  },
+  "src/aspnet/Components/Layout/LoginLayout.razor": {
+    "mtime": 1787871043.5209637,
+    "ast_hash": "56a6380526180b4391b46e6a62ae6462",
+    "semantic_hash": "56a6380526180b4391b46e6a62ae6462"
+  },
+  "src/aspnet/Components/Layout/MainLayout.razor": {
+    "mtime": 1788763385.0516405,
+    "ast_hash": "6ad22cc190ed81c8e0822203b620cb87",
+    "semantic_hash": "6ad22cc190ed81c8e0822203b620cb87"
+  },
+  "src/aspnet/Components/MudMoneyInput/MudMoneyInput.razor": {
+    "mtime": 1787859707.3240294,
+    "ast_hash": "89e0ecf0e19215cbea0bbca25375cd12",
+    "semantic_hash": "89e0ecf0e19215cbea0bbca25375cd12"
+  },
+  "src/aspnet/Components/MudMoneyInput/MudMoneyInput.razor.cs": {
+    "mtime": 1787859565.254341,
+    "ast_hash": "8422ece760f0570e44360213062b3db2",
+    "semantic_hash": "8422ece760f0570e44360213062b3db2"
+  },
+  "src/aspnet/Components/Pages/Cartoes.razor": {
+    "mtime": 1788667920.1757207,
+    "ast_hash": "a555cc02ac6e41a294bdf55076d48886",
+    "semantic_hash": "a555cc02ac6e41a294bdf55076d48886"
+  },
+  "src/aspnet/Components/Pages/Categorias.razor": {
+    "mtime": 1787884307.4983773,
+    "ast_hash": "91632ff5b56efe718a5676d1973c7648",
+    "semantic_hash": "91632ff5b56efe718a5676d1973c7648"
+  },
+  "src/aspnet/Components/Pages/Configuracoes.razor": {
+    "mtime": 1788374872.755507,
+    "ast_hash": "3ed6d9e3b31196a5a28b04feb99b5d0a",
+    "semantic_hash": "3ed6d9e3b31196a5a28b04feb99b5d0a"
+  },
+  "src/aspnet/Components/Pages/ConfigurarSmtp.razor": {
+    "mtime": 1788187643.0657904,
+    "ast_hash": "b16cafe2f3a42d600e0cc6482de6a153",
+    "semantic_hash": "b16cafe2f3a42d600e0cc6482de6a153"
+  },
+  "src/aspnet/Components/Pages/Contas.razor": {
+    "mtime": 1788763385.0536416,
+    "ast_hash": "b65dfcd2bb577cf185a768c29993e010",
+    "semantic_hash": "b65dfcd2bb577cf185a768c29993e010"
+  },
+  "src/aspnet/Components/Pages/Dashboard.razor": {
+    "mtime": 1788643576.6241539,
+    "ast_hash": "c8282f8bdc19d442d873f1f3c1c5811d",
+    "semantic_hash": "c8282f8bdc19d442d873f1f3c1c5811d"
+  },
+  "src/aspnet/Components/Pages/DashboardContasDialog.razor": {
+    "mtime": 1788294275.8373976,
+    "ast_hash": "948e8722804e93101ffa2929d8ae9aa0",
+    "semantic_hash": "948e8722804e93101ffa2929d8ae9aa0"
+  },
+  "src/aspnet/Components/Pages/DashboardInvestimentosDialog.razor": {
+    "mtime": 1788294264.2405055,
+    "ast_hash": "0822fa8448c44335e15cead9874dd1d5",
+    "semantic_hash": "0822fa8448c44335e15cead9874dd1d5"
+  },
+  "src/aspnet/Components/Pages/DashboardItensDialog.razor": {
+    "mtime": 1788294253.4455643,
+    "ast_hash": "ce6fe56c5d3d3eeb0f55823ca32bfba4",
+    "semantic_hash": "ce6fe56c5d3d3eeb0f55823ca32bfba4"
+  },
+  "src/aspnet/Components/Pages/Error.razor": {
+    "mtime": 1787859707.3653314,
+    "ast_hash": "7f8f78e7521a2541966ed61ecb253b6e",
+    "semantic_hash": "7f8f78e7521a2541966ed61ecb253b6e"
+  },
+  "src/aspnet/Components/Pages/EsqueciSenha.razor": {
+    "mtime": 1787859707.3715928,
+    "ast_hash": "964814dcaa9f8ea149a30188a04719e0",
+    "semantic_hash": "964814dcaa9f8ea149a30188a04719e0"
+  },
+  "src/aspnet/Components/Pages/FaturaConferencia.razor": {
+    "mtime": 1788918191.3972895,
+    "ast_hash": "9df20e1a23f4f3b7fa5f5db50d9105e2",
+    "semantic_hash": "9df20e1a23f4f3b7fa5f5db50d9105e2"
+  },
+  "src/aspnet/Components/Pages/FaturaHistorico.razor": {
+    "mtime": 1787859707.383119,
+    "ast_hash": "ea284c492de00dce9b6c060f95078fba",
+    "semantic_hash": "ea284c492de00dce9b6c060f95078fba"
+  },
+  "src/aspnet/Components/Pages/FecharMes.razor": {
+    "mtime": 1788918191.3998072,
+    "ast_hash": "c4a47b5473c957d27e1c6b8469d0d44a",
+    "semantic_hash": "c4a47b5473c957d27e1c6b8469d0d44a"
+  },
+  "src/aspnet/Components/Pages/Fluxo.razor": {
+    "mtime": 1788315042.7070634,
+    "ast_hash": "9709651248df25a8f0a9a8ec8cc9caa8",
+    "semantic_hash": "9709651248df25a8f0a9a8ec8cc9caa8"
+  },
+  "src/aspnet/Components/Pages/FluxoCard.razor": {
+    "mtime": 1788918191.401816,
+    "ast_hash": "7561d04feddc951cc6951c90e331f19e",
+    "semantic_hash": "7561d04feddc951cc6951c90e331f19e"
+  },
+  "src/aspnet/Components/Pages/Home.razor": {
+    "mtime": 1788667920.1792433,
+    "ast_hash": "bea2f1ade44ed5976ea53965b4599a07",
+    "semantic_hash": "bea2f1ade44ed5976ea53965b4599a07"
+  },
+  "src/aspnet/Components/Pages/Investimentos.razor": {
+    "mtime": 1787968214.1531482,
+    "ast_hash": "80b7e89eaf2d9dffdd03f46f7644de21",
+    "semantic_hash": "80b7e89eaf2d9dffdd03f46f7644de21"
+  },
+  "src/aspnet/Components/Pages/LancamentoEditar.razor": {
+    "mtime": 1787859707.4197419,
+    "ast_hash": "70dde36f0d75f0639a957b864113f937",
+    "semantic_hash": "70dde36f0d75f0639a957b864113f937"
+  },
+  "src/aspnet/Components/Pages/LancamentoNovo.razor": {
+    "mtime": 1787859707.4247482,
+    "ast_hash": "52cee0bdf6530526af74e49d606be796",
+    "semantic_hash": "52cee0bdf6530526af74e49d606be796"
+  },
+  "src/aspnet/Components/Pages/LancamentoNovoCartao.razor": {
+    "mtime": 1788763385.0576365,
+    "ast_hash": "d4e8d5a11946d5cab381bbb1ea59b44b",
+    "semantic_hash": "d4e8d5a11946d5cab381bbb1ea59b44b"
+  },
+  "src/aspnet/Components/Pages/Lancamentos.razor": {
+    "mtime": 1788763385.0603201,
+    "ast_hash": "25cb32623b8b06ee14bd99c83845be6b",
+    "semantic_hash": "25cb32623b8b06ee14bd99c83845be6b"
+  },
+  "src/aspnet/Components/Pages/Login.razor": {
+    "mtime": 1788217090.5236897,
+    "ast_hash": "ac056c372a4c7e938db002c2c909ac15",
+    "semantic_hash": "ac056c372a4c7e938db002c2c909ac15"
+  },
+  "src/aspnet/Components/Pages/Manual.razor": {
+    "mtime": 1788918191.40403,
+    "ast_hash": "142ae0366b4c436a2a0f62034853c9ec",
+    "semantic_hash": "142ae0366b4c436a2a0f62034853c9ec"
+  },
+  "src/aspnet/Components/Pages/Perfil.razor": {
+    "mtime": 1788317204.5634687,
+    "ast_hash": "15929f3ed54047176d85d98f6664ce07",
+    "semantic_hash": "15929f3ed54047176d85d98f6664ce07"
+  },
+  "src/aspnet/Components/Pages/Pessoas.razor": {
+    "mtime": 1788667920.183468,
+    "ast_hash": "0372b6be6b0d1319947b42a4846e73af",
+    "semantic_hash": "0372b6be6b0d1319947b42a4846e73af"
+  },
+  "src/aspnet/Components/Pages/PrimeiroAcesso.razor": {
+    "mtime": 1788763385.062407,
+    "ast_hash": "d2d6d947b01ea1aac975b42ce7873e8b",
+    "semantic_hash": "d2d6d947b01ea1aac975b42ce7873e8b"
+  },
+  "src/aspnet/Components/Pages/Projetos.razor": {
+    "mtime": 1788106361.8087428,
+    "ast_hash": "7f32177935598ec7357556312fd38d67",
+    "semantic_hash": "7f32177935598ec7357556312fd38d67"
+  },
+  "src/aspnet/Components/Pages/Provisoes.razor": {
+    "mtime": 1788667920.1856432,
+    "ast_hash": "387db171be53ecac4d0d3a590705cdf3",
+    "semantic_hash": "387db171be53ecac4d0d3a590705cdf3"
+  },
+  "src/aspnet/Components/Pages/RedefinirSenha.razor": {
+    "mtime": 1787859707.4897273,
+    "ast_hash": "e46d5d521b590ae8b5cf08b325dc1128",
+    "semantic_hash": "e46d5d521b590ae8b5cf08b325dc1128"
+  },
+  "src/aspnet/Components/Pages/RedirectToLogin.razor": {
+    "mtime": 1787859707.4947283,
+    "ast_hash": "5432da47446bf24625221f7f6f75fa38",
+    "semantic_hash": "5432da47446bf24625221f7f6f75fa38"
+  },
+  "src/aspnet/Components/Pages/RelatorioProjeto.razor": {
+    "mtime": 1787938596.3921182,
+    "ast_hash": "47728281e6f72bf21aaae262860c708c",
+    "semantic_hash": "47728281e6f72bf21aaae262860c708c"
+  },
+  "src/aspnet/Components/PessoaSelect/PessoaSelect.razor": {
+    "mtime": 1787859707.5047586,
+    "ast_hash": "df2837e98c5445bd7693530e6a0593ef",
+    "semantic_hash": "df2837e98c5445bd7693530e6a0593ef"
+  },
+  "src/aspnet/Components/ProjetoSelect/ProjetoSelecaoLogica.cs": {
+    "mtime": 1787859565.2590404,
+    "ast_hash": "65de330cf25f1953388bbb9403db1c44",
+    "semantic_hash": "65de330cf25f1953388bbb9403db1c44"
+  },
+  "src/aspnet/Components/ProjetoSelect/ProjetoSelect.razor": {
+    "mtime": 1788667920.1866274,
+    "ast_hash": "a08d1589abfb73a5b83c9edeb8ea17e7",
+    "semantic_hash": "a08d1589abfb73a5b83c9edeb8ea17e7"
+  },
+  "src/aspnet/Components/Routes.razor": {
+    "mtime": 1787859707.1675777,
+    "ast_hash": "213458e8b7440aec97d1af59255bccf7",
+    "semantic_hash": "213458e8b7440aec97d1af59255bccf7"
+  },
+  "src/aspnet/Components/SelecaoBusca/SelecaoBusca.razor": {
+    "mtime": 1788667920.1891942,
+    "ast_hash": "aafd4907e9aae8f6575847318c42f3db",
+    "semantic_hash": "aafd4907e9aae8f6575847318c42f3db"
+  },
+  "src/aspnet/Components/Shared/DataPicker.razor": {
+    "mtime": 1788667920.191194,
+    "ast_hash": "667f7d7b4b22e2381aedfe74883da0da",
+    "semantic_hash": "667f7d7b4b22e2381aedfe74883da0da"
+  },
+  "src/aspnet/Components/SubcategoriaSelect/SubcategoriaSelect.razor": {
+    "mtime": 1787862512.4848504,
+    "ast_hash": "b0581aa0713444f9132dfcecc326c3ad",
+    "semantic_hash": "b0581aa0713444f9132dfcecc326c3ad"
+  },
+  "src/aspnet/Components/_Imports.razor": {
+    "mtime": 1787859707.1736069,
+    "ast_hash": "9bf8aee0ff8f61a212ccfcfe5fc48ac0",
+    "semantic_hash": "9bf8aee0ff8f61a212ccfcfe5fc48ac0"
+  },
+  "src/aspnet/Data/AppDbContext.cs": {
+    "mtime": 1788918191.406026,
+    "ast_hash": "218c29632a76718d582eecd240dd6d78",
+    "semantic_hash": "218c29632a76718d582eecd240dd6d78"
+  },
+  "src/aspnet/Data/AppDbContextFactory.cs": {
+    "mtime": 1787859565.268571,
+    "ast_hash": "ff3b9b51e048784191ba4d219f5cba1e",
+    "semantic_hash": "ff3b9b51e048784191ba4d219f5cba1e"
+  },
+  "src/aspnet/Data/DbContextOptionsBuilderFactory.cs": {
+    "mtime": 1787859565.2725725,
+    "ast_hash": "bb7a7995c5af53eeae188b72679c7e27",
+    "semantic_hash": "bb7a7995c5af53eeae188b72679c7e27"
+  },
+  "src/aspnet/Data/Migrations/20260829201736_Initial.Designer.cs": {
+    "mtime": 1788034656.5483081,
+    "ast_hash": "07dffe56042ae29c9f98e8882149770c",
+    "semantic_hash": "07dffe56042ae29c9f98e8882149770c"
+  },
+  "src/aspnet/Data/Migrations/20260829201736_Initial.cs": {
+    "mtime": 1788034656.5483081,
+    "ast_hash": "9bcfaff8e9ae82d5a9c005f97f0ca258",
+    "semantic_hash": "9bcfaff8e9ae82d5a9c005f97f0ca258"
+  },
+  "src/aspnet/Data/Migrations/20260830143051_AdicionarCamposVersao.Designer.cs": {
+    "mtime": 1788100251.5371275,
+    "ast_hash": "3e89b824fdf9b01f66d918669b8ee6ae",
+    "semantic_hash": "3e89b824fdf9b01f66d918669b8ee6ae"
+  },
+  "src/aspnet/Data/Migrations/20260830143051_AdicionarCamposVersao.cs": {
+    "mtime": 1788100251.5371275,
+    "ast_hash": "83075038ede162e2fa9744df6b9a663d",
+    "semantic_hash": "83075038ede162e2fa9744df6b9a663d"
+  },
+  "src/aspnet/Data/Migrations/20260830181712_RemoverDataCompra.Designer.cs": {
+    "mtime": 1788113832.9224243,
+    "ast_hash": "b890346bef4029f103fcffef5db5d43d",
+    "semantic_hash": "b890346bef4029f103fcffef5db5d43d"
+  },
+  "src/aspnet/Data/Migrations/20260830181712_RemoverDataCompra.cs": {
+    "mtime": 1788113832.9224243,
+    "ast_hash": "6ace88d0ca3b54c7d2185722d7801c87",
+    "semantic_hash": "6ace88d0ca3b54c7d2185722d7801c87"
+  },
+  "src/aspnet/Data/Migrations/20260901214003_AdicionarDiasAntecipacao.Designer.cs": {
+    "mtime": 1788298803.2837267,
+    "ast_hash": "f8b5f8467aaab862006bf8a973b80f89",
+    "semantic_hash": "f8b5f8467aaab862006bf8a973b80f89"
+  },
+  "src/aspnet/Data/Migrations/20260901214003_AdicionarDiasAntecipacao.cs": {
+    "mtime": 1788298803.2837267,
+    "ast_hash": "acc5d667efa91755f85be7f64945528d",
+    "semantic_hash": "acc5d667efa91755f85be7f64945528d"
+  },
+  "src/aspnet/Data/Migrations/20260906015149_SeedDadosCompletos.Designer.cs": {
+    "mtime": 1788667920.1952002,
+    "ast_hash": "232e36022bfc52e1d3769cc1f7c6cc0b",
+    "semantic_hash": "232e36022bfc52e1d3769cc1f7c6cc0b"
+  },
+  "src/aspnet/Data/Migrations/20260906015149_SeedDadosCompletos.cs": {
+    "mtime": 1788749874.117601,
+    "ast_hash": "34f61f45a68d5d1a5e770856bd23e7cb",
+    "semantic_hash": "34f61f45a68d5d1a5e770856bd23e7cb"
+  },
+  "src/aspnet/Data/Migrations/20260907014549_AddReembolsoCategoriaSubcategoria.Designer.cs": {
+    "mtime": 1788763385.0674038,
+    "ast_hash": "85843bc59b43029dfa5576e55d2de79f",
+    "semantic_hash": "85843bc59b43029dfa5576e55d2de79f"
+  },
+  "src/aspnet/Data/Migrations/20260907014549_AddReembolsoCategoriaSubcategoria.cs": {
+    "mtime": 1788763385.068405,
+    "ast_hash": "36222fea2e3a0f6f2cbe4db718552291",
+    "semantic_hash": "36222fea2e3a0f6f2cbe4db718552291"
+  },
+  "src/aspnet/Data/Migrations/20260907040315_AddContaIdToMesFechado.Designer.cs": {
+    "mtime": 1788763385.0704038,
+    "ast_hash": "c7825cde4aa5c1e90402b756bb33f469",
+    "semantic_hash": "c7825cde4aa5c1e90402b756bb33f469"
+  },
+  "src/aspnet/Data/Migrations/20260907040315_AddContaIdToMesFechado.cs": {
+    "mtime": 1788763385.0724046,
+    "ast_hash": "28cf9b40000e61dc681e354d5c07b99d",
+    "semantic_hash": "28cf9b40000e61dc681e354d5c07b99d"
+  },
+  "src/aspnet/Data/Migrations/20260908155318_UnirSubcategoriasAlimentacao.Designer.cs": {
+    "mtime": 1788918191.408027,
+    "ast_hash": "71c61356ed38f68ba7b9edac3fb6d6f9",
+    "semantic_hash": "71c61356ed38f68ba7b9edac3fb6d6f9"
+  },
+  "src/aspnet/Data/Migrations/20260908155318_UnirSubcategoriasAlimentacao.cs": {
+    "mtime": 1788918191.4095337,
+    "ast_hash": "5f7cbd17a343e4cfe8c9d6d2bc05ea1b",
+    "semantic_hash": "5f7cbd17a343e4cfe8c9d6d2bc05ea1b"
+  },
+  "src/aspnet/Data/Migrations/AppDbContextModelSnapshot.cs": {
+    "mtime": 1788918191.4115453,
+    "ast_hash": "ff72601b8501adc3d9f8ee86668452bb",
+    "semantic_hash": "ff72601b8501adc3d9f8ee86668452bb"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260829202422_Initial.Designer.cs": {
+    "mtime": 1788035062.9154055,
+    "ast_hash": "98f5eed4370334e3925e510574958f50",
+    "semantic_hash": "98f5eed4370334e3925e510574958f50"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260829202422_Initial.cs": {
+    "mtime": 1788035062.9154055,
+    "ast_hash": "d155a5fcf7d92087ac6fe5af0aae11a0",
+    "semantic_hash": "d155a5fcf7d92087ac6fe5af0aae11a0"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260830143149_AdicionarCamposVersao.Designer.cs": {
+    "mtime": 1788100309.7604651,
+    "ast_hash": "e44e181c2fa4dc89e6042ce3983955a2",
+    "semantic_hash": "e44e181c2fa4dc89e6042ce3983955a2"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260830143149_AdicionarCamposVersao.cs": {
+    "mtime": 1788100309.7604651,
+    "ast_hash": "29e4346385d3c3dfdaa7b66d900bbb74",
+    "semantic_hash": "29e4346385d3c3dfdaa7b66d900bbb74"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260830181731_RemoverDataCompra.Designer.cs": {
+    "mtime": 1788113851.6733663,
+    "ast_hash": "74599ed5df1005578d675e04d373cb90",
+    "semantic_hash": "74599ed5df1005578d675e04d373cb90"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260830181731_RemoverDataCompra.cs": {
+    "mtime": 1788113851.6733663,
+    "ast_hash": "14ce5fcd75e69f56b6fc7fb2b70a5474",
+    "semantic_hash": "14ce5fcd75e69f56b6fc7fb2b70a5474"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260901214035_AdicionarDiasAntecipacaoMySql.Designer.cs": {
+    "mtime": 1788298835.6495707,
+    "ast_hash": "75ba266fa90b1d6a2f4aa11a09336e23",
+    "semantic_hash": "75ba266fa90b1d6a2f4aa11a09336e23"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260901214035_AdicionarDiasAntecipacaoMySql.cs": {
+    "mtime": 1788298835.6475873,
+    "ast_hash": "012451690ef86517cff319da2ca7d899",
+    "semantic_hash": "012451690ef86517cff319da2ca7d899"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260906015231_SeedDadosCompletos.Designer.cs": {
+    "mtime": 1788667920.2007308,
+    "ast_hash": "df7698509167e75645546c60df4a5f7a",
+    "semantic_hash": "df7698509167e75645546c60df4a5f7a"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260906015231_SeedDadosCompletos.cs": {
+    "mtime": 1788667920.20272,
+    "ast_hash": "487337806acb2bd42497dc9fad2fb182",
+    "semantic_hash": "487337806acb2bd42497dc9fad2fb182"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260907014704_AddReembolsoCategoriaSubcategoriaMySql.Designer.cs": {
+    "mtime": 1788763385.0764048,
+    "ast_hash": "da52506bbc039544453ceab94427b93d",
+    "semantic_hash": "da52506bbc039544453ceab94427b93d"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260907014704_AddReembolsoCategoriaSubcategoriaMySql.cs": {
+    "mtime": 1788763385.0774047,
+    "ast_hash": "5730e5f40eaa76b4c40b8792ba0c796e",
+    "semantic_hash": "5730e5f40eaa76b4c40b8792ba0c796e"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260908155406_UnirSubcategoriasAlimentacaoMySql.Designer.cs": {
+    "mtime": 1788918191.4135423,
+    "ast_hash": "a473c2f3ae2aa06b6cde523d10428ec6",
+    "semantic_hash": "a473c2f3ae2aa06b6cde523d10428ec6"
+  },
+  "src/aspnet/Data/Migrations/MySql/20260908155406_UnirSubcategoriasAlimentacaoMySql.cs": {
+    "mtime": 1788918191.4145427,
+    "ast_hash": "d2b04cf9bdeedb52173b8b9d9a4523dc",
+    "semantic_hash": "d2b04cf9bdeedb52173b8b9d9a4523dc"
+  },
+  "src/aspnet/Data/Migrations/MySql/MySqlAppDbContextModelSnapshot.cs": {
+    "mtime": 1788918191.4165425,
+    "ast_hash": "61b9801ba3fe7e17d6b0ea94fb4776f2",
+    "semantic_hash": "61b9801ba3fe7e17d6b0ea94fb4776f2"
+  },
+  "src/aspnet/Data/MySqlAppDbContext.cs": {
+    "mtime": 1788214055.5655446,
+    "ast_hash": "11ba1c35cdf3c4c779364f0287e4e62a",
+    "semantic_hash": "11ba1c35cdf3c4c779364f0287e4e62a"
+  },
+  "src/aspnet/Data/MySqlAppDbContextFactory.cs": {
+    "mtime": 1788035031.8554018,
+    "ast_hash": "d1712d83af736ede0ca2a05a569cb8c0",
+    "semantic_hash": "d1712d83af736ede0ca2a05a569cb8c0"
+  },
+  "src/aspnet/Finort.csproj": {
+    "mtime": 1788397819.4465508,
+    "ast_hash": "55725706bac1da834a5061ea84fbbe0b",
+    "semantic_hash": "55725706bac1da834a5061ea84fbbe0b"
+  },
+  "src/aspnet/Models/AppVersion.cs": {
+    "mtime": 1788099556.8422391,
+    "ast_hash": "5ebd752d5de3fee285d7a0d70412e2f2",
+    "semantic_hash": "5ebd752d5de3fee285d7a0d70412e2f2"
+  },
+  "src/aspnet/Models/Auth/Configuracao.cs": {
+    "mtime": 1788298187.476677,
+    "ast_hash": "6ef200c041d9ef35472d0376640ba70d",
+    "semantic_hash": "6ef200c041d9ef35472d0376640ba70d"
+  },
+  "src/aspnet/Models/Auth/PasswordResetToken.cs": {
+    "mtime": 1787859565.4860806,
+    "ast_hash": "817ee751daefce5a864745b9ff84e129",
+    "semantic_hash": "817ee751daefce5a864745b9ff84e129"
+  },
+  "src/aspnet/Models/Auth/SmtpSettings.cs": {
+    "mtime": 1787859565.4886048,
+    "ast_hash": "52c5f61f95b094d09cbd9151eed92d43",
+    "semantic_hash": "52c5f61f95b094d09cbd9151eed92d43"
+  },
+  "src/aspnet/Models/Configuration/DatabaseConfig.cs": {
+    "mtime": 1787859565.4942322,
+    "ast_hash": "6ec3bcf728cc19072d8659304ae6a8d2",
+    "semantic_hash": "6ec3bcf728cc19072d8659304ae6a8d2"
+  },
+  "src/aspnet/Models/Financeiro/AuditoriaExclusaoInvestimento.cs": {
+    "mtime": 1787859565.4977818,
+    "ast_hash": "bcee4a3c6ec86c9dba330c601e83d7ce",
+    "semantic_hash": "bcee4a3c6ec86c9dba330c601e83d7ce"
+  },
+  "src/aspnet/Models/Financeiro/CalendarioMes.cs": {
+    "mtime": 1788667920.2067194,
+    "ast_hash": "ba0ad63c6d917bc7a8e2d8f3e20e49c6",
+    "semantic_hash": "ba0ad63c6d917bc7a8e2d8f3e20e49c6"
+  },
+  "src/aspnet/Models/Financeiro/CartaoCredito.cs": {
+    "mtime": 1787859565.5047772,
+    "ast_hash": "c87d116584534e10bff50e53a46e09e5",
+    "semantic_hash": "c87d116584534e10bff50e53a46e09e5"
+  },
+  "src/aspnet/Models/Financeiro/CartaoResumo.cs": {
+    "mtime": 1787937585.100296,
+    "ast_hash": "955870988065d27a0795c1b9867b3dbe",
+    "semantic_hash": "955870988065d27a0795c1b9867b3dbe"
+  },
+  "src/aspnet/Models/Financeiro/Categoria.cs": {
+    "mtime": 1787859565.5103304,
+    "ast_hash": "0d56adc6d9afaece61d7afa06fb58e7c",
+    "semantic_hash": "0d56adc6d9afaece61d7afa06fb58e7c"
+  },
+  "src/aspnet/Models/Financeiro/ConferenciaMes.cs": {
+    "mtime": 1788763385.0774047,
+    "ast_hash": "e46bb44e992a1d7e4bb5611e798f4aad",
+    "semantic_hash": "e46bb44e992a1d7e4bb5611e798f4aad"
+  },
+  "src/aspnet/Models/Financeiro/Conta.cs": {
+    "mtime": 1788667920.208436,
+    "ast_hash": "7b850266677a554b66f5dd7e4d56d7f8",
+    "semantic_hash": "7b850266677a554b66f5dd7e4d56d7f8"
+  },
+  "src/aspnet/Models/Financeiro/ContaResumo.cs": {
+    "mtime": 1788763385.0848157,
+    "ast_hash": "839ef80253384becfa25dc59324cd163",
+    "semantic_hash": "839ef80253384becfa25dc59324cd163"
+  },
+  "src/aspnet/Models/Financeiro/DashboardMes.cs": {
+    "mtime": 1788294304.0983672,
+    "ast_hash": "09d2435459b59b7d0c015e7d4ddc0508",
+    "semantic_hash": "09d2435459b59b7d0c015e7d4ddc0508"
+  },
+  "src/aspnet/Models/Financeiro/Fatura.cs": {
+    "mtime": 1787859565.529121,
+    "ast_hash": "635bba2670a6f67d8355fc02ce6c035d",
+    "semantic_hash": "635bba2670a6f67d8355fc02ce6c035d"
+  },
+  "src/aspnet/Models/Financeiro/FaturaResumoCalendario.cs": {
+    "mtime": 1787859565.5321023,
+    "ast_hash": "d6a3c2d9c0745c99eba2d4ccc9bd7cfa",
+    "semantic_hash": "d6a3c2d9c0745c99eba2d4ccc9bd7cfa"
+  },
+  "src/aspnet/Models/Financeiro/FluxoMensal.cs": {
+    "mtime": 1788918191.4175425,
+    "ast_hash": "9071b5698c6bca3d1f757dbc4cf53c31",
+    "semantic_hash": "9071b5698c6bca3d1f757dbc4cf53c31"
+  },
+  "src/aspnet/Models/Financeiro/Investimento.cs": {
+    "mtime": 1787884595.4141383,
+    "ast_hash": "bc409104488cc8f2940ebede6263db1c",
+    "semantic_hash": "bc409104488cc8f2940ebede6263db1c"
+  },
+  "src/aspnet/Models/Financeiro/InvestimentoCard.cs": {
+    "mtime": 1787937969.4702718,
+    "ast_hash": "501db5b040c20584fdd0ef79fb2de198",
+    "semantic_hash": "501db5b040c20584fdd0ef79fb2de198"
+  },
+  "src/aspnet/Models/Financeiro/InvestimentoMovimento.cs": {
+    "mtime": 1787859565.5443408,
+    "ast_hash": "a7d225932593a60bacc5a10841b347f2",
+    "semantic_hash": "a7d225932593a60bacc5a10841b347f2"
+  },
+  "src/aspnet/Models/Financeiro/InvestimentoProvento.cs": {
+    "mtime": 1788019261.3795784,
+    "ast_hash": "b5d174716199b29904657ae0a9bff3e6",
+    "semantic_hash": "b5d174716199b29904657ae0a9bff3e6"
+  },
+  "src/aspnet/Models/Financeiro/Lancamento.cs": {
+    "mtime": 1788763385.0848157,
+    "ast_hash": "5a27fd6824605471a5fe1a88704a1121",
+    "semantic_hash": "5a27fd6824605471a5fe1a88704a1121"
+  },
+  "src/aspnet/Models/Financeiro/LancamentoTipo.cs": {
+    "mtime": 1787859565.5540779,
+    "ast_hash": "c3a3c7b69aa77b1eb01f7c01e0a9de74",
+    "semantic_hash": "c3a3c7b69aa77b1eb01f7c01e0a9de74"
+  },
+  "src/aspnet/Models/Financeiro/Lembrete.cs": {
+    "mtime": 1787966220.6309242,
+    "ast_hash": "0cc2365cd9ae2818a170bbdffdec0b24",
+    "semantic_hash": "0cc2365cd9ae2818a170bbdffdec0b24"
+  },
+  "src/aspnet/Models/Financeiro/MesFechado.cs": {
+    "mtime": 1788763385.0848157,
+    "ast_hash": "bb5baf4a75641685c78e5224b1c9634a",
+    "semantic_hash": "bb5baf4a75641685c78e5224b1c9634a"
+  },
+  "src/aspnet/Models/Financeiro/PagamentoFatura.cs": {
+    "mtime": 1787859565.5601976,
+    "ast_hash": "1905ef1a73ce02e6bd6978d10f19b15a",
+    "semantic_hash": "1905ef1a73ce02e6bd6978d10f19b15a"
+  },
+  "src/aspnet/Models/Financeiro/Pessoa.cs": {
+    "mtime": 1787859565.5631838,
+    "ast_hash": "b0e9447029ec4878cfb2e07fb75ab888",
+    "semantic_hash": "b0e9447029ec4878cfb2e07fb75ab888"
+  },
+  "src/aspnet/Models/Financeiro/Projeto.cs": {
+    "mtime": 1787938320.5537868,
+    "ast_hash": "a448c1705e9bb4025d2e4c4159664063",
+    "semantic_hash": "a448c1705e9bb4025d2e4c4159664063"
+  },
+  "src/aspnet/Models/Financeiro/Provisao.cs": {
+    "mtime": 1788667920.2131276,
+    "ast_hash": "504d3b7f13d989958b4e3806a822b82b",
+    "semantic_hash": "504d3b7f13d989958b4e3806a822b82b"
+  },
+  "src/aspnet/Models/Financeiro/Subcategoria.cs": {
+    "mtime": 1787859565.5733204,
+    "ast_hash": "a2d5e8e525dafef56231fa69fd1934c1",
+    "semantic_hash": "a2d5e8e525dafef56231fa69fd1934c1"
+  },
+  "src/aspnet/Program.cs": {
+    "mtime": 1788494939.172929,
+    "ast_hash": "1c09861c92d0006ef810a3160f86f0d9",
+    "semantic_hash": "1c09861c92d0006ef810a3160f86f0d9"
+  },
+  "src/aspnet/Properties/launchSettings.json": {
+    "mtime": 1786546772.0927832,
+    "ast_hash": "3d09aa7f7c6014d066f4462b7d438b75",
+    "semantic_hash": "3d09aa7f7c6014d066f4462b7d438b75"
+  },
+  "src/aspnet/Services/AppUpdateService.cs": {
+    "mtime": 1788447054.978286,
+    "ast_hash": "03de6c87a02b3962b565c0dd6ad3b065",
+    "semantic_hash": "03de6c87a02b3962b565c0dd6ad3b065"
+  },
+  "src/aspnet/Services/AuthLoginService.cs": {
+    "mtime": 1788218901.3515608,
+    "ast_hash": "a070f9eabda7f522ea4943a7f3d0f9db",
+    "semantic_hash": "a070f9eabda7f522ea4943a7f3d0f9db"
+  },
+  "src/aspnet/Services/AuthService.cs": {
+    "mtime": 1788188187.9383724,
+    "ast_hash": "3f846b38018f265fbad2553066920499",
+    "semantic_hash": "3f846b38018f265fbad2553066920499"
+  },
+  "src/aspnet/Services/BackupCrypto.cs": {
+    "mtime": 1788187415.6068578,
+    "ast_hash": "ea9eaf32f543abd218f4b58367b7d8da",
+    "semantic_hash": "ea9eaf32f543abd218f4b58367b7d8da"
+  },
+  "src/aspnet/Services/BackupRestoreService.cs": {
+    "mtime": 1788678416.8181784,
+    "ast_hash": "9417c80bd8b581b662f7ca89cd7b8974",
+    "semantic_hash": "9417c80bd8b581b662f7ca89cd7b8974"
+  },
+  "src/aspnet/Services/CalendarioService.cs": {
+    "mtime": 1788667920.2171113,
+    "ast_hash": "8182e2935d9d8251bfc7f8c058bcbd46",
+    "semantic_hash": "8182e2935d9d8251bfc7f8c058bcbd46"
+  },
+  "src/aspnet/Services/CartaoCreditoService.cs": {
+    "mtime": 1789016903.5930786,
+    "ast_hash": "64cd3ba9fcbdeb2e95d6495320e62a45",
+    "semantic_hash": "64cd3ba9fcbdeb2e95d6495320e62a45"
+  },
+  "src/aspnet/Services/CategoriaService.cs": {
+    "mtime": 1787859565.6159418,
+    "ast_hash": "74d101dc5762cf522e0bd5799b3583a5",
+    "semantic_hash": "74d101dc5762cf522e0bd5799b3583a5"
+  },
+  "src/aspnet/Services/ContaService.cs": {
+    "mtime": 1788763385.0848157,
+    "ast_hash": "628c3c3d7d586eee2bf3a6011eab4e70",
+    "semantic_hash": "628c3c3d7d586eee2bf3a6011eab4e70"
+  },
+  "src/aspnet/Services/CredenciaisStartup.cs": {
+    "mtime": 1788188189.0074947,
+    "ast_hash": "884858aeafa8e7b531e4c6d2b340dd61",
+    "semantic_hash": "884858aeafa8e7b531e4c6d2b340dd61"
+  },
+  "src/aspnet/Services/DashboardService.cs": {
+    "mtime": 1788295220.4142296,
+    "ast_hash": "a26564a3307a1114d28fd5086b6f3f82",
+    "semantic_hash": "a26564a3307a1114d28fd5086b6f3f82"
+  },
+  "src/aspnet/Services/DatabaseConfigStore.cs": {
+    "mtime": 1788493609.0549302,
+    "ast_hash": "f3d50b2844980515bc977adfc30cedbf",
+    "semantic_hash": "f3d50b2844980515bc977adfc30cedbf"
+  },
+  "src/aspnet/Services/DatabaseMigrator.cs": {
+    "mtime": 1788763385.093223,
+    "ast_hash": "35b4587a26d1359f6ccc1a3c430368ff",
+    "semantic_hash": "35b4587a26d1359f6ccc1a3c430368ff"
+  },
+  "src/aspnet/Services/DatabaseSwitchService.cs": {
+    "mtime": 1788678809.071715,
+    "ast_hash": "0997164b74c02490527d27915085e4d6",
+    "semantic_hash": "0997164b74c02490527d27915085e4d6"
+  },
+  "src/aspnet/Services/EmailService.cs": {
+    "mtime": 1788187498.7259107,
+    "ast_hash": "1c5ccfe3d8867ec16bb1d2ff5e47c116",
+    "semantic_hash": "1c5ccfe3d8867ec16bb1d2ff5e47c116"
+  },
+  "src/aspnet/Services/FaturaService.cs": {
+    "mtime": 1788763385.093223,
+    "ast_hash": "a02d3893e10bcb80edce6fd1a82d96d1",
+    "semantic_hash": "a02d3893e10bcb80edce6fd1a82d96d1"
+  },
+  "src/aspnet/Services/FechamentoService.cs": {
+    "mtime": 1788918191.422071,
+    "ast_hash": "a4b85c66e2a3e80ab1421d020764f67e",
+    "semantic_hash": "a4b85c66e2a3e80ab1421d020764f67e"
+  },
+  "src/aspnet/Services/FluxoService.cs": {
+    "mtime": 1788918191.4242482,
+    "ast_hash": "572de520e437fb788f9fc3a4c402b271",
+    "semantic_hash": "572de520e437fb788f9fc3a4c402b271"
+  },
+  "src/aspnet/Services/IPageVerifier.cs": {
+    "mtime": 1788214958.2197618,
+    "ast_hash": "d429348b3ac009bd5389c4dcb8e64ceb",
+    "semantic_hash": "d429348b3ac009bd5389c4dcb8e64ceb"
+  },
+  "src/aspnet/Services/InvestimentoService.cs": {
+    "mtime": 1788763385.0999846,
+    "ast_hash": "5075b1456549ab3c5f2defe3afb65a95",
+    "semantic_hash": "5075b1456549ab3c5f2defe3afb65a95"
+  },
+  "src/aspnet/Services/LancamentoService.cs": {
+    "mtime": 1788918191.4262483,
+    "ast_hash": "7d9260327c1d131ab039f7a5bf7ec8dc",
+    "semantic_hash": "7d9260327c1d131ab039f7a5bf7ec8dc"
+  },
+  "src/aspnet/Services/LembreteService.cs": {
+    "mtime": 1788018844.3527036,
+    "ast_hash": "a795553c2c5f09c0e84714b84639e30b",
+    "semantic_hash": "a795553c2c5f09c0e84714b84639e30b"
+  },
+  "src/aspnet/Services/LoginAttemptGuard.cs": {
+    "mtime": 1788214776.5885289,
+    "ast_hash": "1dc2803703392f2de1b0d17acbd67e08",
+    "semantic_hash": "1dc2803703392f2de1b0d17acbd67e08"
+  },
+  "src/aspnet/Services/PessoaService.cs": {
+    "mtime": 1788667920.2265425,
+    "ast_hash": "c9b94cc3722aef7071ca9e6216ed8589",
+    "semantic_hash": "c9b94cc3722aef7071ca9e6216ed8589"
+  },
+  "src/aspnet/Services/ProjetoRelatorioService.cs": {
+    "mtime": 1787943797.432578,
+    "ast_hash": "5bf4348e784b4d1a960f56e0ad24def3",
+    "semantic_hash": "5bf4348e784b4d1a960f56e0ad24def3"
+  },
+  "src/aspnet/Services/ProjetoService.cs": {
+    "mtime": 1787938377.997634,
+    "ast_hash": "a235813c820ea8520dff61f83e3fc569",
+    "semantic_hash": "a235813c820ea8520dff61f83e3fc569"
+  },
+  "src/aspnet/Services/ProvisaoAgenda.cs": {
+    "mtime": 1788763385.104,
+    "ast_hash": "990a734232e3320857d7c2347cfb4215",
+    "semantic_hash": "990a734232e3320857d7c2347cfb4215"
+  },
+  "src/aspnet/Services/ProvisaoService.cs": {
+    "mtime": 1789016980.6486185,
+    "ast_hash": "8633984b37e53de1b22ecd531f0c822a",
+    "semantic_hash": "8633984b37e53de1b22ecd531f0c822a"
+  },
+  "src/aspnet/Services/SecretProtector.cs": {
+    "mtime": 1788187350.2942698,
+    "ast_hash": "be596b99a9cd88c4bbbef6c5eed071fa",
+    "semantic_hash": "be596b99a9cd88c4bbbef6c5eed071fa"
+  },
+  "src/aspnet/Services/SeedCliGuard.cs": {
+    "mtime": 1788198433.7277188,
+    "ast_hash": "ac6fbd44cc58dd36a0a724a274dc51d6",
+    "semantic_hash": "ac6fbd44cc58dd36a0a724a274dc51d6"
+  },
+  "src/aspnet/Services/SeedDataService.cs": {
+    "mtime": 1788188189.7157578,
+    "ast_hash": "913379060893809e80a297e950678122",
+    "semantic_hash": "913379060893809e80a297e950678122"
+  },
+  "src/aspnet/Services/SetupKeyStore.cs": {
+    "mtime": 1788493602.7580042,
+    "ast_hash": "d1b01da714869e75c7e169d82cc8f694",
+    "semantic_hash": "d1b01da714869e75c7e169d82cc8f694"
+  },
+  "src/aspnet/Services/TokenService.cs": {
+    "mtime": 1787859565.6846113,
+    "ast_hash": "e7e8ecc4d2cc760f5cc0e366075a6cba",
+    "semantic_hash": "e7e8ecc4d2cc760f5cc0e366075a6cba"
+  },
+  "src/aspnet/Services/TurnstileConfig.cs": {
+    "mtime": 1788214957.5044618,
+    "ast_hash": "1b7f00f0c451da5f5a4893e722a9ef1a",
+    "semantic_hash": "1b7f00f0c451da5f5a4893e722a9ef1a"
+  },
+  "src/aspnet/Services/TurnstileVerifier.cs": {
+    "mtime": 1788215484.5975466,
+    "ast_hash": "59eac982278cb5acf1cb74914d9ebb52",
+    "semantic_hash": "59eac982278cb5acf1cb74914d9ebb52"
+  },
+  "src/aspnet/Services/VersionCheckService.cs": {
+    "mtime": 1788104072.1210804,
+    "ast_hash": "f6866eaa710dd75d73232bf758098a6b",
+    "semantic_hash": "f6866eaa710dd75d73232bf758098a6b"
+  },
+  "src/aspnet/appsettings.json": {
+    "mtime": 1788491764.2940898,
+    "ast_hash": "d5c79544de0415919da9a1444d6d492d",
+    "semantic_hash": "d5c79544de0415919da9a1444d6d492d"
+  },
+  "src/aspnet/wwwroot/auth.js": {
+    "mtime": 1788217045.9360497,
+    "ast_hash": "640aed85d0a7ac156ddadb78dd2f7209",
+    "semantic_hash": "640aed85d0a7ac156ddadb78dd2f7209"
+  },
+  "src/aspnet/wwwroot/moneyInterop.js": {
+    "mtime": 1787967995.272335,
+    "ast_hash": "44ca6aa367606d564e5025aac66255dd",
+    "semantic_hash": "44ca6aa367606d564e5025aac66255dd"
+  },
+  "tools/Updater/Program.cs": {
+    "mtime": 1788443812.6688118,
+    "ast_hash": "f8e4315dc923c0393a0df599cc343fd8",
+    "semantic_hash": "f8e4315dc923c0393a0df599cc343fd8"
+  },
+  "tools/Updater/UpdatePlan.cs": {
+    "mtime": 1788443812.6708083,
+    "ast_hash": "f9d1469d94f66e1e7a319de14d48a417",
+    "semantic_hash": "f9d1469d94f66e1e7a319de14d48a417"
+  },
+  "tools/Updater/Updater.csproj": {
+    "mtime": 1788443812.672315,
+    "ast_hash": "a3073213fabfd926c59bb644f83d3f8d",
+    "semantic_hash": "a3073213fabfd926c59bb644f83d3f8d"
+  },
+  ".github/workflows/release-setup.yml": {
+    "mtime": 1788677969.4849083,
+    "ast_hash": "a599ce7adea76e96d2010ffa5c098325",
+    "semantic_hash": "a599ce7adea76e96d2010ffa5c098325"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1788677993.0802667,
+    "ast_hash": "104e664c7a07857205bdb51f39794e4d",
+    "semantic_hash": "104e664c7a07857205bdb51f39794e4d"
+  },
+  "README.md": {
+    "mtime": 1788918191.3661518,
+    "ast_hash": "f5e330e7afe8d8c713338329f513d400",
+    "semantic_hash": "f5e330e7afe8d8c713338329f513d400"
+  },
+  "docker-compose.yml": {
+    "mtime": 1788918191.370684,
+    "ast_hash": "2ad9a0aa0e08a3dff2dca0643050bf7d",
+    "semantic_hash": "2ad9a0aa0e08a3dff2dca0643050bf7d"
+  },
+  "src/aspnet/wwwroot/img/icon-setup.png": {
+    "mtime": 1788389638.248113,
+    "ast_hash": "0abf27f75937b8e2fdaf81bbdf6c4907",
+    "semantic_hash": "0abf27f75937b8e2fdaf81bbdf6c4907"
+  },
+  "src/aspnet/wwwroot/img/img-login.png": {
+    "mtime": 1787879400.0,
+    "ast_hash": "c0f82d3a14aee85cfee55895acc00dc2",
+    "semantic_hash": "c0f82d3a14aee85cfee55895acc00dc2"
+  },
+  "src/aspnet/wwwroot/img/logo-finort-dourado-h100.png": {
+    "mtime": 1787874296.8408394,
+    "ast_hash": "2c18407a11e7b360e5d7e5e400fd7bee",
+    "semantic_hash": "2c18407a11e7b360e5d7e5e400fd7bee"
+  },
+  "src/aspnet/wwwroot/img/logo_finort.png": {
+    "mtime": 1787868588.636026,
+    "ast_hash": "2056195e8cfee1206d63fe46d105e675",
+    "semantic_hash": "2056195e8cfee1206d63fe46d105e675"
+  }
+}

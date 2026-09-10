@@ -46,6 +46,8 @@ public partial class DespesaCartaoForm : AppComponentBase
     private int _vencimentoAno;
     private int _vencimentoMes;
     private bool _isFirstInstallment = true;
+    private DateTime? _minDateFatura;
+    private DateTime? _maxDateFatura;
 
     private bool ComReembolso
     {
@@ -82,15 +84,26 @@ public partial class DespesaCartaoForm : AppComponentBase
         }
     }
 
-    private DateTime? _minDate => AnoFatura is null ? null : new DateTime(AnoFatura.Value, MesFatura!.Value, 1);
-    private DateTime? _maxDate => AnoFatura is null
-        ? null : new DateTime(AnoFatura.Value, MesFatura.Value, DateTime.DaysInMonth(AnoFatura.Value, MesFatura.Value));
+    private DateTime? _minDate => _minDateFatura ?? (AnoFatura is null ? null : new DateTime(AnoFatura.Value, MesFatura!.Value, 1));
+    private DateTime? _maxDate => _maxDateFatura ?? (AnoFatura is null
+        ? null : new DateTime(AnoFatura.Value, MesFatura.Value, DateTime.DaysInMonth(AnoFatura.Value, MesFatura.Value)));
 
     protected override async Task OnInitializedAsync()
     {
         if (CartaoIdFixo is not null)
         {
             _cartaoId = CartaoIdFixo;
+        }
+
+        if (AnoFatura is not null && MesFatura is not null && _cartaoId.HasValue)
+        {
+            var cartao = await CartaoCreditoService.ObterAsync(_cartaoId.Value);
+            if (cartao is not null)
+            {
+                var (inicio, fim) = CartaoCreditoService.CalcularPeriodoFatura(cartao, AnoFatura.Value, MesFatura.Value);
+                _minDateFatura = new DateTime(inicio.Year, inicio.Month, inicio.Day);
+                _maxDateFatura = new DateTime(fim.Year, fim.Month, fim.Day);
+            }
         }
 
         if (LancamentoId.HasValue)
@@ -238,11 +251,18 @@ public partial class DespesaCartaoForm : AppComponentBase
         if (_categoriaId is null) { Snackbar.Add("Selecione a categoria.", Severity.Error); return false; }
 
         var dataCompra = DateOnly.FromDateTime(_dataCompra.Value);
-        if (AnoFatura is not null &&
-            (dataCompra.Year != AnoFatura.Value || dataCompra.Month != MesFatura!.Value))
+        if (AnoFatura is not null && MesFatura is not null && _cartaoId.HasValue)
         {
-            Snackbar.Add($"A data deve estar dentro do mês {MesFatura:D2}/{AnoFatura}.", Severity.Error);
-            return false;
+            var cartao = await CartaoCreditoService.ObterAsync(_cartaoId.Value);
+            if (cartao is not null)
+            {
+                var (inicio, fim) = CartaoCreditoService.CalcularPeriodoFatura(cartao, AnoFatura.Value, MesFatura.Value);
+                if (dataCompra < inicio || dataCompra > fim)
+                {
+                    Snackbar.Add($"A data deve estar dentro do período da fatura ({inicio:dd/MM} a {fim:dd/MM}).", Severity.Error);
+                    return false;
+                }
+            }
         }
 
         await OnSalvarValido.InvokeAsync(new DadosDespesaCartao(

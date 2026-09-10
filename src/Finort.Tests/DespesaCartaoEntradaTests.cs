@@ -68,7 +68,7 @@ public class DespesaCartaoEntradaTests
                 vencimentoExato: new DateOnly(2026, 8, 11), ehEntrada: true);
 
             var fluxo = await new FluxoService(db).ObterCardAsync(2026, 8);
-            Assert.Equal(150m, fluxo.TotalDespesas);
+            Assert.Equal(0m, fluxo.TotalDespesas); // despesas de cartão ficam na fatura
             Assert.Equal(150m, fluxo.TotaisPorCartao.Single(t => t.CartaoId == cartao.Id).Total);
         }
         finally { TestDbContext.Cleanup(db, file); }

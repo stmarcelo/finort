@@ -100,7 +100,10 @@ public class LancamentoGuardasTests
         {
             var fluxo = await new FluxoService(db).ObterCardAsync(2026, 7);
             Assert.Equal(0m, fluxo.TotalReceitas);
-            Assert.Equal(100m, fluxo.TotalDespesas); // só a compra do cartão; pernas de pagamento fora
+            Assert.Equal(0m, fluxo.TotalDespesas); // compra do cartão não entra em despesas (vai para fatura)
+
+            var cartaoId = db.CartoesCredito.Select(c => c.Id).Single();
+            Assert.Equal(100m, fluxo.TotaisPorCartao.Single(t => t.CartaoId == cartaoId).Total);
 
             var calendario = await new CalendarioService(db, new FaturaService(db), new LembreteService(db)).ObterMesAsync(2026, 8);
             var itensCalendario = calendario.Dias.SelectMany(d => d.Itens).ToList();

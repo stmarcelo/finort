@@ -125,6 +125,12 @@
     {
         try
         {
+            if (_ano is < 1 or > 9999 || _mes is < 1 or > 12)
+            {
+                _ano = Hoje.Year;
+                _mes = Hoje.Month;
+            }
+
             var selecionado = new DateOnly(_ano, _mes, 1);
             var anterior = selecionado.AddMonths(-1);
             var posterior = selecionado.AddMonths(1);
@@ -146,6 +152,12 @@
 
     private async Task Navegar(int delta)
     {
+        if (_ano is < 1 or > 9999 || _mes is < 1 or > 12)
+        {
+            _ano = Hoje.Year;
+            _mes = Hoje.Month;
+        }
+
         var destino = new DateOnly(_ano, _mes, 1).AddMonths(delta);
         _ano = destino.Year;
         _mes = destino.Month;
