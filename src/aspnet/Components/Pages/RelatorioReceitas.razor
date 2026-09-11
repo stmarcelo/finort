@@ -1,0 +1,223 @@
+@page "/relatorios/receitas"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject ReceitaRelatorioService RelatorioService
+@inject PessoaService PessoaService
+@inject ISnackbar Snackbar
+
+<PageTitle>Receitas por pessoa</PageTitle>
+
+<MudPaper Class="pa-4 mb-4 mt-4">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudText Typo="Typo.h5">Receitas por pessoa</MudText>
+        <MudSpacer />
+        <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                   Href="@_pdfUrl" Target="_blank" Disabled="@(_relatorio is null)">Gerar PDF</MudButton>
+    </MudStack>
+    <MudGrid Spacing="2" Class="mt-2">
+        <MudItem xs="12" sm="3"><MudDatePicker Label="Início" @bind-Date="_inicio" /></MudItem>
+        <MudItem xs="12" sm="3"><MudDatePicker Label="Fim" @bind-Date="_fim" /></MudItem>
+        <MudItem xs="12" sm="4"><PessoaSelect Label="Pessoa" Placeholder="Todas" PermitirNovo="false" @bind-Value="_pessoaId" /></MudItem>
+        <MudItem xs="12" sm="2" Class="d-flex align-center gap-2">
+            <MudButton Variant="@gVariant" Color="Color.Primary" OnClick="CarregarAsync">Filtrar</MudButton>
+            <MudButton Variant="@gVariant" Color="Color.Default" OnClick="LimparAsync">Limpar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_relatorio is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="pa-6 mb-4" Style="border-radius:18px;">
+        @if (_pessoaId.HasValue)
+        {
+            <MudText Typo="Typo.h5" Style="@EstiloNomePessoa(_pessoaCor)">@_relatorio.PessoaNome</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.h5">Todas as pessoas</MudText>
+        }
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Período: @_relatorio.Inicio.ToString("dd/MM/yyyy")–@_relatorio.Fim.ToString("dd/MM/yyyy")
+        </MudText>
+
+        <MudGrid Spacing="4" Class="mt-3">
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid #F5A623;border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Total sem confirmar</MudText>
+                    <MudText Typo="Typo.h6" Style="color:#F5A623;font-weight:700;">R$ @_relatorio.TotalNaoConfirmado.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-success);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Total confirmado</MudText>
+                    <MudText Typo="Typo.h6" Style="color:var(--mud-palette-success)">R$ @_relatorio.TotalConfirmado.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_pessoaId.HasValue)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Lançamentos</MudText>
+            @if (_relatorio.Linhas.Count > 0)
+            {
+                <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm" T="ReceitaLinha"
+                          Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Data</MudTh><MudTh>Cartão</MudTh><MudTh>Conta</MudTh><MudTh>P</MudTh>
+                        <MudTh>Categoria</MudTh><MudTh Style="text-align:right">Valor</MudTh><MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+                        <MudTd>@(context.CartaoNome ?? "—")</MudTd>
+                        <MudTd>@(context.ContaNome ?? "—")</MudTd>
+                        <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "—")</MudTd>
+                        <MudTd>@context.CategoriaRotulo</MudTd>
+                        <MudTd Style="text-align:right;">
+                            <span style="@EstiloValor(context.Confirmado)">R$ @context.Valor.ToString("N2")</span>
+                        </MudTd>
+                        <MudTd>
+                            @if (context.Confirmado)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Confirmado</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pendente</MudChip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="pa-4">Sem receitas no período.</MudText>
+            }
+        </MudPaper>
+
+        @if (_relatorio.SubtotaisPorOrigem.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Subtotais por origem</MudText>
+                <MudTable Items="@_relatorio.SubtotaisPorOrigem" Hover="true" Breakpoint="Breakpoint.Sm"
+                          T="ReceitaOrigemSubtotal" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Origem</MudTh>
+                        <MudTh Style="text-align:right">Confirmado</MudTh>
+                        <MudTh Style="text-align:right">Não confirmado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Rotulo</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.Confirmado.ToString("N2")</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.NaoConfirmado.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Totais por pessoa</MudText>
+            @if (_relatorio.SubtotaisPorPessoa.Count > 0)
+            {
+                <MudTable Items="@_relatorio.SubtotaisPorPessoa" Hover="true" Breakpoint="Breakpoint.Sm"
+                          T="ReceitaPessoaSubtotal" Dense="true" Striped="true"
+                          OnRowClick="IrParaPessoaAsync">
+                    <HeaderContent>
+                        <MudTh>Pessoa</MudTh>
+                        <MudTh Style="text-align:right">Total confirmado</MudTh>
+                        <MudTh Style="text-align:right">Total não confirmado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            @if (!string.IsNullOrEmpty(context.Cor))
+                            {
+                                <span style="@EstiloNomePessoa(context.Cor)">@context.PessoaNome</span>
+                            }
+                            else
+                            {
+                                @context.PessoaNome
+                            }
+                        </MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.Confirmado.ToString("N2")</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.NaoConfirmado.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="pa-4">Sem receitas no período.</MudText>
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    private DateTime? _inicio;
+    private DateTime? _fim;
+    private Guid? _pessoaId;
+    private string? _pessoaCor;
+    private ReceitaRelatorio? _relatorio;
+    private string? _pdfUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoje = DateTime.Today;
+        _inicio = new DateTime(hoje.Year, hoje.Month, 1);
+        _fim = new DateTime(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (!_inicio.HasValue || !_fim.HasValue || _inicio > _fim)
+        {
+            Snackbar.Add("Informe um período válido (início até o fim).", Severity.Error);
+            return;
+        }
+
+        var inicio = DateOnly.FromDateTime(_inicio.Value);
+        var fim = DateOnly.FromDateTime(_fim.Value);
+
+        _pessoaCor = null;
+        if (_pessoaId.HasValue)
+            _pessoaCor = (await PessoaService.ObterAsync(_pessoaId.Value))?.CorDeExibicao;
+
+        _relatorio = await RelatorioService.GerarAsync(inicio, fim, _pessoaId);
+        _pdfUrl = $"/api/relatorios/receitas/pdf?inicio={_inicio:yyyy-MM-dd}&fim={_fim:yyyy-MM-dd}"
+            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "");
+    }
+
+    private async Task IrParaPessoaAsync(TableRowClickEventArgs<ReceitaPessoaSubtotal> args)
+    {
+        if (args.Item is null) return;
+        if (args.Item.PessoaId == Guid.Empty) return;
+        _pessoaId = args.Item.PessoaId;
+        await CarregarAsync();
+    }
+
+    private async Task LimparAsync()
+    {
+        var hoje = DateTime.Today;
+        _inicio = new DateTime(hoje.Year, hoje.Month, 1);
+        _fim = new DateTime(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        _pessoaId = null;
+        await CarregarAsync();
+    }
+
+    private static string EstiloValor(bool confirmado)
+        => confirmado ? "color:#444444;" : "color:var(--mud-palette-success);font-weight:600;";
+
+    private static string? EstiloNomePessoa(string? cor)
+    {
+        if (string.IsNullOrEmpty(cor)) return null;
+        var hex = cor.StartsWith("#") ? cor : "#" + cor;
+        return $"color:{hex};font-weight:600;";
+    }
+}

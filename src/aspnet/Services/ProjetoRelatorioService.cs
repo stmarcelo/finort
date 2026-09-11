@@ -1,5 +1,6 @@
 using Finort.Data;
 using Finort.Models.Financeiro;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -20,8 +21,9 @@ public sealed record ProjetoRelatorio(
 public class ProjetoRelatorioService
 {
     private readonly AppDbContext _db;
+    private readonly IWebHostEnvironment _env;
 
-    public ProjetoRelatorioService(AppDbContext db) => _db = db;
+    public ProjetoRelatorioService(AppDbContext db, IWebHostEnvironment env) => (_db, _env) = (db, env);
 
     public async Task<ProjetoRelatorio?> GerarAsync(Guid projetoId)
     {
@@ -79,16 +81,14 @@ public class ProjetoRelatorioService
 
                 page.Header().Column(col =>
                 {
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Column(c =>
+                    col.Item().Element(c => RelatorioPdfHeader.Cabecalho(c, "Relatório de projeto",
+                        relatorio.ProjetoNome,
+                        new[]
                         {
-                            c.Item().Text("Relatório de projeto").FontSize(18).SemiBold().FontColor("#1D1D1F");
-                            c.Item().PaddingTop(4).Text($"{relatorio.ProjetoNome}").FontSize(14).SemiBold().FontColor("#333333");
-                            c.Item().PaddingTop(2).Text($"{relatorio.PessoaNome}").FontSize(12).FontColor("#666666");
-                            c.Item().PaddingTop(2).Text(detalhes).FontSize(10).FontColor("#666666");
-                        });
-                    });
+                            new RelatorioCabecalhoLinha(relatorio.PessoaNome, 12, "#666666"),
+                            new RelatorioCabecalhoLinha(detalhes, 10, "#666666")
+                        },
+                        RelatorioPdfHeader.LogoPath(_env)));
                     col.Item().Height(10);
                 });
 

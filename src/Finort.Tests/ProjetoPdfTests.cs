@@ -11,7 +11,7 @@ public class ProjetoPdfTests : IDisposable
     public ProjetoPdfTests()
     {
         QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-        _svc = new ProjetoRelatorioService(_ctx.Db);
+        _svc = new ProjetoRelatorioService(_ctx.Db, new TestWebHostEnvironment());
     }
 
     [Fact]

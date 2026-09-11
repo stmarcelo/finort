@@ -95,6 +95,10 @@
                 <MudNavLink OnClick="@(() => AbrirTransacao("transferencia"))" Icon="@Icons.Material.Filled.SwapHoriz">Transferência</MudNavLink>
             </MudNavGroup>
 
+            <MudNavGroup Title="Relatórios" Expanded="false">
+                <MudNavLink Href="/relatorios/receitas" Icon="@Icons.Material.Filled.ReceiptLong">Receitas por Pessoa</MudNavLink>
+            </MudNavGroup>
+
             <MudDivider Class="my-2" />
 
             <MudNavLink Href="/configuracoes" Icon="@Icons.Material.Filled.Settings">Configurações</MudNavLink>
@@ -144,6 +148,7 @@
         ("Dashboard", "/dashboard"),
         ("Provisões", "/provisoes"),
         ("Projetos", "/projetos"),
+        ("Receitas por Pessoa", "/relatorios/receitas"),
         ("Fechar mês", "/fechar-mes"),
         ("Configurações", "/configuracoes"),
         ("Manual", "/manual"),

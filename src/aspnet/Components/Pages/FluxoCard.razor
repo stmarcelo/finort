@@ -50,7 +50,7 @@
         }
         <div class="fluxo-linha">
             <span class="fluxo-label">Saldo anterior</span>
-            <span class="fluxo-valor">@Dados.SaldoAnterior.ToString("N2")</span>
+            <span class="fluxo-valor @ClasseAnterior">@Dados.SaldoAnterior.ToString("N2")</span>
         </div>
         <div class="fluxo-divisor"></div>
         <div class="fluxo-saldo-mes @ClasseSaldo">
@@ -86,6 +86,9 @@
 
     private string ClasseAcumulado
         => Dados.SaldoAcumulado > 0 ? "pos" : Dados.SaldoAcumulado < 0 ? "neg" : "";
+
+    private string ClasseAnterior
+        => Dados.SaldoAnterior > 0 ? "pos" : Dados.SaldoAnterior < 0 ? "neg" : "";
 
     private string ClasseMudo
         => Mudo ? "pa-4 fluxo-card-mudo" : "pa-4";

@@ -78,6 +78,7 @@ builder.Services.AddScoped<InvestimentoService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ProjetoService>();
 builder.Services.AddScoped<ProjetoRelatorioService>();
+builder.Services.AddScoped<ReceitaRelatorioService>();
 builder.Services.AddScoped<BackupRestoreService>();
 builder.Services.AddScoped<LembreteService>();
 builder.Services.AddHttpContextAccessor();
@@ -213,6 +214,16 @@ app.MapGet("/api/relatorios/projeto/{id:guid}/pdf", async (Guid id, ProjetoRelat
     return pdf is null
         ? Results.NotFound()
         : Results.File(pdf, "application/pdf", $"relatorio_projeto_{DateTime.Now:yyMMddHHmmss}.pdf");
+}).RequireAuthorization();
+
+app.MapGet("/api/relatorios/receitas/pdf", async (string inicio, string fim, Guid? pessoaId, ReceitaRelatorioService service) =>
+{
+    if (!DateOnly.TryParseExact(inicio, "yyyy-MM-dd", out var ini)
+        || !DateOnly.TryParseExact(fim, "yyyy-MM-dd", out var f))
+        return Results.BadRequest("Período inválido. Use yyyy-MM-dd.");
+    if (ini > f) return Results.BadRequest("Data de início posterior à data de fim.");
+    var pdf = await service.GerarPdfBytesAsync(ini, f, pessoaId);
+    return Results.File(pdf, "application/pdf", $"relatorio_receitas_{DateTime.Now:yyMMddHHmmss}.pdf");
 }).RequireAuthorization();
 
 app.MapGet("/api/seed", async (SeedDataService seedService) =>

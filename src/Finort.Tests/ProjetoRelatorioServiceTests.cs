@@ -10,7 +10,7 @@ public class ProjetoRelatorioServiceTests : IDisposable
 
     public ProjetoRelatorioServiceTests()
     {
-        _svc = new ProjetoRelatorioService(_ctx.Db);
+        _svc = new ProjetoRelatorioService(_ctx.Db, new TestWebHostEnvironment());
     }
 
     [Fact]
