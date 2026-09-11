@@ -23,7 +23,10 @@ public class InvestimentoMovimento
     /// <summary>Nulo em aporte/resgate de reserva.</summary>
     public decimal? ValorPorCota { get; set; }
 
-    /// <summary>Valor total do movimento (qtd × cota, ou valor único na reserva).</summary>
+    /// <summary>Taxa de compra (ex. corretora cripto). Nulo/zero = sem taxa. Somada ao total apenas em Compra de Criptomoeda.</summary>
+    public decimal? Taxa { get; set; }
+
+    /// <summary>Valor total do movimento (qtd × cota + taxa, ou valor único na reserva).</summary>
     public decimal Valor { get; set; }
 
     /// <summary>Lançamento bancário gerado (link para estorno). Nulo quando o investimento é pré-existente.</summary>

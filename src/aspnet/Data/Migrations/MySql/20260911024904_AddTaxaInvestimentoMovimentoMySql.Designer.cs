@@ -4,6 +4,7 @@ using Finort.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finort.Data.Migrations.MySql
 {
     [DbContext(typeof(MySqlAppDbContext))]
-    partial class MySqlAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911024904_AddTaxaInvestimentoMovimentoMySql")]
+    partial class AddTaxaInvestimentoMovimentoMySql
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

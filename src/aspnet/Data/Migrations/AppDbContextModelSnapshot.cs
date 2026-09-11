@@ -397,6 +397,9 @@ namespace Finort.Migrations
                     b.Property<decimal?>("Quantidade")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("Taxa")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
 

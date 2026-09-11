@@ -3,77 +3,73 @@ using System;
 using Finort.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Finort.Data.Migrations.MySql
+namespace Finort.Data.Migrations
 {
-    [DbContext(typeof(MySqlAppDbContext))]
-    partial class MySqlAppDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260911024831_AddTaxaInvestimentoMovimento")]
+    partial class AddTaxaInvestimentoMovimento
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 64);
-
-            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
 
             modelBuilder.Entity("Finort.Models.Auth.Configuracao", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("BackupPasswordCriptografada")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("DiasAntecipacao")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("SenhaHash")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("SmtpFrom")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("SmtpHost")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("SmtpPassword")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("SmtpPort")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("SmtpUser")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UltimaVerificacaoVersao")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("VersaoConhecida")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -84,25 +80,23 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("ConfiguracaoId")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -115,23 +109,23 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DataCotacao")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("DataExclusao")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("NomeInvestimento")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("ValorCotaAtual")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -142,31 +136,31 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Ativo")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Banco")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ContaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("DiaVencimento")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Limite")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("MelhorDiaCompra")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Ultimos4Digitos")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -179,14 +173,14 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("IsProtected")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -289,23 +283,23 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Agencia")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Banco")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ContaEDigito")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal?>("Limite")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -316,25 +310,25 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("AnoReferencia")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("CartaoCreditoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DataFechamento")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Fechada")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("MesReferencia")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("ValorTotal")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -348,35 +342,35 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Ativo")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("ContaVinculadaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DataCotacao")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DataVencimento")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Descricao")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Subtipo")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("ValorCotaAtual")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -392,31 +386,31 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("Data")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("InvestimentoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("LancamentoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal?>("Quantidade")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal?>("Taxa")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal?>("ValorPorCota")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -431,22 +425,22 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("Data")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("InvestimentoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("LancamentoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -461,70 +455,70 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("CartaoCreditoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("CategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Confirmado")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("ContaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("Data")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("DataCompra")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("DataVencimentoCartao")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("ParcelaAtual")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("ParcelamentoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("PessoaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ProjetoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ProvisaoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("RecorrenciaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ReembolsoCategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ReembolsoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ReembolsoSubcategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ReferenciaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("SubcategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("TotalParcelas")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -561,24 +555,24 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("Data")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("Dia")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("PessoaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Texto")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Tipo")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -591,22 +585,22 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Ano")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("ContaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("DataFechamento")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Mes")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("SaldoAcumulado")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -620,17 +614,17 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("CorDeExibicao")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Observacao")
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -641,26 +635,26 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Concluido")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateOnly?>("DataConclusao")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("DataContratacao")
-                        .HasColumnType("date");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("PessoaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("ValorContratado")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -673,43 +667,43 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("CartaoCreditoId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("CategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("ContaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Dia")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Frequencia")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Onde")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("PessoaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("SubcategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("UltimoAnoLancado")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("UltimoMesLancado")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("ValorVariante")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -730,17 +724,17 @@ namespace Finort.Data.Migrations.MySql
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("CategoriaId")
-                        .HasColumnType("char(36)");
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("IsProtected")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

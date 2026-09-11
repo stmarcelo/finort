@@ -18,6 +18,7 @@
                     <MudTh>Data</MudTh>
                     <MudTh>Tipo</MudTh>
                     <MudTh>Quantidade</MudTh>
+                    <MudTh>Taxa</MudTh>
                     <MudTh>Valor</MudTh>
                     <MudTh></MudTh>
                 </HeaderContent>
@@ -25,6 +26,7 @@
                     <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
                     <MudTd>@Rotulo(context.Tipo)</MudTd>
                     <MudTd>@(context.Quantidade?.ToString("N8") ?? "-")</MudTd>
+                    <MudTd>@(context.Taxa?.ToString("N2") ?? "—")</MudTd>
                     <MudTd>@context.Valor.ToString("N2")</MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small" Color="Color.Warning"

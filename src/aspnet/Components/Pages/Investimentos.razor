@@ -70,7 +70,10 @@ else
                                 }
                                 <MudDivider />
                                 <MudMenuItem OnClick="@(async () => await AbrirMovimentacoes(investimento))">Histórico</MudMenuItem>
-                                <MudMenuItem OnClick="@(async () => await AbrirProventos(investimento))">Proventos</MudMenuItem>
+                                @if (investimento.Tipo != TipoInvestimento.Criptomoeda)
+                                {
+                                    <MudMenuItem OnClick="@(async () => await AbrirProventos(investimento))">Proventos</MudMenuItem>
+                                }
                             </MudMenu>
                         </MudStack>
                     </MudStack>
@@ -132,9 +135,9 @@ else
                                                OnClick="@(async () => await AbrirDialogAtualizarCotacao(investimento))" />
                             </MudStack>
                         </MudStack>
-                        <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
                             <MudText Typo="Typo.body2" Class="text-muted">Quantidade</MudText>
-                            <MudText Typo="Typo.body2">
+                            <MudText Typo="Typo.body1" Style="font-weight:700">
                                 @card.QuantidadeTotal.ToString(FormatoQuantidade(investimento.Tipo))
                             </MudText>
                         </MudStack>
@@ -173,7 +176,7 @@ else
             TipoInvestimento.Criptomoeda => "Criptomoeda",
             TipoInvestimento.Fii => "FII",
             TipoInvestimento.Acao => "Ação",
-            TipoInvestimento.Cdb => "CDB",
+            TipoInvestimento.Cdb => "CDB / Fundo",
             _ => i.Tipo.ToString()
         };
 
@@ -321,6 +324,7 @@ else
         {
             { x => x.InvestimentoId, investimento.Id },
             { x => x.Tipo, tipo },
+            { x => x.TipoInvestimento, investimento.Tipo },
             { x => x.PosicaoAtual, card.QuantidadeTotal },
             { x => x.SaldoAtual, card.SaldoReserva },
             { x => x.CasasDecimaisQuantidade, investimento.Tipo == TipoInvestimento.Criptomoeda ? 8

@@ -20,6 +20,9 @@
     [Parameter] public string? RequiredError { get; set; }
     [Parameter] public bool PermitirNovo { get; set; } = true;
 
+    /// <summary>Quando true, inclui a opção "Sem pessoa" (Guid.Empty) no início da lista.</summary>
+    [Parameter] public bool IncluirSemPessoa { get; set; }
+
     [Parameter] public Guid? Value { get; set; }
     [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
 
@@ -28,7 +31,10 @@
     private async Task RecarregarAsync()
     {
         var pessoas = await PessoaService.ListarAsync();
-        _opcoes = pessoas.Select(p => new KeyValuePair<Guid, string>(p.Id, p.Nome)).ToList();
+        var opcoes = pessoas.Select(p => new KeyValuePair<Guid, string>(p.Id, p.Nome)).ToList();
+        if (IncluirSemPessoa)
+            opcoes.Insert(0, new KeyValuePair<Guid, string>(Guid.Empty, "Sem pessoa"));
+        _opcoes = opcoes;
     }
 
     private Task OnValueChanged(Guid? id) => ValueChanged.InvokeAsync(id);

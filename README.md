@@ -108,13 +108,26 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Meses futuros exibidos como projeção.
 
 ### Investimentos
-- Tipos: Reserva de emergência, Ações, Criptomoedas, FIIs, CDB, Dólar etc.
-- Movimentações (compra, venda, aporte, resgate) e proventos (dividendo, rendimento), cada um gerando lançamento vinculado.
+- Tipos: Reserva de emergência, Ações, Criptomoedas, FIIs, CDB / Fundo (CDBs e fundos de investimento), Dólar etc.
+- Compra/venda: informe quantidade, valor por cota e valor total (campos interligados — ao informar o total, a cota é calculada). Na compra e na venda de criptomoeda há campo opcional de taxa, somado ao valor total.
+- Aporte/resgate para Reserva e CDB / Fundo; movimentações e proventos (dividendo, rendimento) geram lançamento vinculado.
 - Atualização inline de cotação, desfazer em cascata e registro de auditoria na exclusão.
 
 ### Projetos
 - Agrupamento de lançamentos por atividade (obra, evento, consultoria...) com pessoa, valor e data de contratação.
 - Relatório com totais, tabela de lançamentos, pizza de despesas e exportação em PDF (`GET /api/relatorios/projeto/{id}/pdf`).
+
+### Relatório de receitas por pessoa (`/relatorios/receitas`)
+- Filtros por período (início/fim) e pessoa, com botões Filtrar e Limpar.
+- Cards de total confirmado e total sem confirmar; visão geral com totais por pessoa (clique na linha para detalhar).
+- Detalhe por pessoa: tabela de lançamentos (data, cartão, conta, parcela, categoria, valor, status) e subtotais por origem (cartão/conta).
+- Exportação em PDF (`GET /api/relatorios/receitas/pdf`) com o mesmo conteúdo da tela.
+
+### Relatório de despesas por pessoa (`/relatorios/despesas`)
+- Igual ao de receitas, adicionando filtros por cartão de crédito e categoria (inclui subcategorias).
+- Subtotais por origem e por categoria, além dos totais por pessoa.
+- Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.
+- Exportação em PDF (`GET /api/relatorios/despesas/pdf`).
 
 ### Fechamento de mês (`/fechar-mes`)
 - Mostra todas as contas bancárias e permite fechar mês por mês, conta por conta.

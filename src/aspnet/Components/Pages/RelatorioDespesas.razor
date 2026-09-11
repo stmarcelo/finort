@@ -1,24 +1,26 @@
-@page "/relatorios/receitas"
+@page "/relatorios/despesas"
 @attribute [Authorize]
 @inherits AppComponentBase
-@inject ReceitaRelatorioService RelatorioService
+@inject DespesaRelatorioService RelatorioService
 @inject PessoaService PessoaService
 @inject ISnackbar Snackbar
 
-<PageTitle>Receitas por pessoa</PageTitle>
+<PageTitle>Despesas por pessoa</PageTitle>
 
 <MudPaper Class="pa-4 mb-4 mt-4">
     <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-        <MudText Typo="Typo.h5">Receitas por pessoa</MudText>
+        <MudText Typo="Typo.h5">Despesas por pessoa</MudText>
         <MudSpacer />
         <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf"
                    Href="@_pdfUrl" Target="_blank" Disabled="@(_relatorio is null)">Gerar PDF</MudButton>
     </MudStack>
     <MudGrid Spacing="2" Class="mt-2">
-        <MudItem xs="12" sm="3"><MudDatePicker Label="Início" @bind-Date="_inicio" /></MudItem>
-        <MudItem xs="12" sm="3"><MudDatePicker Label="Fim" @bind-Date="_fim" /></MudItem>
-        <MudItem xs="12" sm="4"><PessoaSelect Label="Pessoa" Placeholder="Todas" PermitirNovo="false" @bind-Value="_pessoaId" /></MudItem>
-        <MudItem xs="12" sm="2" Class="d-flex align-center gap-2">
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Início" @bind-Date="_inicio" /></MudItem>
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Fim" @bind-Date="_fim" /></MudItem>
+        <MudItem xs="12" sm="3"><PessoaSelect Label="Pessoa" Placeholder="Todas" PermitirNovo="false" IncluirSemPessoa="true" @bind-Value="_pessoaId" /></MudItem>
+        <MudItem xs="12" sm="3"><CartaoSelect Label="Cartão" Placeholder="Todos" PermitirNovo="false" @bind-Value="_cartaoId" /></MudItem>
+        <MudItem xs="12" sm="2"><CategoriaSelect Label="Categoria" Placeholder="Todas" PermitirNovo="false" @bind-Value="_categoriaId" /></MudItem>
+        <MudItem xs="12" Class="d-flex align-center gap-2">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="CarregarAsync">Filtrar</MudButton>
             <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="LimparAsync">Limpar</MudButton>
         </MudItem>
@@ -42,6 +44,14 @@ else
         }
         <MudText Typo="Typo.body2" Class="mt-1">
             Período: @_relatorio.Inicio.ToString("dd/MM/yyyy")–@_relatorio.Fim.ToString("dd/MM/yyyy")
+            @if (_relatorio.CartaoId.HasValue)
+            {
+                <span> · Cartão: @_relatorio.CartaoNome</span>
+            }
+            @if (_relatorio.CategoriaId.HasValue)
+            {
+                <span> · Categoria: @_relatorio.CategoriaNome</span>
+            }
         </MudText>
 
         <MudGrid Spacing="4" Class="mt-3">
@@ -66,7 +76,7 @@ else
             <MudText Typo="Typo.h6" Class="mb-3">Lançamentos</MudText>
             @if (_relatorio.Linhas.Count > 0)
             {
-                <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm" T="ReceitaLinha"
+                <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm" T="DespesaLinha"
                           Dense="true" Striped="true">
                     <HeaderContent>
                         <MudTh>Data</MudTh><MudTh>Cartão</MudTh><MudTh>Conta</MudTh><MudTh>P</MudTh>
@@ -96,7 +106,7 @@ else
             }
             else
             {
-                <MudText Typo="Typo.body2" Class="pa-4">Sem receitas no período.</MudText>
+                <MudText Typo="Typo.body2" Class="pa-4">Sem despesas no período.</MudText>
             }
         </MudPaper>
 
@@ -105,9 +115,29 @@ else
             <MudPaper Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" Class="mb-3">Subtotais por origem</MudText>
                 <MudTable Items="@_relatorio.SubtotaisPorOrigem" Hover="true" Breakpoint="Breakpoint.Sm"
-                          T="ReceitaOrigemSubtotal" Dense="true" Striped="true">
+                          T="DespesaOrigemSubtotal" Dense="true" Striped="true">
                     <HeaderContent>
                         <MudTh>Origem</MudTh>
+                        <MudTh Style="text-align:right">Confirmado</MudTh>
+                        <MudTh Style="text-align:right">Não confirmado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Rotulo</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.Confirmado.ToString("N2")</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.NaoConfirmado.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+
+        @if (_relatorio.SubtotaisPorCategoria.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Subtotais por categoria</MudText>
+                <MudTable Items="@_relatorio.SubtotaisPorCategoria" Hover="true" Breakpoint="Breakpoint.Sm"
+                          T="DespesaCategoriaSubtotal" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Categoria</MudTh>
                         <MudTh Style="text-align:right">Confirmado</MudTh>
                         <MudTh Style="text-align:right">Não confirmado</MudTh>
                     </HeaderContent>
@@ -127,7 +157,7 @@ else
             @if (_relatorio.SubtotaisPorPessoa.Count > 0)
             {
                 <MudTable Items="@_relatorio.SubtotaisPorPessoa" Hover="true" Breakpoint="Breakpoint.Sm"
-                          T="ReceitaPessoaSubtotal" Dense="true" Striped="true"
+                          T="DespesaPessoaSubtotal" Dense="true" Striped="true"
                           OnRowClick="IrParaPessoaAsync">
                     <HeaderContent>
                         <MudTh>Pessoa</MudTh>
@@ -152,9 +182,28 @@ else
             }
             else
             {
-                <MudText Typo="Typo.body2" Class="pa-4">Sem receitas no período.</MudText>
+                <MudText Typo="Typo.body2" Class="pa-4">Sem despesas no período.</MudText>
             }
         </MudPaper>
+        @if (_relatorio.SubtotaisPorCategoria.Count > 0)
+        {
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Subtotais por categoria</MudText>
+                <MudTable Items="@_relatorio.SubtotaisPorCategoria" Hover="true" Breakpoint="Breakpoint.Sm"
+                          T="DespesaCategoriaSubtotal" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Categoria</MudTh>
+                        <MudTh Style="text-align:right">Confirmado</MudTh>
+                        <MudTh Style="text-align:right">Não confirmado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Rotulo</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.Confirmado.ToString("N2")</MudTd>
+                        <MudTd Style="text-align:right;">R$ @context.NaoConfirmado.ToString("N2")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
     }
 }
 
@@ -162,8 +211,10 @@ else
     private DateTime? _inicio;
     private DateTime? _fim;
     private Guid? _pessoaId;
+    private Guid? _cartaoId;
+    private Guid? _categoriaId;
     private string? _pessoaCor;
-    private ReceitaRelatorio? _relatorio;
+    private DespesaRelatorio? _relatorio;
     private string? _pdfUrl;
 
     protected override async Task OnInitializedAsync()
@@ -173,8 +224,7 @@ else
     }
 
     /// <summary>Período inicial/limpo: mês corrente na janela dos dias de
-    /// antecipação gravados (M/(D+1) até (M+1)/D); cai para o mês cheio se
-    /// a configuração não puder ser lida.</summary>
+    /// antecipação gravados; cai para o mês cheio se a leitura falhar.</summary>
     private async Task AplicarPeriodoPadraoAsync()
     {
         try
@@ -206,15 +256,16 @@ else
         if (_pessoaId.HasValue)
             _pessoaCor = (await PessoaService.ObterAsync(_pessoaId.Value))?.CorDeExibicao;
 
-        _relatorio = await RelatorioService.GerarAsync(inicio, fim, _pessoaId);
-        _pdfUrl = $"/api/relatorios/receitas/pdf?inicio={_inicio:yyyy-MM-dd}&fim={_fim:yyyy-MM-dd}"
-            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "");
+        _relatorio = await RelatorioService.GerarAsync(inicio, fim, _pessoaId, _cartaoId, _categoriaId);
+        _pdfUrl = $"/api/relatorios/despesas/pdf?inicio={_inicio:yyyy-MM-dd}&fim={_fim:yyyy-MM-dd}"
+            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "")
+            + (_cartaoId.HasValue ? $"&cartaoId={_cartaoId}" : "")
+            + (_categoriaId.HasValue ? $"&categoriaId={_categoriaId}" : "");
     }
 
-    private async Task IrParaPessoaAsync(TableRowClickEventArgs<ReceitaPessoaSubtotal> args)
+    private async Task IrParaPessoaAsync(TableRowClickEventArgs<DespesaPessoaSubtotal> args)
     {
         if (args.Item is null) return;
-        if (args.Item.PessoaId == Guid.Empty) return;
         _pessoaId = args.Item.PessoaId;
         await CarregarAsync();
     }
@@ -223,6 +274,8 @@ else
     {
         await AplicarPeriodoPadraoAsync();
         _pessoaId = null;
+        _cartaoId = null;
+        _categoriaId = null;
         await CarregarAsync();
     }
 

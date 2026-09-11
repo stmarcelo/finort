@@ -608,4 +608,109 @@ public class InvestimentoServiceTests
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
+
+    [Fact]
+    public async Task RegistrarMovimento_CompraCriptoComTaxa_SomaNoTotal()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var btc = await service.CriarAsync("BTC", TipoInvestimento.Criptomoeda,
+                conta.Id, null, null, null, null);
+
+            var mov = await service.RegistrarMovimentoAsync(btc.Id,
+                new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 1m, 100m, null,
+                lancarNaConta: true, taxa: 5m);
+
+            Assert.Equal(5m, mov.Taxa);
+            Assert.Equal(100m, mov.ValorPorCota);
+            Assert.Equal(105m, mov.Valor);
+            var despesa = Assert.Single(db.Lancamentos.ToList());
+            Assert.Equal(-105m, despesa.Valor);
+            var salvo = await db.Investimentos.AsNoTracking().SingleAsync(i => i.Id == btc.Id);
+            Assert.Equal(100m, salvo.ValorCotaAtual);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_VendaCriptoComTaxa_SomaNoTotal()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var btc = await service.CriarAsync("BTC", TipoInvestimento.Criptomoeda,
+                conta.Id, null, null, null, null);
+            await service.RegistrarMovimentoAsync(btc.Id,
+                new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 2m, 100m, null);
+
+            var mov = await service.RegistrarMovimentoAsync(btc.Id,
+                new DateOnly(2026, 9, 12), MovimentoTipo.Venda, 1m, 110m, null,
+                lancarNaConta: true, taxa: 5m);
+
+            Assert.Equal(5m, mov.Taxa);
+            Assert.Equal(110m, mov.ValorPorCota);
+            Assert.Equal(115m, mov.Valor);
+            var receita = db.Lancamentos.OrderBy(l => l.Data).ToList()[1];
+            Assert.Equal(115m, receita.Valor);
+            var salvo = await db.Investimentos.AsNoTracking().SingleAsync(i => i.Id == btc.Id);
+            Assert.Equal(110m, salvo.ValorCotaAtual);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_TaxaEmVendaAcao_Lanca()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var acao = await service.CriarAsync("ITSA4", TipoInvestimento.Acao,
+                conta.Id, null, null, null, null);
+            await service.RegistrarMovimentoAsync(acao.Id,
+                new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 10m, 10m, null);
+
+            var ex = await Assert.ThrowsAsync<ArgumentException>(
+                () => service.RegistrarMovimentoAsync(acao.Id,
+                    new DateOnly(2026, 9, 12), MovimentoTipo.Venda, 5m, 11m, null,
+                    lancarNaConta: true, taxa: 2m));
+            Assert.Contains("Taxa", ex.Message);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_TaxaEmAcao_Lanca()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var acao = await service.CriarAsync("ITSA4", TipoInvestimento.Acao,
+                conta.Id, null, null, null, null);
+
+            var ex = await Assert.ThrowsAsync<ArgumentException>(
+                () => service.RegistrarMovimentoAsync(acao.Id,
+                    new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 10m, 10m, null,
+                    lancarNaConta: true, taxa: 2m));
+            Assert.Contains("Taxa", ex.Message);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_TaxaNegativa_Lanca()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var btc = await service.CriarAsync("BTC", TipoInvestimento.Criptomoeda,
+                conta.Id, null, null, null, null);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.RegistrarMovimentoAsync(btc.Id,
+                    new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 1m, 100m, null,
+                    lancarNaConta: true, taxa: -1m));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

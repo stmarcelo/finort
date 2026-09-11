@@ -16,7 +16,7 @@
                 <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Criptomoeda">Criptomoeda</MudSelectItem>
                 <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Fii">FII</MudSelectItem>
                 <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Acao">Ação</MudSelectItem>
-                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Cdb">CDB</MudSelectItem>
+                <MudSelectItem T="TipoInvestimento" Value="TipoInvestimento.Cdb">CDB / Fundo</MudSelectItem>
             </MudSelect>
             <ContaSelect Label="Conta vinculada" Placeholder="Selecione" Required="true"
                          RequiredError="Informe a conta vinculada." @bind-Value="_contaId" />
@@ -30,7 +30,7 @@
             }
             @if (_tipo == TipoInvestimento.Cdb)
             {
-                <DataPicker @bind-Date="_dataVencimento" Label="Data de vencimento do CDB" Variant="@gVariant" />
+                <DataPicker @bind-Date="_dataVencimento" Label="Data de vencimento do CDB / Fundo" Variant="@gVariant" />
             }
         </MudForm>
     </DialogContent>

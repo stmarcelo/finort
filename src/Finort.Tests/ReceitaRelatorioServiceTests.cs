@@ -136,4 +136,45 @@ public class ReceitaRelatorioServiceTests : IDisposable
         Assert.Contains("Nubank", origem.Rotulo);
         Assert.Equal(250m, origem.NaoConfirmado);
     }
+
+    [Fact]
+    public async Task PeriodoPadrao_ComAntecipacao_UsaJanelaDaAteDaMaisUm()
+    {
+        var db = _ctx.Db;
+        db.Configuracoes.Add(new Models.Auth.Configuracao { Nome = "T", Email = "t@t.com", DiasAntecipacao = 5 });
+        db.SaveChanges();
+
+        var (inicio, fim) = await _svc.PeriodoPadraoDoMesAsync();
+
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        var esperadoInicio = new DateOnly(hoje.Year, hoje.Month, Math.Min(6, DateTime.DaysInMonth(hoje.Year, hoje.Month)));
+        var prox = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(1);
+        var esperadoFim = new DateOnly(prox.Year, prox.Month, Math.Min(5, DateTime.DaysInMonth(prox.Year, prox.Month)));
+        Assert.Equal(esperadoInicio, inicio);
+        Assert.Equal(esperadoFim, fim);
+    }
+
+    [Fact]
+    public async Task PeriodoPadrao_SemAntecipacao_UsaMesCheio()
+    {
+        var db = _ctx.Db;
+        db.Configuracoes.Add(new Models.Auth.Configuracao { Nome = "T", Email = "t@t.com", DiasAntecipacao = 0 });
+        db.SaveChanges();
+
+        var (inicio, fim) = await _svc.PeriodoPadraoDoMesAsync();
+
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 1), inicio);
+        Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(1).AddDays(-1), fim);
+    }
+
+    [Fact]
+    public async Task PeriodoPadrao_SemConfiguracao_UsaMesCheio()
+    {
+        var (inicio, fim) = await _svc.PeriodoPadraoDoMesAsync();
+
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 1), inicio);
+        Assert.Equal(new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(1).AddDays(-1), fim);
+    }
 }

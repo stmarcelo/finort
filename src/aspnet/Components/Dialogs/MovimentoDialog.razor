@@ -25,13 +25,23 @@
             <DataPicker @bind-Date="_data" Label="Data" Variant="@gVariant" Required="true" />
             @if (!EhReserva)
             {
-                <MudMoneyInput @bind-Value="_quantidade" CasasDecimais="@CasasDecimaisQuantidade"
+                <MudMoneyInput Value="_quantidade" ValueChanged="OnQuantidadeChanged"
+                               CasasDecimais="@CasasDecimaisQuantidade"
                                Label="Quantidade" Variant="@gVariant" Required="true" />
-                <MudMoneyInput @bind-Value="_valorPorCota" CasasDecimais="@CasasDecimaisCota"
+                <MudMoneyInput Value="_valorPorCota" ValueChanged="OnCotaChanged"
+                               CasasDecimais="@CasasDecimaisCota"
                                Label="Valor por cota" Variant="@gVariant" Required="true" />
+                <MudMoneyInput Value="_valorTotal" ValueChanged="OnTotalChanged"
+                               CasasDecimais="2"
+                               Label="Valor total" Variant="@gVariant" Required="true" />
+                @if (MostrarTaxa)
+                {
+                    <MudMoneyInput Value="_taxa" ValueChanged="OnTaxaChanged" CasasDecimais="2"
+                                   Label="@RotuloTaxa" Variant="@gVariant" />
+                }
                 <div class="fluxo-linha mt-1">
                     <span class="fluxo-label">Valor total</span>
-                    <span class="fluxo-valor">@(((_quantidade ?? 0m) * (_valorPorCota ?? 0m)).ToString("N2"))</span>
+                    <span class="fluxo-valor">@(((_quantidade ?? 0m) * (_valorPorCota ?? 0m) + TaxaEfetiva).ToString("N2"))</span>
                 </div>
             }
             else
@@ -60,6 +70,7 @@
     [Parameter] public decimal SaldoAtual { get; set; }
     [Parameter] public int CasasDecimaisQuantidade { get; set; } = 2;
     [Parameter] public int CasasDecimaisCota { get; set; } = 2;
+    [Parameter] public TipoInvestimento TipoInvestimento { get; set; } = TipoInvestimento.Acao;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -69,9 +80,61 @@
     private decimal? _quantidade;
     private decimal? _valorPorCota;
     private decimal? _valorReserva;
+    private decimal? _valorTotal;
+    private decimal? _taxa;
+    private bool _atualizando;
+    private bool MostrarTaxa => Tipo is MovimentoTipo.Compra or MovimentoTipo.Venda
+        && TipoInvestimento == TipoInvestimento.Criptomoeda;
+    private string RotuloTaxa => Tipo == MovimentoTipo.Venda
+        ? "Taxa de venda (opcional)" : "Taxa de compra (opcional)";
+    private decimal TaxaEfetiva => MostrarTaxa ? (_taxa ?? 0m) : 0m;
     private bool _preExistente;
 
     private bool EhReserva => Tipo is MovimentoTipo.Aporte or MovimentoTipo.Resgate;
+
+    private void OnQuantidadeChanged(decimal? v)
+    {
+        _quantidade = v;
+        if (_atualizando) return;
+        try
+        {
+            _atualizando = true;
+            if (_quantidade is > 0 && _valorPorCota is > 0)
+                _valorTotal = _quantidade.Value * _valorPorCota.Value + TaxaEfetiva;
+        }
+        finally { _atualizando = false; }
+    }
+
+    private void OnCotaChanged(decimal? v)
+    {
+        _valorPorCota = v;
+        if (_atualizando) return;
+        try
+        {
+            _atualizando = true;
+            if (_quantidade is > 0 && _valorPorCota is > 0)
+                _valorTotal = _quantidade.Value * _valorPorCota.Value + TaxaEfetiva;
+        }
+        finally { _atualizando = false; }
+    }
+
+    private void OnTotalChanged(decimal? v)
+    {
+        _valorTotal = v;
+        if (_atualizando) return;
+        try
+        {
+            _atualizando = true;
+            if (_quantidade is > 0 && _valorTotal is > 0)
+            {
+                var cota = (_valorTotal.Value - TaxaEfetiva) / _quantidade.Value;
+                _valorPorCota = cota > 0 ? cota : null;
+            }
+        }
+        finally { _atualizando = false; }
+    }
+
+    private void OnTaxaChanged(decimal? v) { _taxa = v; if (_atualizando) return; try { _atualizando = true; if (_quantidade is > 0 && _valorPorCota is > 0) _valorTotal = _quantidade.Value * _valorPorCota.Value + (_taxa ?? 0m); } finally { _atualizando = false; } }
 
     private string Titulo => Tipo switch
     {
@@ -87,7 +150,13 @@
     {
         await _form.Validate();
         if (!_form.IsValid || _data is null) return;
-        if (!EhReserva && (_quantidade is null or <= 0 || _valorPorCota is null or <= 0)) return;
+        if (!EhReserva && (_quantidade is null or <= 0 || _valorPorCota is null or <= 0 || _valorTotal is null or <= 0)) return;
+        if (MostrarTaxa && _taxa is < 0) { Snackbar.Add("A taxa não pode ser negativa.", Severity.Error); return; }
+        if (!EhReserva && Math.Abs(_quantidade!.Value * _valorPorCota!.Value + TaxaEfetiva - _valorTotal!.Value) > 0.01m)
+        {
+            Snackbar.Add("Quantidade, cota e total inconsistentes.", Severity.Error);
+            return;
+        }
         if (EhReserva && (_valorReserva is null or <= 0)) return;
 
         try
@@ -95,7 +164,8 @@
             await InvestimentoService.RegistrarMovimentoAsync(
                 InvestimentoId, DateOnly.FromDateTime(_data.Value), Tipo,
                 _quantidade, _valorPorCota, _valorReserva,
-                lancarNaConta: !_preExistente);
+                lancarNaConta: !_preExistente,
+                taxa: MostrarTaxa ? _taxa : null);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)

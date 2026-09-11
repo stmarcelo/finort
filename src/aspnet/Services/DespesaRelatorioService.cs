@@ -7,21 +7,24 @@ using QuestPDF.Helpers;
 
 namespace Finort.Services;
 
-public sealed record ReceitaLinha(Guid Id, DateOnly Data, string? CartaoNome, string? ContaNome,
+public sealed record DespesaLinha(Guid Id, DateOnly Data, string? CartaoNome, string? ContaNome,
     int? ParcelaAtual, int? TotalParcelas, string CategoriaRotulo, decimal Valor, bool Confirmado);
-public sealed record ReceitaOrigemSubtotal(string Rotulo, decimal Confirmado, decimal NaoConfirmado);
-public sealed record ReceitaPessoaSubtotal(Guid PessoaId, string PessoaNome, string? Cor, decimal Confirmado, decimal NaoConfirmado);
-public sealed record ReceitaRelatorio(DateOnly Inicio, DateOnly Fim, Guid? PessoaId, string PessoaNome,
+public sealed record DespesaOrigemSubtotal(string Rotulo, decimal Confirmado, decimal NaoConfirmado);
+public sealed record DespesaCategoriaSubtotal(string Rotulo, decimal Confirmado, decimal NaoConfirmado);
+public sealed record DespesaPessoaSubtotal(Guid PessoaId, string PessoaNome, string? Cor, decimal Confirmado, decimal NaoConfirmado);
+public sealed record DespesaRelatorio(DateOnly Inicio, DateOnly Fim, Guid? PessoaId, string PessoaNome,
+    Guid? CartaoId, string CartaoNome, Guid? CategoriaId, string CategoriaNome,
     decimal TotalConfirmado, decimal TotalNaoConfirmado,
-    IReadOnlyList<ReceitaLinha> Linhas,
-    IReadOnlyList<ReceitaOrigemSubtotal> SubtotaisPorOrigem,
-    IReadOnlyList<ReceitaPessoaSubtotal> SubtotaisPorPessoa);
+    IReadOnlyList<DespesaLinha> Linhas,
+    IReadOnlyList<DespesaOrigemSubtotal> SubtotaisPorOrigem,
+    IReadOnlyList<DespesaCategoriaSubtotal> SubtotaisPorCategoria,
+    IReadOnlyList<DespesaPessoaSubtotal> SubtotaisPorPessoa);
 
-public class ReceitaRelatorioService
+public class DespesaRelatorioService
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
-    public ReceitaRelatorioService(AppDbContext db, IWebHostEnvironment env) => (_db, _env) = (db, env);
+    public DespesaRelatorioService(AppDbContext db, IWebHostEnvironment env) => (_db, _env) = (db, env);
 
     /// <summary>
     /// Período padrão do mês corrente levando em conta os dias de antecipação
@@ -41,64 +44,87 @@ public class ReceitaRelatorioService
         return (inicio, fim);
     }
 
-    public async Task<ReceitaRelatorio> GerarAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId)
+    /// <summary>
+    /// Despesas do período por pessoa, com filtro opcional de cartão.
+    /// Critério de data: despesas de cartão entram pelo vencimento da fatura
+    /// (como no fluxo); demais despesas, pela data do lançamento.
+    /// </summary>
+    public async Task<DespesaRelatorio> GerarAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId, Guid? cartaoId, Guid? categoriaId)
     {
         var query = _db.Lancamentos
             .Include(l => l.Conta).Include(l => l.CartaoCredito).Include(l => l.Pessoa)
             .Include(l => l.Categoria).Include(l => l.Subcategoria)
-            .Where(l => l.Tipo == LancamentoTipo.Receita && l.Data >= inicio && l.Data <= fim);
-        if (pessoaId.HasValue) query = query.Where(l => l.PessoaId == pessoaId.Value);
-        var lista = await query.OrderBy(l => l.Data).ToListAsync();
+            .Where(l => l.Tipo == LancamentoTipo.Despesa
+                && (l.CartaoCreditoId != null
+                    ? (l.DataVencimentoCartao ?? l.Data) >= inicio && (l.DataVencimentoCartao ?? l.Data) <= fim
+                    : l.Data >= inicio && l.Data <= fim));
+        if (pessoaId.HasValue) query = pessoaId.Value == Guid.Empty
+            ? query.Where(l => l.PessoaId == null)
+            : query.Where(l => l.PessoaId == pessoaId.Value);
+        if (cartaoId.HasValue) query = query.Where(l => l.CartaoCreditoId == cartaoId.Value);
+        if (categoriaId.HasValue) query = query.Where(l => l.CategoriaId == categoriaId.Value
+            || (l.SubcategoriaId.HasValue && l.Subcategoria!.CategoriaId == categoriaId.Value));
+        var lista = (await query.ToListAsync())
+            .OrderBy(l => l.CartaoCreditoId != null ? (l.DataVencimentoCartao ?? l.Data) : l.Data)
+            .ToList();
 
         string pessoaNome = "";
         if (pessoaId.HasValue)
-            pessoaNome = (await _db.Pessoas.FindAsync(pessoaId.Value))?.Nome ?? "Pessoa não encontrada";
+            pessoaNome = pessoaId.Value == Guid.Empty ? "Sem pessoa"
+                : (await _db.Pessoas.FindAsync(pessoaId.Value))?.Nome ?? "Pessoa não encontrada";
+
+        string cartaoNome = "";
+        if (cartaoId.HasValue)
+        {
+            var cartao = await _db.CartoesCredito.FindAsync(cartaoId.Value);
+            cartaoNome = cartao is null ? "Cartão não encontrado" : $"{cartao.Banco} (****{cartao.Ultimos4Digitos})";
+        }
+
+        string categoriaNome = "";
+        if (categoriaId.HasValue)
+            categoriaNome = (await _db.Categorias.FindAsync(categoriaId.Value))?.Nome ?? "Categoria não encontrada";
+
+        static DateOnly DataCriterio(Lancamento l)
+            => l.CartaoCreditoId != null ? (l.DataVencimentoCartao ?? l.Data) : l.Data;
 
         var confirmado = lista.Where(l => l.Confirmado).Sum(l => Math.Abs(l.Valor));
         var naoConfirmado = lista.Where(l => !l.Confirmado).Sum(l => Math.Abs(l.Valor));
 
-        // Cartão que originou cada receita de reembolso: despesas de cartão
-        // apontam para a receita via ReembolsoId (1:1 por parcela; primeira vence).
-        var receitaIds = lista.Select(l => l.Id).ToList();
-        var cartaoReembolso = (await _db.Lancamentos
-            .Include(l => l.CartaoCredito)
-            .Where(l => l.Tipo == LancamentoTipo.Despesa && l.CartaoCreditoId != null
-                && l.ReembolsoId.HasValue && receitaIds.Contains(l.ReembolsoId.Value))
-            .Select(l => new { ReembolsoId = l.ReembolsoId!.Value, Banco = l.CartaoCredito!.Banco })
-            .ToListAsync())
-            .GroupBy(x => x.ReembolsoId)
-            .ToDictionary(g => g.Key, g => g.First().Banco);
-
-        string? CartaoEfetivo(Lancamento l)
-            => l.CartaoCredito?.Banco
-               ?? (cartaoReembolso.TryGetValue(l.Id, out var banco) ? banco : null);
+        static string CategoriaDe(Lancamento l)
+            => l.Subcategoria is null ? l.Categoria.Nome : $"{l.Categoria.Nome} > {l.Subcategoria.Nome}";
 
         var linhas = pessoaId.HasValue
-            ? lista.Select(l => new ReceitaLinha(l.Id, l.Data, CartaoEfetivo(l), l.Conta?.Nome,
-                l.ParcelaAtual, l.TotalParcelas,
-                l.Subcategoria is null ? l.Categoria.Nome : $"{l.Categoria.Nome} > {l.Subcategoria.Nome}",
+            ? lista.Select(l => new DespesaLinha(l.Id, DataCriterio(l), l.CartaoCredito?.Banco, l.Conta?.Nome,
+                l.ParcelaAtual, l.TotalParcelas, CategoriaDe(l),
                 Math.Abs(l.Valor), l.Confirmado)).ToList()
-            : new List<ReceitaLinha>();
+            : new List<DespesaLinha>();
 
         var origens = pessoaId.HasValue
-            ? lista.GroupBy(l => (Cartao: CartaoEfetivo(l) ?? "", Conta: l.Conta?.Nome ?? ""))
-                .Select(g => new ReceitaOrigemSubtotal(RotuloOrigem(g.Key.Cartao, g.Key.Conta),
+            ? lista.GroupBy(l => (Cartao: l.CartaoCredito?.Banco ?? "", Conta: l.Conta?.Nome ?? ""))
+                .Select(g => new DespesaOrigemSubtotal(RotuloOrigem(g.Key.Cartao, g.Key.Conta),
                     g.Where(x => x.Confirmado).Sum(x => Math.Abs(x.Valor)),
                     g.Where(x => !x.Confirmado).Sum(x => Math.Abs(x.Valor)))).ToList()
-            : new List<ReceitaOrigemSubtotal>();
+            : new List<DespesaOrigemSubtotal>();
 
         var porPessoa = pessoaId.HasValue
-            ? new List<ReceitaPessoaSubtotal>()
+            ? new List<DespesaPessoaSubtotal>()
             : lista.GroupBy(l => l.PessoaId)
                 .Select(g => {
                     var p = g.First().Pessoa;
-                    return new ReceitaPessoaSubtotal(g.Key ?? Guid.Empty, p?.Nome ?? "Sem pessoa",
+                    return new DespesaPessoaSubtotal(g.Key ?? Guid.Empty, p?.Nome ?? "Sem pessoa",
                         p?.CorDeExibicao, g.Where(x => x.Confirmado).Sum(x => Math.Abs(x.Valor)),
                         g.Where(x => !x.Confirmado).Sum(x => Math.Abs(x.Valor)));
                 }).OrderBy(x => x.PessoaNome).ToList();
 
-        return new ReceitaRelatorio(inicio, fim, pessoaId, pessoaNome, confirmado, naoConfirmado,
-            linhas, origens, porPessoa);
+        var porCategoria = lista.GroupBy(CategoriaDe)
+            .Select(g => new DespesaCategoriaSubtotal(g.Key,
+                g.Where(x => x.Confirmado).Sum(x => Math.Abs(x.Valor)),
+                g.Where(x => !x.Confirmado).Sum(x => Math.Abs(x.Valor))))
+            .OrderBy(x => x.Rotulo).ToList();
+
+        return new DespesaRelatorio(inicio, fim, pessoaId, pessoaNome, cartaoId, cartaoNome,
+            categoriaId, categoriaNome,
+            confirmado, naoConfirmado, linhas, origens, porCategoria, porPessoa);
     }
 
     private static string RotuloOrigem(string cartao, string conta)
@@ -109,11 +135,13 @@ public class ReceitaRelatorioService
         return "Sem origem";
     }
 
-    public async Task<byte[]> GerarPdfBytesAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId)
+    public async Task<byte[]> GerarPdfBytesAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId, Guid? cartaoId, Guid? categoriaId)
     {
-        var r = await GerarAsync(inicio, fim, pessoaId);
+        var r = await GerarAsync(inicio, fim, pessoaId, cartaoId, categoriaId);
         var agora = DateTime.Now;
         var tituloPessoa = pessoaId.HasValue ? r.PessoaNome : "Todas as pessoas";
+        var tituloCartao = cartaoId.HasValue ? r.CartaoNome : "Todos os cartões";
+        var tituloCategoria = categoriaId.HasValue ? r.CategoriaNome : "Todas as categorias";
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -122,11 +150,13 @@ public class ReceitaRelatorioService
                 page.Size(595, 842);
                 page.Header().Column(col =>
                 {
-                    col.Item().Element(c => RelatorioPdfHeader.Cabecalho(c, "Receitas por pessoa", tituloPessoa,
+                    col.Item().Element(c => RelatorioPdfHeader.Cabecalho(c, "Despesas por pessoa", tituloPessoa,
                         new[]
                         {
                             new RelatorioCabecalhoLinha(
-                                $"Período: {r.Inicio:dd/MM/yyyy}–{r.Fim:dd/MM/yyyy}", 10, "#666666")
+                                $"Período: {r.Inicio:dd/MM/yyyy}–{r.Fim:dd/MM/yyyy}", 10, "#666666"),
+                            new RelatorioCabecalhoLinha($"Cartão: {tituloCartao}", 10, "#666666"),
+                            new RelatorioCabecalhoLinha($"Categoria: {tituloCategoria}", 10, "#666666")
                         },
                         RelatorioPdfHeader.LogoPath(_env)));
                     col.Item().Height(10);
@@ -213,6 +243,25 @@ public class ReceitaRelatorioService
                                 t.Cell().AlignRight().Text($"R$ {s.NaoConfirmado:N2}").FontSize(9);
                             }
                         });
+                        col.Item().Text("Subtotais por categoria").FontSize(12).SemiBold();
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.RelativeColumn(); c.ConstantColumn(80); c.ConstantColumn(80); });
+                            t.Header(h =>
+                            {
+                                static QuestPDF.Infrastructure.IContainer Head(QuestPDF.Infrastructure.IContainer c)
+                                    => c.Background("#f5f5f7").Padding(4);
+                                h.Cell().Element(Head).Text("Categoria").FontSize(9);
+                                h.Cell().Element(Head).AlignRight().Text("Confirmado").FontSize(9);
+                                h.Cell().Element(Head).AlignRight().Text("Não confirmado").FontSize(9);
+                            });
+                            foreach (var s in r.SubtotaisPorCategoria)
+                            {
+                                t.Cell().Text(s.Rotulo).FontSize(9);
+                                t.Cell().AlignRight().Text($"R$ {s.Confirmado:N2}").FontSize(9);
+                                t.Cell().AlignRight().Text($"R$ {s.NaoConfirmado:N2}").FontSize(9);
+                            }
+                        });
                     }
                     else if (r.SubtotaisPorPessoa.Count > 0)
                     {
@@ -231,10 +280,29 @@ public class ReceitaRelatorioService
                                 t.Cell().Element(Zebrar).AlignRight().Text($"R$ {p.NaoConfirmado:N2}").FontSize(9);
                             }
                         });
+                        col.Item().Text("Subtotais por categoria").FontSize(12).SemiBold();
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.RelativeColumn(); c.ConstantColumn(80); c.ConstantColumn(80); });
+                            t.Header(h =>
+                            {
+                                static QuestPDF.Infrastructure.IContainer Head(QuestPDF.Infrastructure.IContainer c)
+                                    => c.Background("#f5f5f7").Padding(4);
+                                h.Cell().Element(Head).Text("Categoria").FontSize(9);
+                                h.Cell().Element(Head).AlignRight().Text("Confirmado").FontSize(9);
+                                h.Cell().Element(Head).AlignRight().Text("Não confirmado").FontSize(9);
+                            });
+                            foreach (var s in r.SubtotaisPorCategoria)
+                            {
+                                t.Cell().Text(s.Rotulo).FontSize(9);
+                                t.Cell().AlignRight().Text($"R$ {s.Confirmado:N2}").FontSize(9);
+                                t.Cell().AlignRight().Text($"R$ {s.NaoConfirmado:N2}").FontSize(9);
+                            }
+                        });
                     }
                     else
                     {
-                        col.Item().Text("Sem receitas no período.").FontSize(10).FontColor("#666666");
+                        col.Item().Text("Sem despesas no período.").FontSize(10).FontColor("#666666");
                     }
                 });
             });

@@ -16,10 +16,13 @@
             </MudStack>
         </MudItem>
         <MudItem xs="12" md="6">
-            <MudAutocomplete T="string" Label="Acesso rápido" @bind-Text="_textoBusca" Variant="@gVariant" Adornment="Adornment.Start"
-                             AdornmentIcon="@Icons.Material.Filled.Search" CoerceText="false"
-                             SearchFunc="Buscar" MaxHeight="300" Style="max-width:350px;float:right"
-                             ValueChanged="NavegarPara" ResetValueOnEmptyText="true" />
+            <MudAutocomplete T="string" Label="Acesso rápido" Placeholder="Buscar seção..."
+                             Value="@_secaoSelecionada" ValueChanged="OnSecaoSelecionada"
+                             SearchFunc="Buscar" Variant="@gVariant"
+                             Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                             CoerceText="true" ResetValueOnEmptyText="true" DebounceInterval="150"
+                             OpenOnFocus="false" Clearable="true" PopoverClass="manual-search-popover autocomplete-single-scroll"
+                             Style="max-width:350px" Class="ml-auto" />
         </MudItem>
     </MudGrid>
 </MudPaper>
@@ -73,7 +76,7 @@
 
 @code {
     private bool _mostrarBotaoTopo;
-    private string? _textoBusca;
+    private string? _secaoSelecionada;
 
     private record SubSecao(string Titulo, List<string> Itens);
     private record SecaoManual(string Id, string Titulo, string Icone, List<string> Paragrafos, List<SubSecao> Subsecoes);
@@ -277,20 +280,20 @@
 
         new("investimentos", "Investimentos", Icons.Material.Filled.Savings, new()
         {
-            "Cadastre aqui seus investimentos: ações, fundos imobiliários, criptomoedas, CDB, reserva de emergência, dólar, etc."
+            "Cadastre aqui seus investimentos: ações, fundos imobiliários (FII), criptomoedas, CDB / Fundo (CDBs e fundos de investimento), reserva de emergência, dólar, etc."
         }, new()
         {
             new("Movimentações", new()
             {
-                "Compra: você comprou cotas de um ativo. Informe quantidade e preço. O sistema cria um lançamento de despesa na conta vinculada.",
-                "Venda: você vendeu cotas. Informe quantidade e preço. O sistema cria um lançamento de receita na conta vinculada.",
-                "Aporte: aplicação na reserva (ex: depositar na poupança). Cria lançamento de despesa.",
-                "Resgate: retirada da reserva (ex: sacar da poupança). Cria lançamento de receita."
+                "Compra: informe quantidade, valor por cota e valor total — os três campos são interligados: ao informar o valor total, o sistema calcula a cota (total ÷ quantidade). Na compra e na venda de criptomoeda há ainda o campo opcional de taxa, somado ao total (total = quantidade × cota + taxa). O sistema cria um lançamento de despesa na conta vinculada com o valor total.",
+                "Venda: informe quantidade, valor por cota e valor total (interligados da mesma forma; na venda de criptomoeda também há taxa opcional). O sistema cria um lançamento de receita na conta vinculada com o valor total.",
+                "Aporte: aplicação na reserva ou no CDB / Fundo (ex: depositar na poupança). Cria lançamento de despesa.",
+                "Resgate: retirada da reserva ou do CDB / Fundo (ex: sacar da poupança). Cria lançamento de receita."
             }),
             new("Proventos", new()
             {
                 "Dividendos: rendimentos pagos por ações ou fundos. Cria um lançamento de receita.",
-                "Rendimento: juros de CDB ou rendimentos da reserva. Cria um lançamento de receita."
+                "Rendimento: juros de CDB / Fundo ou rendimentos da reserva. Cria um lançamento de receita."
             }),
             new("Cotação e Desfazer", new()
             {
@@ -316,6 +319,39 @@
                 "Use o botão 'Gerar PDF' para baixar um relatório em PDF com o mesmo layout."
             })
         }),
+
+        new("relatorioreceitas", "Receitas por Pessoa", Icons.Material.Filled.Assessment, new()
+        {
+            "O relatório de receitas por pessoa (menu Relatórios > Receitas por Pessoa) mostra quanto entrou de cada pessoa em um período.",
+            "Ele abre com o período do mês na mesma janela dos dias de antecipação do fluxo (do dia D+1 do mês até o dia D do mês seguinte).",
+            "No topo, informe o período (início e fim) e, se quiser, uma pessoa específica. Clique em 'Filtrar' para atualizar ou em 'Limpar' para voltar ao período padrão com todas as pessoas."
+        }, new()
+        {
+            new("Visão geral (todas as pessoas)", new()
+            {
+                "Dois cards no topo: Total confirmado e Total sem confirmar (valores pendentes).",
+                "A tabela 'Totais por pessoa' lista cada pessoa com o total confirmado e não confirmado no período.",
+                "Clique em uma linha da tabela para abrir o detalhe daquela pessoa."
+            }),
+            new("Detalhe por pessoa", new()
+            {
+                "Além dos cards de totais, aparece a tabela 'Lançamentos' com data, cartão, conta, parcela, categoria, valor e status (Confirmado ou Pendente).",
+                "A tabela 'Subtotais por origem' agrupa as receitas por cartão e conta de origem."
+            }),
+            new("PDF", new()
+            {
+                "O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba, com o mesmo conteúdo exibido na tela."
+            })
+        }),
+
+        new("relatoriodespesas", "Despesas por Pessoa", Icons.Material.Filled.TrendingDown, new()
+        {
+            "O relatório de despesas por pessoa (menu Relatórios > Despesas por Pessoa) funciona como o de receitas: mostra quanto saiu por pessoa em um período.",
+            "Ele abre com o período do mês na mesma janela dos dias de antecipação do fluxo (do dia D+1 do mês até o dia D do mês seguinte).",
+            "Além de período e pessoa, há o filtro de cartão. Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.",
+            "Além de período, pessoa, cartão e categoria, o filtro de pessoa tem a opção 'Sem pessoa', que carrega só os lançamentos sem pessoa vinculada.",
+            "Com uma pessoa selecionada, aparecem os lançamentos detalhados, os subtotais por origem (cartão/conta) e os subtotais por categoria. O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba."
+        }, new()),
 
         new("fecharmes", "Fechar Mês", Icons.Material.Filled.EventBusy, new()
         {
@@ -383,9 +419,9 @@
             .Select(s => s.Titulo);
     }
 
-    private void NavegarPara(string titulo)
+    private void OnSecaoSelecionada(string? titulo)
     {
-        _textoBusca = string.Empty;
+        _secaoSelecionada = null;
         if (string.IsNullOrWhiteSpace(titulo)) return;
         var secao = _secoes.FirstOrDefault(s => s.Titulo == titulo);
         if (secao is not null)

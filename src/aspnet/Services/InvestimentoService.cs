@@ -223,17 +223,19 @@ public class InvestimentoService
     /// guarda de mês fechado); para compras/aportes o lançamento de despesa só é gerado quando
     /// <paramref name="lancarNaConta"/> for verdadeiro (investimentos pré-existentes dispensam).
     /// Aplica os limites de posição/saldo e atualiza a cotação em compras/vendas.
+    /// Taxa soma ao total somente em compra/venda de Criptomoeda.
     /// </summary>
     public async Task<InvestimentoMovimento> RegistrarMovimentoAsync(
         Guid investimentoId, DateOnly data, MovimentoTipo tipo,
         decimal? quantidade, decimal? valorPorCota, decimal? valorReserva,
-        bool lancarNaConta = true)
+        bool lancarNaConta = true, decimal? taxa = null)
     {
         var investimento = await ObterAsync(investimentoId);
 
         decimal valorTotal;
         decimal? qtdFinal;
         decimal? cotaFinal;
+        decimal taxaEfetiva = 0m;
 
         if (tipo is MovimentoTipo.Compra or MovimentoTipo.Venda)
         {
@@ -243,12 +245,28 @@ public class InvestimentoService
                 throw new ArgumentException("Informe o valor por cota maior que zero.");
             qtdFinal = quantidade;
             cotaFinal = valorPorCota;
-            valorTotal = quantidade.Value * valorPorCota.Value;
+            if (taxa is not null && taxa.Value != 0m)
+            {
+                if (taxa.Value < 0m)
+                    throw new ArgumentException("A taxa não pode ser negativa.");
+                var ehNegociacaoCripto = tipo is MovimentoTipo.Compra or MovimentoTipo.Venda
+                    && investimento.Tipo == TipoInvestimento.Criptomoeda;
+                if (!ehNegociacaoCripto)
+                    throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda.");
+                taxaEfetiva = taxa.Value;
+            }
+            valorTotal = quantidade.Value * valorPorCota.Value + taxaEfetiva;
         }
         else
         {
             if (valorReserva is null or <= 0m)
                 throw new ArgumentException("Informe um valor maior que zero.");
+            if (taxa is not null && taxa.Value != 0m)
+            {
+                if (taxa.Value < 0m)
+                    throw new ArgumentException("A taxa não pode ser negativa.");
+                throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda.");
+            }
             qtdFinal = null;
             cotaFinal = null;
             valorTotal = valorReserva.Value;
@@ -291,6 +309,7 @@ public class InvestimentoService
             Quantidade = qtdFinal,
             ValorPorCota = cotaFinal,
             Valor = valorTotal,
+            Taxa = taxaEfetiva > 0m ? taxaEfetiva : null,
             LancamentoId = lancamento?.Id
         };
         _db.InvestimentosMovimentos.Add(movimento);

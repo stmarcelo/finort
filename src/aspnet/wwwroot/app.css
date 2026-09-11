@@ -693,3 +693,17 @@ h1:focus {
     .quick-access-popover .mud-list-item:hover {
         background-color: rgba(201, 169, 78, 0.12);
     }
+
+/* ---- Autocompletes: uma única barra de rolagem na lista ----
+   O MudPopover recebe overflow-y:auto sempre que MaxHeight está definido
+   (sempre, pois o Autocomplete usa 300 por padrão) e a .mud-list interna
+   também rola por CSS do framework -> duas barras aninhadas. O popover
+   externo não precisa rolar (a lista interna já é limitada ao MaxHeight). */
+.autocomplete-single-scroll {
+    overflow-y: hidden !important;
+}
+
+.manual-search-popover .mud-list-item {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+}
