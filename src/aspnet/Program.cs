@@ -74,6 +74,7 @@ builder.Services.AddScoped<ProvisaoService>();
 builder.Services.AddScoped<CalendarioService>();
 builder.Services.AddScoped<FluxoService>();
 builder.Services.AddScoped<FechamentoService>();
+builder.Services.AddScoped<ExtratoContaService>();
 builder.Services.AddScoped<InvestimentoService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ProjetoService>();

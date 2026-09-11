@@ -5,6 +5,7 @@
 @inject ContaService ContaService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
 
 <PageTitle>Contas</PageTitle>
 
@@ -34,12 +35,16 @@ else
                 <MudPaper Class="pa-4">
                     <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                         <MudText Typo="Typo.subtitle1" Style="font-weight:600">@c.Nome</MudText>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                         OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
-                                         OnClick="() => Excluir(c)">Excluir</MudMenuItem>
-                        </MudMenu>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="0">
+                            <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small"
+                                           OnClick="@(() => Navigation.NavigateTo($"/contas/{c.Id}/extrato"))" Title="Extrato" />
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="() => AbrirDialog(c)">Editar</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                             OnClick="() => Excluir(c)">Excluir</MudMenuItem>
+                            </MudMenu>
+                        </MudStack>
                     </MudStack>
 
                     @if (c.Banco is not null || c.Agencia is not null || c.ContaEDigito is not null)

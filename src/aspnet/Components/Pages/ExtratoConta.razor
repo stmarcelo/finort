@@ -1,0 +1,277 @@
+@page "/contas/{Id:guid}/extrato"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject ExtratoContaService ExtratoService
+@inject LancamentoService LancamentoService
+@inject ContaService ContaService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>Extrato</PageTitle>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudToolBar>
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => NavigationManager.NavigateTo("/contas"))" Title="Voltar para contas" />
+            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Class="mr-2" />
+                Extrato — @_nomeConta
+            </MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(async () => await NavegarMes(-1))" />
+            <MudText Class="mx-2">@($"{_mes:D2}/{_ano}")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(async () => await NavegarMes(1))" />
+        </MudToolBar>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Saldo do mês</span>
+            <span class="value @(_saldoMes >= 0 ? "pos" : "neg")">@_saldoMes.ToString("N2")</span>
+        </div>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Acumulado real</span>
+            <span class="value @(_acumuladoReal >= 0 ? "pos" : "neg")">@_acumuladoReal.ToString("N2")</span>
+        </div>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Acumulado previsto</span>
+            <span class="value @(_acumuladoPrevisto >= 0 ? "pos" : "neg")">@_acumuladoPrevisto.ToString("N2")</span>
+        </div>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        @if (_fechado)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Mês fechado em @_dataFechamento?.ToString("dd/MM/yyyy HH:mm")</MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">Mês aberto</MudAlert>
+        }
+    </MudItem>
+
+    <MudItem xs="12">
+        @if (_grupos.Count == 0 && _faturas.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Nenhum lançamento neste mês.</MudAlert>
+        }
+        else
+        {
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var g in _grupos)
+                {
+                    <MudExpansionPanel>
+                        <TitleContent>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText>@($"{g.Data:dd/MM/yyyy} • {(g.PessoaNome ?? "Sem pessoa")}")</MudText>
+                                @if (g.Confirmado)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Confirmado</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pendente</MudChip>
+                                }
+                                <span class="extrato-valor @(g.Soma >= 0 ? "pos" : "neg")">R$ @g.Soma.ToString("N2")</span>
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            @if (!_fechado && !g.Confirmado)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small" Class="mb-2"
+                                           StartIcon="@Icons.Material.Filled.DoneAll"
+                                           OnClick="@(() => ConfirmarGrupo(g))">Confirmar grupo</MudButton>
+                            }
+                            <MudTable Items="@g.Itens" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                                <HeaderContent>
+                                    <MudTh>Categoria</MudTh>
+                                    <MudTh>Parcela</MudTh>
+                                    <MudTh>Tipo</MudTh>
+                                    <MudTh>Valor</MudTh>
+                                    <MudTh>Confirmado</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                                    <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "")</MudTd>
+                                    <MudTd>@context.Tipo</MudTd>
+                                    <MudTd><span class="extrato-valor @(context.Valor >= 0 ? "pos" : "neg")">@context.Valor.ToString("N2")</span></MudTd>
+                                    <MudTd>
+                                        <MudSwitch T="bool" Value="@context.Confirmado" Disabled="@_fechado"
+                                                   ValueChanged="v => AlternarConfirmado(context, v)" />
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        }
+    </MudItem>
+
+    @foreach (var f in _faturas)
+    {
+        <MudItem xs="12">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mt-2 mb-1">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" Color="Color.Primary" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600">Fatura — @f.Banco ••@f.Ultimos4Digitos</MudText>
+                @if (f.Paga)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Paga</MudChip>
+                }
+                else if (f.Fechada)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Fechada@(f.DataFechamento.HasValue ? $" em {f.DataFechamento.Value:dd/MM/yyyy HH:mm}" : "")</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Aberta</MudChip>
+                }
+                <MudSpacer />
+                <span class="extrato-valor @(f.ContribuicaoPrevisto >= 0 ? "pos" : "neg")">R$ @f.ContribuicaoPrevisto.ToString("N2")</span>
+            </MudStack>
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var g in ExtratoContaService.AgruparPorVencimento(f.Itens))
+                {
+                    <MudExpansionPanel>
+                        <TitleContent>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText>@($"{g.Data:dd/MM/yyyy} • {(g.PessoaNome ?? "Sem pessoa")}")</MudText>
+                                @if (g.Confirmado)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Confirmado</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pendente</MudChip>
+                                }
+                                <span class="extrato-valor @(g.Soma >= 0 ? "pos" : "neg")">R$ @g.Soma.ToString("N2")</span>
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            @if (!f.Fechada && !g.Confirmado)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small" Class="mb-2"
+                                           StartIcon="@Icons.Material.Filled.DoneAll"
+                                           OnClick="@(() => ConfirmarGrupo(g))">Confirmar grupo</MudButton>
+                            }
+                            <MudTable Items="@g.Itens" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                                <HeaderContent>
+                                    <MudTh>Categoria</MudTh>
+                                    <MudTh>Parcela</MudTh>
+                                    <MudTh>Tipo</MudTh>
+                                    <MudTh>Valor</MudTh>
+                                    <MudTh>Confirmado</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                                    <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "")</MudTd>
+                                    <MudTd>@context.Tipo</MudTd>
+                                    <MudTd><span class="extrato-valor @(context.Valor >= 0 ? "pos" : "neg")">@context.Valor.ToString("N2")</span></MudTd>
+                                    <MudTd>
+                                        <MudSwitch T="bool" Value="@context.Confirmado" Disabled="@f.Fechada"
+                                                   ValueChanged="v => AlternarConfirmado(context, v)" />
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private string _nomeConta = "";
+    private int _ano;
+    private int _mes;
+    private bool _fechado;
+    private DateTime? _dataFechamento;
+    private decimal _saldoMes;
+    private decimal _acumuladoReal;
+    private decimal _acumuladoPrevisto;
+    private List<GrupoExtrato> _grupos = new();
+    private List<FaturaVinculadaResumo> _faturas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        _ano = hoje.Year;
+        _mes = hoje.Month;
+        await CarregarAsync();
+    }
+
+    private async Task NavegarMes(int delta)
+    {
+        var destino = new DateOnly(_ano, _mes, 1).AddMonths(delta);
+        _ano = destino.Year;
+        _mes = destino.Month;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        try
+        {
+            var conta = await ContaService.ObterAsync(Id);
+            if (conta is null)
+            {
+                Snackbar.Add("Conta não encontrada.", Severity.Error);
+                NavigationManager.NavigateTo("/contas");
+                return;
+            }
+            _nomeConta = conta.Nome;
+            var r = await ExtratoService.ObterAsync(Id, _ano, _mes);
+            _fechado = r.Fechado;
+            _dataFechamento = r.DataFechamento;
+            _saldoMes = r.SaldoMes;
+            _acumuladoReal = r.AcumuladoReal;
+            _acumuladoPrevisto = r.AcumuladoPrevisto;
+            _grupos = ExtratoContaService.Agrupar(r.Lancamentos);
+            _faturas = r.Faturas;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar o extrato: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AlternarConfirmado(Lancamento lancamento, bool valor)
+    {
+        if (lancamento.Confirmado == valor) return;
+        try
+        {
+            await LancamentoService.AlternarConfirmadoAsync(lancamento.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            await CarregarAsync();
+        }
+    }
+
+    private async Task ConfirmarGrupo(GrupoExtrato grupo)
+    {
+        try
+        {
+            foreach (var item in grupo.Itens.Where(l => !l.Confirmado))
+            {
+                try { await LancamentoService.AlternarConfirmadoAsync(item.Id); }
+                catch (Exception ex) { Snackbar.Add($"{item.Data:dd/MM} R$ {item.Valor:N2}: {ex.Message}", Severity.Warning); }
+            }
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            await CarregarAsync();
+        }
+    }
+}

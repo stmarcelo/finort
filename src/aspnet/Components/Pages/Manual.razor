@@ -195,7 +195,9 @@
             "Cada conta mostra dois saldos: o saldo real (só contando lançamentos confirmados) e o saldo projetado (contando todos os lançamentos, inclusive não confirmados).",
             "O saldo real é o que você deve ver no seu extrato bancário. Se bateu, confirme os lançamentos. Se não bateu, pode ser que algum lançamento esteja faltando ou com valor errado.",
             "O cartão de crédito vinculado mostra o último mês fechado e o valor fechado da fatura.",
-            "O fechar mês (seção 'Fechar Mês') não serve para ajustar saldo — serve para confirmar que o mês foi revisado e fechado, bloqueando novos lançamentos naquela conta para o mês fechado."
+            "O fechar mês (seção 'Fechar Mês') não serve para ajustar saldo — serve para confirmar que o mês foi revisado e fechado, bloqueando novos lançamentos naquela conta para o mês fechado.",
+            "Botão Extrato (ícone) abre o extrato da conta: navegue por meses, veja se o mês está fechado ou aberto, os saldos do mês e acumulados (real só confirmados, previsto todos) e confirme lançamentos. Lançamentos vêm agrupados por pessoa, data e confirmado, com opção de expandir e confirmar o grupo inteiro — o extrato reflete o banco, onde uma entrada pode representar vários lançamentos. Mês fechado é somente leitura.",
+            "Abaixo dos lançamentos, o extrato lista as faturas do mês dos cartões vinculados à conta, com os itens agrupados por vencimento (valores coloridos e status em chip). Só entram itens com vencimento no mês. Também é possível confirmar/desconfirmar itens e grupos da fatura, exceto com a fatura fechada. A fatura abate o saldo do mês e o acumulado previsto — aberta pelo total dos itens, fechada pelo que ainda falta pagar — e nunca o saldo real, que só reflete o dinheiro que já passou pela conta."
         }, new()),
 
         new("cartoes", "Cartões de Crédito", Icons.Material.Filled.CreditCard, new()
@@ -320,38 +322,36 @@
             })
         }),
 
-        new("relatorioreceitas", "Receitas por Pessoa", Icons.Material.Filled.Assessment, new()
+        new("relatorios", "Relatórios", Icons.Material.Filled.Assessment, new()
         {
-            "O relatório de receitas por pessoa (menu Relatórios > Receitas por Pessoa) mostra quanto entrou de cada pessoa em um período.",
-            "Ele abre com o período do mês na mesma janela dos dias de antecipação do fluxo (do dia D+1 do mês até o dia D do mês seguinte).",
+            "Os relatórios por pessoa (menu Relatórios > Receitas por Pessoa ou Despesas por Pessoa) mostram quanto entrou ou saiu de cada pessoa em um período.",
+            "Eles abrem com o período do mês na mesma janela dos dias de antecipação do fluxo (do dia D+1 do mês até o dia D do mês seguinte).",
             "No topo, informe o período (início e fim) e, se quiser, uma pessoa específica. Clique em 'Filtrar' para atualizar ou em 'Limpar' para voltar ao período padrão com todas as pessoas."
         }, new()
         {
-            new("Visão geral (todas as pessoas)", new()
+            new("Receitas por Pessoa — visão geral", new()
             {
                 "Dois cards no topo: Total confirmado e Total sem confirmar (valores pendentes).",
                 "A tabela 'Totais por pessoa' lista cada pessoa com o total confirmado e não confirmado no período.",
                 "Clique em uma linha da tabela para abrir o detalhe daquela pessoa."
             }),
-            new("Detalhe por pessoa", new()
+            new("Receitas por Pessoa — detalhe", new()
             {
                 "Além dos cards de totais, aparece a tabela 'Lançamentos' com data, cartão, conta, parcela, categoria, valor e status (Confirmado ou Pendente).",
                 "A tabela 'Subtotais por origem' agrupa as receitas por cartão e conta de origem."
             }),
-            new("PDF", new()
+            new("Receitas por Pessoa — PDF", new()
             {
                 "O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba, com o mesmo conteúdo exibido na tela."
+            }),
+            new("Despesas por Pessoa", new()
+            {
+                "Funciona como o de receitas, adicionando os filtros de cartão e categoria (inclui subcategorias).",
+                "Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.",
+                "O filtro de pessoa tem a opção 'Sem pessoa', que carrega só os lançamentos sem pessoa vinculada.",
+                "Com uma pessoa selecionada, aparecem os lançamentos detalhados, os subtotais por origem (cartão/conta) e os subtotais por categoria. O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba."
             })
         }),
-
-        new("relatoriodespesas", "Despesas por Pessoa", Icons.Material.Filled.TrendingDown, new()
-        {
-            "O relatório de despesas por pessoa (menu Relatórios > Despesas por Pessoa) funciona como o de receitas: mostra quanto saiu por pessoa em um período.",
-            "Ele abre com o período do mês na mesma janela dos dias de antecipação do fluxo (do dia D+1 do mês até o dia D do mês seguinte).",
-            "Além de período e pessoa, há o filtro de cartão. Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.",
-            "Além de período, pessoa, cartão e categoria, o filtro de pessoa tem a opção 'Sem pessoa', que carrega só os lançamentos sem pessoa vinculada.",
-            "Com uma pessoa selecionada, aparecem os lançamentos detalhados, os subtotais por origem (cartão/conta) e os subtotais por categoria. O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba."
-        }, new()),
 
         new("fecharmes", "Fechar Mês", Icons.Material.Filled.EventBusy, new()
         {

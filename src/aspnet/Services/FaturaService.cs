@@ -163,6 +163,7 @@ public class FaturaService
             rollover = new Lancamento
             {
                 Data = new DateOnly(alvoRollover.Value.Year, alvoRollover.Value.Month, diaRollover),
+                DataVencimentoCartao = new DateOnly(alvoRollover.Value.Year, alvoRollover.Value.Month, diaRollover),
                 Tipo = LancamentoTipo.Transferencia,
                 Valor = -diferenca,
                 CartaoCreditoId = cartaoId,

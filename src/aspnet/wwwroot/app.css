@@ -485,6 +485,10 @@ h1:focus {
 
 .fluxo-valor.neg { color: var(--mud-palette-error); }
 
+.extrato-valor.pos { color: var(--mud-palette-success); }
+
+.extrato-valor.neg { color: var(--mud-palette-error); }
+
 .fluxo-pago { text-decoration: line-through; opacity: .6; }
 
 .fluxo-nav-spacer { height: 40px; }

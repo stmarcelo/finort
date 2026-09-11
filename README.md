@@ -82,6 +82,8 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - CRUD com nome, banco, agência, conta/dígito e limite.
 - Saldo real (confirmados) e saldo projetado (todos) por conta.
 - Cartão de crédito vinculado mostra último mês fechado e valor fechado da fatura.
+- Extrato por conta: botão de extrato no card abre a página mensal com status fechado/aberto, saldo do mês, saldos acumulado real (confirmados) e previsto (todos), lançamentos agrupados por pessoa/data/confirmado com expandir e confirmação individual ou do grupo inteiro.
+- O extrato lista ainda as faturas do mês dos cartões vinculados à conta (itens agrupados por vencimento, com confirmação individual ou do grupo, exceto de fatura fechada): a fatura abate o saldo do mês e o previsto — aberta pelo total, fechada pelo restante a pagar — e nunca o saldo real.
 
 ### Pessoas e lembretes
 - CRUD de pessoas com cor de exibição e observação; a lista mostra o total de lembretes por pessoa (sino com badge).
@@ -117,17 +119,13 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Agrupamento de lançamentos por atividade (obra, evento, consultoria...) com pessoa, valor e data de contratação.
 - Relatório com totais, tabela de lançamentos, pizza de despesas e exportação em PDF (`GET /api/relatorios/projeto/{id}/pdf`).
 
-### Relatório de receitas por pessoa (`/relatorios/receitas`)
-- Filtros por período (início/fim) e pessoa, com botões Filtrar e Limpar.
+### Relatórios (`/relatorios/receitas`, `/relatorios/despesas`)
+- Receitas por pessoa: filtros por período (início/fim) e pessoa, com botões Filtrar e Limpar.
 - Cards de total confirmado e total sem confirmar; visão geral com totais por pessoa (clique na linha para detalhar).
 - Detalhe por pessoa: tabela de lançamentos (data, cartão, conta, parcela, categoria, valor, status) e subtotais por origem (cartão/conta).
-- Exportação em PDF (`GET /api/relatorios/receitas/pdf`) com o mesmo conteúdo da tela.
-
-### Relatório de despesas por pessoa (`/relatorios/despesas`)
-- Igual ao de receitas, adicionando filtros por cartão de crédito e categoria (inclui subcategorias).
-- Subtotais por origem e por categoria, além dos totais por pessoa.
+- Despesas por pessoa: igual ao de receitas, adicionando filtros por cartão de crédito e categoria (inclui subcategorias); subtotais por origem e por categoria.
 - Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.
-- Exportação em PDF (`GET /api/relatorios/despesas/pdf`).
+- Exportação em PDF (`GET /api/relatorios/receitas/pdf`, `GET /api/relatorios/despesas/pdf`) com o mesmo conteúdo da tela.
 
 ### Fechamento de mês (`/fechar-mes`)
 - Mostra todas as contas bancárias e permite fechar mês por mês, conta por conta.
