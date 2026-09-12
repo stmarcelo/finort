@@ -116,22 +116,10 @@ public class LancamentoService
     public async Task<bool> TemLancamentosConfirmadosNoGrupoAsync(Guid lancamentoId, Guid grupoId)
     {
         // Check if any lancamento in the group is confirmed
-        var temConfirmados = await _db.Lancamentos.AnyAsync(l =>
+        return await _db.Lancamentos.AnyAsync(l =>
             l.Id != lancamentoId
             && (l.ParcelamentoId == grupoId || l.RecorrenciaId == grupoId)
             && l.Confirmado);
-
-        if (temConfirmados) return true;
-
-        // Also check if any reimbursement linked to group members is confirmed
-        var reembolsoIds = await _db.Lancamentos
-            .Where(l => l.Id != lancamentoId
-                && (l.ParcelamentoId == grupoId || l.RecorrenciaId == grupoId)
-                && l.ReembolsoId.HasValue)
-            .Select(l => l.ReembolsoId!.Value)
-            .ToListAsync();
-
-        return await _db.Lancamentos.AnyAsync(l => reembolsoIds.Contains(l.Id) && l.Confirmado);
     }
 
     public async Task<List<Lancamento>> ObterPernasAsync(Guid id)
@@ -166,7 +154,6 @@ public class LancamentoService
         lancamento.PessoaId = pessoaId;
         lancamento.ProjetoId = projetoId;
         await GarantirFaturaAbertaAsync(lancamento);
-        await AtualizarReembolsoAsync(lancamento, data, valor, pessoaId, projetoId);
 
         if (atualizarFuturos)
         {
@@ -187,26 +174,11 @@ public class LancamentoService
                     f.SubcategoriaId = subcategoriaId;
                     f.PessoaId = pessoaId;
                     f.ProjetoId = projetoId;
-                    await AtualizarReembolsoAsync(f, f.Data, valor, pessoaId, projetoId);
                 }
             }
         }
 
         await _db.SaveChangesAsync();
-    }
-
-    private async Task AtualizarReembolsoAsync(Lancamento lancamento, DateOnly data, decimal valor, Guid? pessoaId, Guid? projetoId)
-    {
-        if (lancamento.ReembolsoId is null || lancamento.Confirmado) return;
-
-        var reembolso = await _db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
-        if (reembolso is null || reembolso.Confirmado) return;
-
-        await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
-        reembolso.Data = data;
-        reembolso.Valor = Math.Abs(valor);
-        reembolso.PessoaId = pessoaId;
-        reembolso.ProjetoId = projetoId;
     }
 
     public async Task AtualizarTransferenciaAsync(
@@ -248,15 +220,14 @@ public class LancamentoService
             .ToListAsync();
         _db.InvestimentosProventos.RemoveRange(proventos);
 
-        var reembolsoIds = pernas.Where(p => p.ReembolsoId.HasValue)
-            .Select(p => p.ReembolsoId!.Value).ToList();
-        var reembolsos = await _db.Lancamentos
-            .Where(l => reembolsoIds.Contains(l.Id))
+        var reembolsos = await _db.Reembolsos
+            .Where(r => proventoIds.Contains(r.LancamentoId))
             .ToListAsync();
-        foreach (var reembolso in reembolsos.Where(r => !r.Confirmado))
-            await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
+        if (reembolsos.Any(r => r.Fechado))
+            throw new InvalidOperationException("Reembolso já fechado na fatura; reabra a fatura para alterar.");
 
-        _db.Lancamentos.RemoveRange(pernas.Concat(reembolsos.Where(r => !r.Confirmado)));
+        _db.Reembolsos.RemoveRange(reembolsos);
+        _db.Lancamentos.RemoveRange(pernas);
         await _db.SaveChangesAsync();
     }
 
@@ -302,15 +273,22 @@ public class LancamentoService
 
     public async Task<List<Lancamento>> CriarDespesaCartaoAsync(
         Guid cartaoId, DateOnly dataCompra, decimal valorTotal, Guid categoriaId, Guid? subcategoriaId,
-        Guid? pessoaId, int? parcelas, Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento,
+        Guid? pessoaId, int? parcelas, Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento = null,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
         Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null)
     {
         Validar(valorTotal, dataCompra);
-        if (ehEntrada && (parcelas is not null || reembolsoPessoaId is not null))
-            throw new ArgumentException("Entrada na fatura não suporta parcelamento nem reembolso.");
+        if (ehEntrada && parcelas is not null)
+            throw new ArgumentException("Entrada na fatura não suporta parcelamento.");
         if (parcelas is < 1 or > 48)
             throw new ArgumentException("Quantidade de parcelas inválida.");
+
+        // Conta/categoria de reembolso e vencimento manual são ignorados (removidos dos callers na Task 4):
+        // vencimento do reembolso é sempre DataVencimentoCartao menos 1 dia.
+        _ = reembolsoContaId;
+        _ = reembolsoCategoriaId;
+        _ = reembolsoSubcategoriaId;
+        _ = reembolsoVencimento;
 
         var cartao = await _db.CartoesCredito.FindAsync(cartaoId)
             ?? throw new InvalidOperationException("Cartão não encontrado.");
@@ -318,7 +296,6 @@ public class LancamentoService
         var quantidade = parcelas ?? 1;
         var grupoId = quantidade > 1 ? Guid.NewGuid() : (Guid?)null;
         var valores = DividirValor(valorTotal, quantidade);
-        var renda = await _db.Categorias.AsNoTracking().SingleAsync(c => c.Nome == "Receita");
 
         var datasVencimento = new List<DateOnly>();
         var baseVencimento = vencimentoExato ?? CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
@@ -328,12 +305,6 @@ public class LancamentoService
         }
 
         foreach (var data in datasVencimento) await GarantirMesAbertoAsync(data, null);
-        if (reembolsoPessoaId.HasValue)
-            foreach (var i in Enumerable.Range(0, quantidade))
-            {
-                var vencimentoReembolso = reembolsoVencimento?.AddMonths(i) ?? datasVencimento[i].AddDays(-1);
-                await GarantirMesAbertoAsync(vencimentoReembolso, reembolsoContaId);
-            }
 
         var criados = new List<Lancamento>();
         for (var i = 0; i < quantidade; i++)
@@ -358,32 +329,24 @@ public class LancamentoService
                 ProjetoId = projetoId
             };
 
-            if (reembolsoPessoaId.HasValue)
-            {
-                var vencimentoReembolso = reembolsoVencimento?.AddMonths(i) ?? dataVencimento.AddDays(-1);
-                var categoriaReembolsoId = reembolsoCategoriaId ?? renda.Id;
-                var reembolso = new Lancamento
-                {
-                    Data = vencimentoReembolso,
-                    Tipo = LancamentoTipo.Receita,
-                    Valor = valores[i],
-                    ContaId = reembolsoContaId,
-                    CategoriaId = categoriaReembolsoId,
-                    SubcategoriaId = reembolsoSubcategoriaId,
-                    PessoaId = reembolsoPessoaId,
-                    ProjetoId = projetoId,
-                    ParcelaAtual = quantidade > 1 ? i + 1 : null,
-                    TotalParcelas = quantidade > 1 ? quantidade : null
-                };
-                _db.Lancamentos.Add(reembolso);
-                await _db.SaveChangesAsync();
-                despesa.ReembolsoId = reembolso.Id;
-                despesa.ReembolsoCategoriaId = reembolsoCategoriaId;
-                despesa.ReembolsoSubcategoriaId = reembolsoSubcategoriaId;
-            }
-
             _db.Lancamentos.Add(despesa);
             await _db.SaveChangesAsync();
+
+            if (reembolsoPessoaId.HasValue)
+            {
+                _db.Reembolsos.Add(new Reembolso
+                {
+                    PessoaId = reembolsoPessoaId.Value,
+                    CartaoCreditoId = cartaoId,
+                    LancamentoId = despesa.Id,
+                    ParcelaAtual = quantidade > 1 ? i + 1 : null,
+                    TotalParcelas = quantidade > 1 ? quantidade : null,
+                    Valor = ehEntrada ? -valores[i] : valores[i],
+                    Vencimento = dataVencimento.AddDays(-1)
+                });
+                await _db.SaveChangesAsync();
+            }
+
             criados.Add(despesa);
         }
 
@@ -393,7 +356,7 @@ public class LancamentoService
     public async Task<List<Lancamento>> AtualizarDespesaCartaoAsync(
         Guid lancamentoId, Guid cartaoId, DateOnly dataCompra, decimal valorTotal,
         Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId, int? parcelas,
-        Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento,
+        Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento = null,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
         Guid? projetoId = null,         Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null,
         bool atualizarFuturos = false)
@@ -403,23 +366,32 @@ public class LancamentoService
         if (antigo.Tipo != LancamentoTipo.Despesa || antigo.CartaoCreditoId is null)
             throw new InvalidOperationException("Lançamento não é despesa de cartão.");
 
-        if (ehEntrada && (parcelas is not null || reembolsoPessoaId is not null))
-            throw new ArgumentException("Entrada na fatura não suporta parcelamento nem reembolso.");
+        if (ehEntrada && parcelas is not null)
+            throw new ArgumentException("Entrada na fatura não suporta parcelamento.");
         if (parcelas is < 1 or > 48)
             throw new ArgumentException("Quantidade de parcelas inválida.");
+
+        // Conta/categoria de reembolso e vencimento manual são ignorados (removidos dos callers na Task 4).
+        _ = reembolsoContaId;
+        _ = reembolsoCategoriaId;
+        _ = reembolsoSubcategoriaId;
+        _ = reembolsoVencimento;
 
         var cartao = await _db.CartoesCredito.FindAsync(cartaoId)
             ?? throw new InvalidOperationException("Cartão não encontrado.");
 
-        // Non-first installment: update in-place, preserving ParcelamentoId and ReembolsoId
+        // Non-first installment: update in-place, preserving ParcelamentoId and syncing Reembolso
         if (antigo.ParcelamentoId.HasValue && antigo.ParcelaAtual is > 1 && !atualizarFuturos)
         {
+            await GarantirFaturaAbertaAsync(antigo);
             antigo.Data = dataCompra;
-            antigo.Valor = -Math.Abs(valorTotal);
+            antigo.Valor = antigo.Valor < 0 ? -Math.Abs(valorTotal) : Math.Abs(valorTotal);
             antigo.DataCompra = dataCompra;
             antigo.DataVencimentoCartao = vencimentoExato
                 ?? CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
 
+            await GarantirFaturaAbertaAsync(antigo);
+            await SincronizarReembolsoAsync(antigo);
             await _db.SaveChangesAsync();
             return new List<Lancamento> { antigo };
         }
@@ -447,16 +419,14 @@ public class LancamentoService
             lancamentosParaExcluir.Add(antigo);
         }
 
-        // Delete linked reimbursements first
-        foreach (var l in lancamentosParaExcluir)
-        {
-            if (l.ReembolsoId.HasValue)
-            {
-                var reembolso = await _db.Lancamentos.FindAsync(l.ReembolsoId.Value);
-                if (reembolso is not null && !reembolso.Confirmado)
-                    _db.Lancamentos.Remove(reembolso);
-            }
-        }
+        // Delete linked reembolsos first
+        var idsParaExcluir = lancamentosParaExcluir.Select(l => l.Id).ToList();
+        var reembolsosVinculados = await _db.Reembolsos
+            .Where(r => idsParaExcluir.Contains(r.LancamentoId))
+            .ToListAsync();
+        if (reembolsosVinculados.Any(r => r.Fechado))
+            throw new InvalidOperationException("Reembolso já fechado na fatura; reabra a fatura para alterar.");
+        _db.Reembolsos.RemoveRange(reembolsosVinculados);
         _db.Lancamentos.RemoveRange(lancamentosParaExcluir);
         await _db.SaveChangesAsync();
 
@@ -585,15 +555,15 @@ public class LancamentoService
         if (removiveis.Count == 0)
             throw new LancamentoConfirmadoException(grupo);
 
-        var reembolsoIds = removiveis.Where(g => g.ReembolsoId.HasValue)
-            .Select(g => g.ReembolsoId!.Value).ToList();
-        var reembolsos = await _db.Lancamentos
-            .Where(l => reembolsoIds.Contains(l.Id))
+        var removiveisIds = removiveis.Select(g => g.Id).ToList();
+        var reembolsos = await _db.Reembolsos
+            .Where(r => removiveisIds.Contains(r.LancamentoId))
             .ToListAsync();
-        foreach (var reembolso in reembolsos.Where(r => !r.Confirmado))
-            await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
+        if (reembolsos.Any(r => r.Fechado))
+            throw new InvalidOperationException("Reembolso já fechado na fatura; reabra a fatura para alterar.");
 
-        _db.Lancamentos.RemoveRange(removiveis.Concat(reembolsos.Where(r => !r.Confirmado)));
+        _db.Reembolsos.RemoveRange(reembolsos);
+        _db.Lancamentos.RemoveRange(removiveis);
         await _db.SaveChangesAsync();
     }
 
@@ -649,13 +619,15 @@ public class LancamentoService
 
     private async Task SincronizarReembolsoAsync(Lancamento despesa)
     {
-        if (despesa.ReembolsoId is null) return;
+        var reembolso = await _db.Reembolsos.SingleOrDefaultAsync(r => r.LancamentoId == despesa.Id);
+        if (reembolso is null) return;
+        if (reembolso.Fechado)
+            throw new InvalidOperationException("Reembolso já fechado na fatura; reabra a fatura para alterar.");
 
-        var reembolso = await _db.Lancamentos.FindAsync(despesa.ReembolsoId.Value);
-        if (reembolso is null || reembolso.Confirmado) return;
-        await GarantirMesAbertoAsync(reembolso.Data, reembolso.ContaId);
-
-        reembolso.Valor = Math.Abs(despesa.Valor);
+        var magnitude = Math.Abs(despesa.Valor);
+        reembolso.Valor = despesa.Valor > 0 ? -magnitude : magnitude;
+        if (despesa.DataVencimentoCartao.HasValue)
+            reembolso.Vencimento = despesa.DataVencimentoCartao.Value.AddDays(-1);
     }
 
     private static decimal[] DividirValor(decimal valorTotal, int parcelas)

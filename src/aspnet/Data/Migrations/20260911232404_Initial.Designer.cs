@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finort.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260911024831_AddTaxaInvestimentoMovimento")]
-    partial class AddTaxaInvestimentoMovimento
+    [Migration("20260911232404_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -496,15 +496,6 @@ namespace Finort.Data.Migrations
                     b.Property<Guid?>("RecorrenciaId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ReembolsoCategoriaId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ReembolsoId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ReembolsoSubcategoriaId")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid?>("ReferenciaId")
                         .HasColumnType("TEXT");
 
@@ -539,10 +530,6 @@ namespace Finort.Data.Migrations
                     b.HasIndex("ProvisaoId");
 
                     b.HasIndex("RecorrenciaId");
-
-                    b.HasIndex("ReembolsoCategoriaId");
-
-                    b.HasIndex("ReembolsoSubcategoriaId");
 
                     b.HasIndex("ReferenciaId");
 
@@ -718,6 +705,56 @@ namespace Finort.Data.Migrations
                     b.HasIndex("SubcategoriaId");
 
                     b.ToTable("Provisoes");
+                });
+
+            modelBuilder.Entity("Finort.Models.Financeiro.Reembolso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CartaoCreditoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataFechamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Fechado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("LancamentoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ParcelaAtual")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("PessoaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ReceitaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TotalParcelas")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Vencimento")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LancamentoId")
+                        .IsUnique();
+
+                    b.HasIndex("ReceitaId");
+
+                    b.HasIndex("CartaoCreditoId", "Vencimento");
+
+                    b.HasIndex("PessoaId", "Vencimento");
+
+                    b.ToTable("Reembolsos");
                 });
 
             modelBuilder.Entity("Finort.Models.Financeiro.Subcategoria", b =>
@@ -1251,14 +1288,6 @@ namespace Finort.Data.Migrations
                         .HasForeignKey("ProjetoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Finort.Models.Financeiro.Categoria", "ReembolsoCategoria")
-                        .WithMany()
-                        .HasForeignKey("ReembolsoCategoriaId");
-
-                    b.HasOne("Finort.Models.Financeiro.Subcategoria", "ReembolsoSubcategoria")
-                        .WithMany()
-                        .HasForeignKey("ReembolsoSubcategoriaId");
-
                     b.HasOne("Finort.Models.Financeiro.Subcategoria", "Subcategoria")
                         .WithMany()
                         .HasForeignKey("SubcategoriaId")
@@ -1273,10 +1302,6 @@ namespace Finort.Data.Migrations
                     b.Navigation("Pessoa");
 
                     b.Navigation("Projeto");
-
-                    b.Navigation("ReembolsoCategoria");
-
-                    b.Navigation("ReembolsoSubcategoria");
 
                     b.Navigation("Subcategoria");
                 });
@@ -1340,6 +1365,40 @@ namespace Finort.Data.Migrations
                     b.Navigation("Pessoa");
 
                     b.Navigation("Subcategoria");
+                });
+
+            modelBuilder.Entity("Finort.Models.Financeiro.Reembolso", b =>
+                {
+                    b.HasOne("Finort.Models.Financeiro.CartaoCredito", "CartaoCredito")
+                        .WithMany()
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Lancamento", "Lancamento")
+                        .WithMany()
+                        .HasForeignKey("LancamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Pessoa", "Pessoa")
+                        .WithMany()
+                        .HasForeignKey("PessoaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Lancamento", "Receita")
+                        .WithMany()
+                        .HasForeignKey("ReceitaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CartaoCredito");
+
+                    b.Navigation("Lancamento");
+
+                    b.Navigation("Pessoa");
+
+                    b.Navigation("Receita");
                 });
 
             modelBuilder.Entity("Finort.Models.Financeiro.Subcategoria", b =>

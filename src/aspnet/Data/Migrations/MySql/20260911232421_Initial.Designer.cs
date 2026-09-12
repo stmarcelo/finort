@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finort.Data.Migrations.MySql
 {
     [DbContext(typeof(MySqlAppDbContext))]
-    [Migration("20260830143149_AdicionarCamposVersao")]
-    partial class AdicionarCamposVersao
+    [Migration("20260911232421_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,6 +38,9 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DiasAntecipacao")
+                        .HasColumnType("int");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -165,8 +168,8 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<string>("Ultimos4Digitos")
                         .IsRequired()
-                        .HasMaxLength(4)
-                        .HasColumnType("varchar(4)");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("Id");
 
@@ -270,6 +273,18 @@ namespace Finort.Data.Migrations.MySql
                             Id = new Guid("10000000-0000-0000-0000-000000000013"),
                             IsProtected = true,
                             Nome = "Acerto de saldo"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000014"),
+                            IsProtected = false,
+                            Nome = "Indefinida"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Serviços"
                         });
                 });
 
@@ -287,6 +302,9 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<string>("ContaEDigito")
                         .HasColumnType("longtext");
+
+                    b.Property<decimal?>("Limite")
+                        .HasColumnType("decimal(65,30)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -391,6 +409,9 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<decimal?>("Quantidade")
                         .HasColumnType("decimal(65,30)");
 
+                    b.Property<decimal?>("Taxa")
+                        .HasColumnType("decimal(65,30)");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 
@@ -484,9 +505,6 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<Guid?>("RecorrenciaId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid?>("ReembolsoId")
-                        .HasColumnType("char(36)");
-
                     b.Property<Guid?>("ReferenciaId")
                         .HasColumnType("char(36)");
 
@@ -568,6 +586,9 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<int>("Ano")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("DataFechamento")
                         .HasColumnType("datetime(6)");
 
@@ -579,7 +600,7 @@ namespace Finort.Data.Migrations.MySql
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Mes", "Ano")
+                    b.HasIndex("ContaId", "Mes", "Ano")
                         .IsUnique();
 
                     b.ToTable("MesesFechados");
@@ -695,6 +716,56 @@ namespace Finort.Data.Migrations.MySql
                     b.ToTable("Provisoes");
                 });
 
+            modelBuilder.Entity("Finort.Models.Financeiro.Reembolso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("CartaoCreditoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("DataFechamento")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("Fechado")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("LancamentoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("ParcelaAtual")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PessoaId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("ReceitaId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("TotalParcelas")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<DateOnly>("Vencimento")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LancamentoId")
+                        .IsUnique();
+
+                    b.HasIndex("ReceitaId");
+
+                    b.HasIndex("CartaoCreditoId", "Vencimento");
+
+                    b.HasIndex("PessoaId", "Vencimento");
+
+                    b.ToTable("Reembolsos");
+                });
+
             modelBuilder.Entity("Finort.Models.Financeiro.Subcategoria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -758,21 +829,7 @@ namespace Finort.Data.Migrations.MySql
                             Id = new Guid("20000000-0000-0000-0000-000000000006"),
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
                             IsProtected = false,
-                            Nome = "Mercado"
-                        },
-                        new
-                        {
-                            Id = new Guid("20000000-0000-0000-0000-000000000007"),
-                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
-                            IsProtected = false,
-                            Nome = "Açougue"
-                        },
-                        new
-                        {
-                            Id = new Guid("20000000-0000-0000-0000-000000000008"),
-                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000003"),
-                            IsProtected = false,
-                            Nome = "Feira"
+                            Nome = "Mercado / Feira / Açougue"
                         },
                         new
                         {
@@ -1116,6 +1173,20 @@ namespace Finort.Data.Migrations.MySql
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000009"),
                             IsProtected = true,
                             Nome = "Cartão de crédito"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000058"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            IsProtected = false,
+                            Nome = "Manutenção"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000059"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000015"),
+                            IsProtected = false,
+                            Nome = "Assinaturas"
                         });
                 });
 
@@ -1303,6 +1374,40 @@ namespace Finort.Data.Migrations.MySql
                     b.Navigation("Pessoa");
 
                     b.Navigation("Subcategoria");
+                });
+
+            modelBuilder.Entity("Finort.Models.Financeiro.Reembolso", b =>
+                {
+                    b.HasOne("Finort.Models.Financeiro.CartaoCredito", "CartaoCredito")
+                        .WithMany()
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Lancamento", "Lancamento")
+                        .WithMany()
+                        .HasForeignKey("LancamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Pessoa", "Pessoa")
+                        .WithMany()
+                        .HasForeignKey("PessoaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Finort.Models.Financeiro.Lancamento", "Receita")
+                        .WithMany()
+                        .HasForeignKey("ReceitaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CartaoCredito");
+
+                    b.Navigation("Lancamento");
+
+                    b.Navigation("Pessoa");
+
+                    b.Navigation("Receita");
                 });
 
             modelBuilder.Entity("Finort.Models.Financeiro.Subcategoria", b =>

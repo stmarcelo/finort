@@ -33,7 +33,7 @@ public class LancamentoProjetoTests : IDisposable
     }
 
     [Fact]
-    public async Task AtualizarReceitaDespesa_ReembolsoHerdaProjeto()
+    public async Task CriarDespesaCartao_ComReembolso_MantemProjetoNaDespesa()
     {
         var svcProjeto = new ProjetoService(_ctx.Db);
         var projeto = await svcProjeto.CriarAsync("P2", new DateOnly(2026, 1, 1), 100m, PessoaId());
@@ -45,12 +45,8 @@ public class LancamentoProjetoTests : IDisposable
 
         Assert.All(despesa, d => Assert.Equal(projeto.Id, d.ProjetoId));
 
-        var reembolsoIds = despesa.Select(d => d.ReembolsoId!.Value).Distinct().ToList();
-        Assert.All(reembolsoIds, id =>
-        {
-            var reembolso = _ctx.Db.Lancamentos.Find(id)!;
-            Assert.Equal(projeto.Id, reembolso.ProjetoId);
-        });
+        var reembolsos = despesa.Select(d => _ctx.Db.Reembolsos.Single(r => r.LancamentoId == d.Id)).ToList();
+        Assert.All(reembolsos, r => Assert.Equal(PessoaId(), r.PessoaId));
     }
 
     private Guid CartaoId()

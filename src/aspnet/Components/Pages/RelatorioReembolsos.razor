@@ -1,0 +1,170 @@
+@page "/relatorios/reembolsos"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject ReembolsoRelatorioService RelatorioService
+@inject PessoaService PessoaService
+@inject CartaoCreditoService CartaoService
+@inject ISnackbar Snackbar
+
+<PageTitle>Reembolsos</PageTitle>
+
+<MudPaper Class="pa-4 mb-4 mt-4">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudText Typo="Typo.h5">Reembolsos</MudText>
+        <MudSpacer />
+        <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                   Href="@_pdfUrl" Target="_blank" Disabled="@(_relatorio is null)">Gerar PDF</MudButton>
+    </MudStack>
+    <MudGrid Spacing="2" Class="mt-2">
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Início" @bind-Date="_inicio" /></MudItem>
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Fim" @bind-Date="_fim" /></MudItem>
+        <MudItem xs="12" sm="3"><CartaoSelect Label="Cartão" Placeholder="Todos" PermitirNovo="false" @bind-Value="_cartaoId" /></MudItem>
+        <MudItem xs="12" sm="3"><PessoaSelect Label="Pessoa" Placeholder="Todas" PermitirNovo="false" @bind-Value="_pessoaId" /></MudItem>
+        <MudItem xs="12" sm="2" Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="CarregarAsync">Filtrar</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="LimparAsync">Limpar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_relatorio is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="pa-6 mb-4" Style="border-radius:18px;">
+        <MudText Typo="Typo.h5">Reembolsos por vencimento</MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Período: @_relatorio.Inicio.ToString("dd/MM/yyyy")–@_relatorio.Fim.ToString("dd/MM/yyyy")
+            @if (_pessoaId.HasValue)
+            {
+                <span> · Pessoa: @_pessoaNome</span>
+            }
+            @if (_cartaoId.HasValue)
+            {
+                <span> · Cartão: @_cartaoNome</span>
+            }
+        </MudText>
+
+        <MudGrid Spacing="4" Class="mt-3">
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid #F5A623;border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Total pendente</MudText>
+                    <MudText Typo="Typo.h6" Style="color:#F5A623;font-weight:700;">R$ @_relatorio.TotalPendente.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-success);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Total fechado</MudText>
+                    <MudText Typo="Typo.h6" Style="color:var(--mud-palette-success)">R$ @_relatorio.TotalFechado.ToString("N2")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Reembolsos</MudText>
+        @if (_relatorio.Linhas.Count > 0)
+        {
+            <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm" T="ReembolsoLinha"
+                      Dense="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>Data</MudTh><MudTh>Cartão</MudTh><MudTh>Pessoa</MudTh><MudTh>P</MudTh>
+                    <MudTh Style="text-align:right">Valor</MudTh><MudTh>Status</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Vencimento.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@context.CartaoNome</MudTd>
+                    <MudTd>@context.PessoaNome</MudTd>
+                    <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "—")</MudTd>
+                    <MudTd Style="text-align:right;">R$ @context.Valor.ToString("N2")</MudTd>
+                    <MudTd>
+                        @if (context.Fechado)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Fechado</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pendente</MudChip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="pa-4">Sem reembolsos no período.</MudText>
+        }
+    </MudPaper>
+}
+
+@code {
+    private DateTime? _inicio;
+    private DateTime? _fim;
+    private Guid? _cartaoId;
+    private Guid? _pessoaId;
+    private string? _pessoaNome;
+    private string? _cartaoNome;
+    private ReembolsoRelatorio? _relatorio;
+    private string? _pdfUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AplicarPeriodoPadraoAsync();
+        await CarregarAsync();
+    }
+
+    /// <summary>Período inicial/limpo: mês corrente na janela dos dias de
+    /// antecipação gravados (M/(D+1) até (M+1)/D); cai para o mês cheio se
+    /// a configuração não puder ser lida.</summary>
+    private async Task AplicarPeriodoPadraoAsync()
+    {
+        try
+        {
+            var (inicio, fim) = await RelatorioService.PeriodoPadraoDoMesAsync();
+            _inicio = inicio.ToDateTime(TimeOnly.MinValue);
+            _fim = fim.ToDateTime(TimeOnly.MinValue);
+        }
+        catch
+        {
+            var hoje = DateTime.Today;
+            _inicio = new DateTime(hoje.Year, hoje.Month, 1);
+            _fim = new DateTime(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        }
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (!_inicio.HasValue || !_fim.HasValue || _inicio > _fim)
+        {
+            Snackbar.Add("Informe um período válido (início até o fim).", Severity.Error);
+            return;
+        }
+
+        var inicio = DateOnly.FromDateTime(_inicio.Value);
+        var fim = DateOnly.FromDateTime(_fim.Value);
+
+        if (_cartaoId == Guid.Empty) _cartaoId = null;
+        if (_pessoaId == Guid.Empty) _pessoaId = null;
+
+        _pessoaNome = _pessoaId.HasValue
+            ? (await PessoaService.ObterAsync(_pessoaId.Value))?.Nome ?? "Pessoa não encontrada"
+            : null;
+        var cartao = _cartaoId.HasValue ? await CartaoService.ObterAsync(_cartaoId.Value) : null;
+        _cartaoNome = cartao is null ? null : $"{cartao.Banco} (****{cartao.Ultimos4Digitos})";
+
+        _relatorio = await RelatorioService.GerarAsync(inicio, fim, _cartaoId, _pessoaId);
+        _pdfUrl = $"/api/relatorios/reembolsos/pdf?inicio={_inicio:yyyy-MM-dd}&fim={_fim:yyyy-MM-dd}"
+            + (_cartaoId.HasValue ? $"&cartaoId={_cartaoId}" : "")
+            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "");
+    }
+
+    private async Task LimparAsync()
+    {
+        await AplicarPeriodoPadraoAsync();
+        _cartaoId = null;
+        _pessoaId = null;
+        await CarregarAsync();
+    }
+}

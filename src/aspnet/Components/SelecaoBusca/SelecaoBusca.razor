@@ -104,7 +104,10 @@
     private async Task OnSelecionadoChanged(KeyValuePair<Guid, string> item)
     {
         _selecionado = item;
-        await ValueChanged.InvokeAsync(item.Key);
+        // Limpar o campo gera o struct default (Value null); escolher a opção
+        // "Sem pessoa" gera Key Empty com texto. Só o primeiro vira null (todas).
+        Guid? valor = item.Key == Guid.Empty && item.Value is null ? null : item.Key;
+        await ValueChanged.InvokeAsync(valor);
     }
 
     private async Task AbrirCadastroAsync()

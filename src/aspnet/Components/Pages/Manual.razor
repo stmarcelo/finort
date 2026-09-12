@@ -106,7 +106,8 @@
             "Cada dia pode ter lançamentos reais (coisas que já aconteceram) e provisões (coisas que vão acontecer). Lançamentos reais aparecem com valores exatos, enquanto provisões são estimativas.",
             "No topo da tela, há três resumos: 'A pagar' (quanto você ainda vai gastar), 'A receber' (quanto ainda vão te pagar) e 'Saldo projetado' (quanto sobra ou falta no mês).",
             "Ao clicar em um dia, abre um painel lateral com todos os itens daquele dia, detalhados com valor e tipo.",
-            "Além de lançamentos e provisões, o calendário também mostra faturas do cartão (fundo vermelho claro) e lembretes pessoais (fundo azul claro). Faturas e lembretes aparecem sempre no topo da lista do dia, com ícone de sino."
+            "Além de lançamentos e provisões, o calendário também mostra faturas do cartão (fundo vermelho claro) e lembretes pessoais (fundo azul claro). Faturas e lembretes aparecem sempre no topo da lista do dia, com ícone de sino.",
+            "Reembolsos pendentes (não fechados) aparecem no calendário como receita prevista na data de vencimento do reembolso (vencimento da fatura menos 1 dia). Após o fechamento da fatura, entra a receita agregada real."
         }, new()),
 
         new("lancamentos", "Lista de Lançamentos", Icons.Material.Filled.ReceiptLong, new()
@@ -140,7 +141,7 @@
 
         new("receita", "Receita", Icons.Material.Filled.TrendingUp, new()
         {
-            "Uma receita é uma entrada de dinheiro: salário, freelances, vendas, reembolsos, etc.",
+            "Uma receita é uma entrada de dinheiro: salário, freelances, vendas, reembolsos (a receita do reembolso de cartão é gerada de forma agregada por pessoa só no fechamento da fatura), etc.",
             "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou, a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
             "O campo 'Projeto' só aparece depois que você seleciona uma pessoa. Se a pessoa tem apenas um projeto, ele é selecionado automaticamente.",
             "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
@@ -159,7 +160,7 @@
             "Quando você faz uma compra no cartão de crédito, registre como 'Despesa de cartão' (não como despesa normal). Isso permite que o sistema gerencie a fatura do cartão corretamente.",
             "Selecione o cartão, a data da compra, a categoria e o valor. Configure quantas parcelas será dividido.",
             "Opção 'Entrada na fatura': se marcada, o valor é descontado do total da fatura. Isso é útil quando o estorno é feito pelo próprio operador do cartão.",
-            "Opção 'Reembolso': se uma pessoa reembolsa essa despesa, marque como reembolsável. O sistema gera automaticamente um lançamento de receita para a pessoa (devedor) com data 1 dia antes do vencimento da fatura do cartão.",
+            "Opção 'Reembolso': se uma pessoa vai reembolsar essa despesa (ou entrada), marque como reembolsável e selecione a pessoa. O sistema cria um item no cadastro de reembolsos (pessoa, cartão, parcela, valor, vencimento = vencimento da fatura menos 1 dia). A receita agregada por pessoa é gerada só no fechamento da fatura, quando você escolhe a conta e a categoria. Entrada com reembolso gera valor negativo.",
             "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra."
         }, new()),
 
@@ -185,7 +186,7 @@
                 "Exemplo: com 5 dias de antecipação em setembro, despesas e faturas de cartão com vencimento até 05/10 aparecem no fluxo de setembro. Outubro, por sua vez, começa em 06/10.",
                 "Regra: cada lançamento pertence a apenas um mês. O mês que antecipa inclui os dias extras; o mês seguinte começa depois deles.",
                 "Para despesas de cartão de crédito, a data considerada é o vencimento da fatura (DataVencimentoCartao), não a data da compra.",
-                "A antecipação também se aplica a receitas de reembolso: reembolsos com data de vencimento dentro dos dias antecipados são incluídos no fluxo do mês atual."
+                "A antecipação também se aplica a reembolsos pendentes (não fechados): reembolsos com data de vencimento dentro dos dias antecipados são incluídos no fluxo do mês atual."
             })
         }),
 
@@ -214,6 +215,12 @@
                 "Acesse a fatura clicando no ícone de fatura ao lado do cartão. Lá você vê todos os lançamentos daquele mês.",
                 "Confira cada item da fatura com o valor que aparece no seu aplicativo do banco. Se bateu, marque o item como confirmado.",
                 "Quando todos os itens estiverem confirmados, o botão 'Fechar fatura' fica disponível. Fechar a fatura significa que você revisou tudo e está tudo certo."
+            }),
+            new("Fatura – Reembolso", new()
+            {
+                "Se a fatura tem itens com reembolso, a tela de conferência mostra um alerta com os reembolsos agrupados por pessoa.",
+                "Ao fechar, o sistema pede a conta e a categoria (subcategoria opcional) e gera uma única receita por pessoa com o total dos reembolsos dela. O vencimento de cada reembolso é o vencimento da fatura menos 1 dia.",
+                "Reabrir a fatura desfaz o fechamento: exclui as receitas agregadas e marca os reembolsos como não fechados novamente."
             }),
             new("Fatura – Pagamento", new()
             {
@@ -350,6 +357,12 @@
                 "Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.",
                 "O filtro de pessoa tem a opção 'Sem pessoa', que carrega só os lançamentos sem pessoa vinculada.",
                 "Com uma pessoa selecionada, aparecem os lançamentos detalhados, os subtotais por origem (cartão/conta) e os subtotais por categoria. O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba."
+            }),
+            new("Reembolsos", new()
+            {
+                "O relatório de reembolsos (menu Relatórios > Reembolsos) lista o cadastro de reembolsos por vencimento, com filtros de período, cartão de crédito e pessoa.",
+                "O topo mostra os cards de total pendente e total fechado. A tabela traz data, cartão, pessoa, parcela, valor e status.",
+                "O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba, com o mesmo conteúdo exibido na tela."
             })
         }),
 

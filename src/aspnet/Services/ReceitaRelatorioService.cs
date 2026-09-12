@@ -57,21 +57,9 @@ public class ReceitaRelatorioService
         var confirmado = lista.Where(l => l.Confirmado).Sum(l => Math.Abs(l.Valor));
         var naoConfirmado = lista.Where(l => !l.Confirmado).Sum(l => Math.Abs(l.Valor));
 
-        // Cartão que originou cada receita de reembolso: despesas de cartão
-        // apontam para a receita via ReembolsoId (1:1 por parcela; primeira vence).
-        var receitaIds = lista.Select(l => l.Id).ToList();
-        var cartaoReembolso = (await _db.Lancamentos
-            .Include(l => l.CartaoCredito)
-            .Where(l => l.Tipo == LancamentoTipo.Despesa && l.CartaoCreditoId != null
-                && l.ReembolsoId.HasValue && receitaIds.Contains(l.ReembolsoId.Value))
-            .Select(l => new { ReembolsoId = l.ReembolsoId!.Value, Banco = l.CartaoCredito!.Banco })
-            .ToListAsync())
-            .GroupBy(x => x.ReembolsoId)
-            .ToDictionary(g => g.Key, g => g.First().Banco);
-
+        // Receitas reais apenas (reembolsos pendentes vivem em Reembolsos até o fechamento).
         string? CartaoEfetivo(Lancamento l)
-            => l.CartaoCredito?.Banco
-               ?? (cartaoReembolso.TryGetValue(l.Id, out var banco) ? banco : null);
+            => l.CartaoCredito?.Banco;
 
         var linhas = pessoaId.HasValue
             ? lista.Select(l => new ReceitaLinha(l.Id, l.Data, CartaoEfetivo(l), l.Conta?.Nome,

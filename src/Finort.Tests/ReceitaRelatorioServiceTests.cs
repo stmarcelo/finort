@@ -99,7 +99,7 @@ public class ReceitaRelatorioServiceTests : IDisposable
     public void Dispose() => TestDbContext.Cleanup(_ctx.Db, _ctx.File);
 
     [Fact]
-    public async Task Gerar_ReceitaDeReembolso_ExibeCartaoDeOrigemNoDetalheENoAgrupamento()
+    public async Task Gerar_ReceitaAgregadaDeReembolso_ApareceSemCartaoAposFechar()
     {
         var db = _ctx.Db;
         var ana = db.Pessoas.Add(new Models.Financeiro.Pessoa { Nome = "Ana" }).Entity;
@@ -111,30 +111,32 @@ public class ReceitaRelatorioServiceTests : IDisposable
         }).Entity;
         db.SaveChanges();
         var renda = db.Categorias.First(c => c.Nome == "Receita");
+        var lancamentos = new LancamentoService(db);
+        var faturas = new FaturaService(db);
 
-        var receita = db.Lancamentos.Add(new Models.Financeiro.Lancamento
-        {
-            Data = new(2026, 9, 10), Tipo = Models.Financeiro.LancamentoTipo.Receita,
-            Valor = 250m, ContaId = conta.Id, CategoriaId = renda.Id,
-            PessoaId = ana.Id, Confirmado = false
-        }).Entity;
-        db.SaveChanges();
-        db.Lancamentos.Add(new Models.Financeiro.Lancamento
-        {
-            Data = new(2026, 9, 2), Tipo = Models.Financeiro.LancamentoTipo.Despesa,
-            Valor = -250m, CartaoCreditoId = cartao.Id, DataVencimentoCartao = new(2026, 9, 10),
-            CategoriaId = renda.Id, PessoaId = ana.Id, Confirmado = false,
-            ReembolsoId = receita.Id
-        });
-        db.SaveChanges();
+        // compra 06/08 com melhor dia 1 → vencimento 10/08; reembolso pendente não aparece no relatório
+        var criados = await lancamentos.CriarDespesaCartaoAsync(
+            cartao.Id, new DateOnly(2026, 8, 6), 250m, renda.Id, null, null,
+            parcelas: null, reembolsoPessoaId: ana.Id);
+        foreach (var d in criados) await lancamentos.AlternarConfirmadoAsync(d.Id);
 
-        var r = await _svc.GerarAsync(new(2026, 9, 1), new(2026, 9, 30), ana.Id);
+        var antes = await _svc.GerarAsync(new(2026, 1, 1), new(2027, 12, 31), ana.Id);
+        Assert.Equal(0m, antes.TotalConfirmado + antes.TotalNaoConfirmado);
+
+        await faturas.FecharComReembolsosAsync(
+            cartao.Id, 2026, 8, new(2026, 8, 1), new(2026, 8, 31), conta.Id, renda.Id, null);
+
+        var r = await _svc.GerarAsync(new(2026, 1, 1), new(2027, 12, 31), ana.Id);
 
         var linha = Assert.Single(r.Linhas);
-        Assert.Equal("Nubank", linha.CartaoNome);
+        Assert.Equal(250m, linha.Valor);
+        Assert.True(linha.Confirmado);
+        // receita agregada é da conta informada no fechamento, sem vínculo de cartão
+        Assert.Null(linha.CartaoNome);
+        Assert.Equal("Banco", linha.ContaNome);
         var origem = Assert.Single(r.SubtotaisPorOrigem);
-        Assert.Contains("Nubank", origem.Rotulo);
-        Assert.Equal(250m, origem.NaoConfirmado);
+        Assert.Contains("Banco", origem.Rotulo);
+        Assert.Equal(250m, origem.Confirmado);
     }
 
     [Fact]

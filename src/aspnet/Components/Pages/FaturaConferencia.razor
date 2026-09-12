@@ -5,6 +5,7 @@
 @inject CartaoCreditoService CartaoCreditoService
 @inject LancamentoService LancamentoService
 @inject FaturaService FaturaService
+@inject ReembolsoService ReembolsoService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
@@ -69,8 +70,30 @@
         }
     </MudItem>
 
+    @if (_reembolsos.Count > 0)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Info" Dense="true">Esta fatura possui @_reembolsos.Count reembolso(s) (@_reembolsos.Count(r => !r.Fechado) pendente(s)). A receita agregada por pessoa é gerada só no fechamento.</MudAlert>
+            <MudTable Items="@_reembolsos.GroupBy(r => r.Pessoa?.Nome ?? "-").Select(g => new { Pessoa = g.Key, Total = g.Sum(r => r.Valor), Qtd = g.Count() })" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+                <HeaderContent>
+                    <MudTh>Pessoa</MudTh>
+                    <MudTh>Itens</MudTh>
+                    <MudTh>Total a reembolsar</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Pessoa</MudTd>
+                    <MudTd>@context.Qtd</MudTd>
+                    <MudTd>@context.Total.ToString("N2")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    }
+
     <MudItem xs="12">
-        <MudTable Items="@_lancamentos" Hover="true" Breakpoint="Breakpoint.Sm">
+        <style>
+            .fatura-confirmada { background-color: #faebd7; }
+        </style>
+        <MudTable Items="@_lancamentos" Hover="true" Breakpoint="Breakpoint.Sm" RowClassFunc="@ClasseLinha">
             <HeaderContent>
                 <MudTh>Data</MudTh>
                 <MudTh>Categoria</MudTh>
@@ -167,6 +190,7 @@
     private decimal _totalFechado;
     private decimal _pago;
     private List<PagamentoFatura> _pagamentos = new();
+    private List<Reembolso> _reembolsos = new();
 
     private DateOnly _dataVencimento;
     private DateOnly _dataInicioPeriodo;
@@ -219,9 +243,11 @@
             var pagamentos = fechada
                 ? await FaturaService.ObterPagamentosAsync(Id, _ano, _mes)
                 : new List<PagamentoFatura>();
+            var reembolsos = await ReembolsoService.ObterDaFaturaAsync(Id, _dataInicioPeriodo, _dataFimPeriodo);
             var dicionario = lista.ToDictionary(l => l.Id, l => (decimal?)Math.Abs(l.Valor));
 
             _lancamentos = lista;
+            _reembolsos = reembolsos;
             _total = total;
             _fechada = fechada;
             _pendentes = lista.Count(l => !l.Confirmado);
@@ -310,6 +336,29 @@
             return;
         }
 
+        if (_reembolsos.Any(r => !r.Fechado))
+        {
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+            var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar fatura com reembolsos", options);
+            var escolha = await dialog.Result;
+            if (escolha is null || escolha.Canceled || escolha.Data is not FecharFaturaReembolsoDialog.FechamentoReembolsoEscolha sel) return;
+            try
+            {
+                await FaturaService.FecharComReembolsosAsync(Id, _ano, _mes, _dataInicioPeriodo, _dataFimPeriodo, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId);
+                Snackbar.Add("Fatura fechada com reembolsos.", Severity.Success);
+                await CarregarAsync();
+            }
+            catch (FaturaComPendentesException ex)
+            {
+                Snackbar.Add($"Existem {ex.Pendentes.Count} lançamento(s) não confirmado(s).", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+            }
+            return;
+        }
+
         var confirm = await DialogService.ShowMessageBox("Fechar fatura",
             $"Fechar a fatura de {_dataVencimento:dd/MM/yyyy}? Não será mais possível alterá-la.",
             "Confirmar", null, "Cancelar",
@@ -388,6 +437,10 @@
             return $"{lancamento.ParcelaAtual}/{lancamento.TotalParcelas}";
         return string.Empty;
     }
+
+    /// <summary>Linhas confirmadas com fundo antiquewhite para destacar das pendentes.</summary>
+    private static string ClasseLinha(Lancamento lancamento, int _)
+        => lancamento.Confirmado ? "fatura-confirmada" : string.Empty;
 
     private async Task ExcluirLancamento(Lancamento lancamento)
     {

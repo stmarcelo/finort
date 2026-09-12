@@ -77,8 +77,9 @@ public class CalendarioServiceTests
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             db.Provisoes.Add(NovaProvisaoMensal(db, dia: 31, valor: 200m));
             await db.SaveChangesAsync();
-            await new ProvisaoService(db).SincronizarAsync(); // materializa mês corrente e marca Ultimo
-            var alvo = hoje.AddMonths(1);
+            await new ProvisaoService(db).SincronizarAsync(); // materializa mês corrente + seguinte e marca Ultimo
+            // próximo ainda não lançado: mês corrente + 2
+            var alvo = hoje.AddMonths(2);
             var service = new CalendarioService(db, new FaturaService(db), new LembreteService(db));
 
             var resultado = await service.ObterMesAsync(alvo.Year, alvo.Month);

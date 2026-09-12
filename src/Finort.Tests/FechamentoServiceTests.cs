@@ -284,17 +284,10 @@ public class FechamentoServiceTests
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var inicioMes = new DateOnly(hoje.Year, hoje.Month, 1);
             var cat = CategoriaId(db);
-            var cartao = new CartaoCredito
-            {
-                Banco = "Nubank", Ultimos4Digitos = "1234",
-                MelhorDiaCompra = 1, DiaVencimento = 10, Limite = 5000m, Ativo = true
-            };
-            db.CartoesCredito.Add(cartao);
-            await db.SaveChangesAsync();
             db.Lancamentos.Add(new Lancamento
             {
                 Data = inicioMes, Valor = -100m, Confirmado = false,
-                CategoriaId = cat, CartaoCreditoId = cartao.Id
+                CategoriaId = cat
             });
             await db.SaveChangesAsync();
             var service = new FechamentoService(db);
@@ -317,17 +310,12 @@ public class FechamentoServiceTests
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var inicioMes = new DateOnly(hoje.Year, hoje.Month, 1);
             var cat = CategoriaId(db);
-            var cartao = new CartaoCredito
-            {
-                Banco = "Nubank", Ultimos4Digitos = "5678",
-                MelhorDiaCompra = 1, DiaVencimento = 10, Limite = 5000m, Ativo = true
-            };
-            db.CartoesCredito.Add(cartao);
-            await db.SaveChangesAsync();
+            // lançamento sem conta e sem cartão: compras de cartão têm fatura própria
+            // e nunca bloqueiam o fechamento da conta
             db.Lancamentos.Add(new Lancamento
             {
                 Data = inicioMes, Valor = -50m, Confirmado = false,
-                CategoriaId = cat, CartaoCreditoId = cartao.Id
+                CategoriaId = cat
             });
             await db.SaveChangesAsync();
             var service = new FechamentoService(db);

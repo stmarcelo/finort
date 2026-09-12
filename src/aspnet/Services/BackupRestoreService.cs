@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Finort.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Finort.Services;
 
@@ -12,11 +13,13 @@ public class BackupRestoreService
 {
     private readonly DatabaseConfigStore _store;
     private readonly AuthService _auth;
+    private readonly IServiceProvider? _services;
 
-    public BackupRestoreService(DatabaseConfigStore store, AuthService auth)
+    public BackupRestoreService(DatabaseConfigStore store, AuthService auth, IServiceProvider? services = null)
     {
         _store = store;
         _auth = auth;
+        _services = services;
     }
 
     public async Task<bool> PossuiSenhaBackupAsync()
@@ -136,16 +139,23 @@ public class BackupRestoreService
                 if (File.Exists(caminhoDb + ext)) File.Delete(caminhoDb + ext);
             File.Move(temp, caminhoDb, overwrite: true);
 
-            await using (var ctxMigrate = CriarCtx(caminhoDb))
+            if (_services is not null)
             {
-                try
+                await using (var scopeSource = _services.CreateAsyncScope())
                 {
-                    await ctxMigrate.Database.MigrateAsync();
+                    // DatabaseMigrator aplica as migrations em estágios e converte
+                    // receitas legadas de reembolso (Lancamentos.ReembolsoId) em
+                    // Reembolsos. MigrateAsync puro pularia a conversão e as
+                    // colunas legadas seriam removidas com os vínculos perdidos.
+                    var migrator = scopeSource.ServiceProvider.GetRequiredService<DatabaseMigrator>();
+                    migrator.Migrate();
                 }
-                catch
-                {
-                    await ctxMigrate.Database.EnsureCreatedAsync();
-                }
+            }
+            else
+            {
+                // Fora da DI (ex.: testes): sem DatabaseMigrator disponível.
+                await using var ctxMigrate = CriarCtx(caminhoDb);
+                await ctxMigrate.Database.MigrateAsync();
             }
 
             var caminhoBak = caminhoDb + ".bak";

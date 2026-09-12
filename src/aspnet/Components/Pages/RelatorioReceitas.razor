@@ -202,6 +202,7 @@ else
         var inicio = DateOnly.FromDateTime(_inicio.Value);
         var fim = DateOnly.FromDateTime(_fim.Value);
 
+        if (_pessoaId == Guid.Empty) _pessoaId = null;
         _pessoaCor = null;
         if (_pessoaId.HasValue)
             _pessoaCor = (await PessoaService.ObterAsync(_pessoaId.Value))?.CorDeExibicao;

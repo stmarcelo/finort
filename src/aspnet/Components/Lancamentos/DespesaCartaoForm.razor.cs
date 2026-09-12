@@ -12,10 +12,9 @@ public partial class DespesaCartaoForm : AppComponentBase
     public sealed record DadosDespesaCartao(
         Guid CartaoId, DateOnly Data, decimal Valor,
         Guid CategoriaId, Guid? SubcategoriaId, Guid? PessoaId,
-        int? Parcelas, Guid? ReembolsoPessoaId, Guid? ReembolsoContaId,
+        int? Parcelas, Guid? ReembolsoPessoaId,
         bool EhEntrada, Guid? ProjetoId,
-        DateOnly? DataVencimentoCartao,
-        Guid? ReembolsoCategoriaId = null, Guid? ReembolsoSubcategoriaId = null);
+        DateOnly? DataVencimentoCartao);
 
     [Parameter] public Guid? CartaoIdFixo { get; set; }
     [Parameter] public int? AnoFatura { get; set; }
@@ -38,9 +37,6 @@ public partial class DespesaCartaoForm : AppComponentBase
     private int _quantidadeParcelas = 2;
     private bool _comReembolso;
     private Guid? _reembolsoPessoaId;
-    private Guid? _reembolsoContaId;
-    private Guid? _reembolsoCategoriaId;
-    private Guid? _reembolsoSubcategoriaId;
     private bool _ehEntradaBack;
     private DateOnly? _previewVencimento;
     private int _vencimentoAno;
@@ -52,23 +48,10 @@ public partial class DespesaCartaoForm : AppComponentBase
     private bool ComReembolso
     {
         get => _comReembolso;
-        set
-        {
-            _comReembolso = value;
-            if (value && _categoriaId.HasValue)
-            {
-                _reembolsoCategoriaId = _categoriaId;
-                _reembolsoSubcategoriaId = _subcategoriaId;
-            }
-            else if (!value)
-            {
-                _reembolsoCategoriaId = null;
-                _reembolsoSubcategoriaId = null;
-            }
-        }
+        set => _comReembolso = value;
     }
 
-    /// <summary>Property para @bind-Value: ao marcar entrada, limpa parcelamento e reembolso.</summary>
+    /// <summary>Property para @bind-Value: ao marcar entrada, limpa parcelamento (reembolso é permitido).</summary>
     private bool EhEntrada
     {
         get => _ehEntradaBack;
@@ -78,7 +61,6 @@ public partial class DespesaCartaoForm : AppComponentBase
             if (value)
             {
                 _parcelado = false;
-                _comReembolso = false;
                 _projetoId = null;
             }
         }
@@ -120,6 +102,7 @@ public partial class DespesaCartaoForm : AppComponentBase
         _cartaoId = lancamento.CartaoCreditoId;
         _dataCompra = new DateTime(lancamento.Data.Year, lancamento.Data.Month, lancamento.Data.Day);
         _valor = Math.Abs(lancamento.Valor);
+        _ehEntradaBack = lancamento.Valor > 0;
         _categoriaId = lancamento.CategoriaId;
         _subcategoriaId = lancamento.SubcategoriaId;
         _pessoaId = lancamento.PessoaId;
@@ -149,17 +132,11 @@ public partial class DespesaCartaoForm : AppComponentBase
             _parcelado = false;
         }
 
-        if (lancamento.ReembolsoId.HasValue)
+        var reembolso = await Db.Reembolsos.SingleOrDefaultAsync(r => r.LancamentoId == LancamentoId.Value);
+        if (reembolso is not null)
         {
-            var reembolso = await Db.Lancamentos.FindAsync(lancamento.ReembolsoId.Value);
-            if (reembolso is not null)
-            {
-                _comReembolso = true;
-                _reembolsoPessoaId = reembolso.PessoaId;
-                _reembolsoContaId = reembolso.ContaId;
-                _reembolsoCategoriaId = reembolso.CategoriaId;
-                _reembolsoSubcategoriaId = reembolso.SubcategoriaId;
-            }
+            _comReembolso = true;
+            _reembolsoPessoaId = reembolso.PessoaId;
         }
 
         if (lancamento.DataVencimentoCartao.HasValue)
@@ -268,13 +245,10 @@ public partial class DespesaCartaoForm : AppComponentBase
         await OnSalvarValido.InvokeAsync(new DadosDespesaCartao(
             _cartaoId.Value, dataCompra, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId,
             EhEntrada ? null : _parcelado ? _quantidadeParcelas : null,
-            !EhEntrada && ComReembolso ? _reembolsoPessoaId : null,
-            !EhEntrada && ComReembolso ? _reembolsoContaId : null,
+            ComReembolso ? _reembolsoPessoaId : null,
             EhEntrada,
             EhEntrada ? null : _projetoId,
-            _previewVencimento,
-            !EhEntrada && ComReembolso ? _reembolsoCategoriaId : null,
-            !EhEntrada && ComReembolso ? _reembolsoSubcategoriaId : null));
+            _previewVencimento));
         return true;
     }
 }

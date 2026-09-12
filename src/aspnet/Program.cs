@@ -70,6 +70,7 @@ builder.Services.AddScoped<ContaService>();
 builder.Services.AddScoped<LancamentoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
+builder.Services.AddScoped<ReembolsoService>();
 builder.Services.AddScoped<ProvisaoService>();
 builder.Services.AddScoped<CalendarioService>();
 builder.Services.AddScoped<FluxoService>();
@@ -81,6 +82,7 @@ builder.Services.AddScoped<ProjetoService>();
 builder.Services.AddScoped<ProjetoRelatorioService>();
 builder.Services.AddScoped<ReceitaRelatorioService>();
 builder.Services.AddScoped<DespesaRelatorioService>();
+builder.Services.AddScoped<ReembolsoRelatorioService>();
 builder.Services.AddScoped<BackupRestoreService>();
 builder.Services.AddScoped<LembreteService>();
 builder.Services.AddHttpContextAccessor();
@@ -236,6 +238,16 @@ app.MapGet("/api/relatorios/despesas/pdf", async (string inicio, string fim, Gui
     if (ini > f) return Results.BadRequest("Data de início posterior à data de fim.");
     var pdf = await service.GerarPdfBytesAsync(ini, f, pessoaId, cartaoId, categoriaId);
     return Results.File(pdf, "application/pdf", $"relatorio_despesas_{DateTime.Now:yyMMddHHmmss}.pdf");
+}).RequireAuthorization();
+
+app.MapGet("/api/relatorios/reembolsos/pdf", async (string inicio, string fim, Guid? cartaoId, Guid? pessoaId, ReembolsoRelatorioService service) =>
+{
+    if (!DateOnly.TryParseExact(inicio, "yyyy-MM-dd", out var ini)
+        || !DateOnly.TryParseExact(fim, "yyyy-MM-dd", out var f))
+        return Results.BadRequest("Período inválido. Use yyyy-MM-dd.");
+    if (ini > f) return Results.BadRequest("Data de início posterior à data de fim.");
+    var pdf = await service.GerarPdfBytesAsync(ini, f, cartaoId, pessoaId);
+    return Results.File(pdf, "application/pdf", $"relatorio_reembolsos_{DateTime.Now:yyMMddHHmmss}.pdf");
 }).RequireAuthorization();
 
 app.MapGet("/api/seed", async (SeedDataService seedService) =>

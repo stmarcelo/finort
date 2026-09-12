@@ -252,6 +252,8 @@ else
         var inicio = DateOnly.FromDateTime(_inicio.Value);
         var fim = DateOnly.FromDateTime(_fim.Value);
 
+        if (_cartaoId == Guid.Empty) _cartaoId = null;
+        if (_categoriaId == Guid.Empty) _categoriaId = null;
         _pessoaCor = null;
         if (_pessoaId.HasValue)
             _pessoaCor = (await PessoaService.ObterAsync(_pessoaId.Value))?.CorDeExibicao;

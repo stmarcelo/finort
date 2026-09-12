@@ -38,7 +38,7 @@ public class DespesaCartaoEntradaTests
     }
 
     [Fact]
-    public async Task Entrada_RejeitaParcelasEReembolso()
+    public async Task Entrada_RejeitaParcelas_MasPermiteReembolsoNegativo()
     {
         var (db, file, service, cartao) = await SetupAsync();
         try
@@ -48,6 +48,21 @@ public class DespesaCartaoEntradaTests
                     db.Categorias.First().Id, null, null,
                     parcelas: 2, reembolsoPessoaId: null, reembolsoVencimento: null,
                     vencimentoExato: new DateOnly(2026, 8, 10), ehEntrada: true));
+
+            var pessoa = new Pessoa { Nome = "Amigo" };
+            db.Pessoas.Add(pessoa);
+            await db.SaveChangesAsync();
+
+            var criados = await service.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 8, 1), 50m,
+                db.Categorias.First().Id, null, null,
+                parcelas: null, reembolsoPessoaId: pessoa.Id, reembolsoVencimento: null,
+                vencimentoExato: new DateOnly(2026, 8, 10), ehEntrada: true);
+
+            var entrada = Assert.Single(criados);
+            Assert.Equal(50m, entrada.Valor);
+            var reembolso = Assert.Single(db.Reembolsos.Where(r => r.LancamentoId == entrada.Id).ToList());
+            Assert.Equal(-50m, reembolso.Valor);
+            Assert.Equal(new DateOnly(2026, 8, 9), reembolso.Vencimento);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

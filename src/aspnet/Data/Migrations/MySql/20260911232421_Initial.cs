@@ -1,11 +1,12 @@
 ﻿using System;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace Finort.Migrations
+namespace Finort.Data.Migrations.MySql
 {
     /// <inheritdoc />
     public partial class Initial : Migration
@@ -13,110 +14,143 @@ namespace Finort.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("MySql:CharSet", "utf8mb4");
+
             migrationBuilder.CreateTable(
                 name: "AuditoriasExclusaoInvestimento",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    NomeInvestimento = table.Column<string>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    ValorCotaAtual = table.Column<decimal>(type: "TEXT", nullable: false),
-                    DataCotacao = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DataExclusao = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    NomeInvestimento = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    ValorCotaAtual = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    DataCotacao = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    DataExclusao = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AuditoriasExclusaoInvestimento", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Categorias",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    IsProtected = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Nome = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsProtected = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Categorias", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Configuracoes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    Email = table.Column<string>(type: "TEXT", nullable: false),
-                    SenhaHash = table.Column<string>(type: "TEXT", nullable: false),
-                    SmtpHost = table.Column<string>(type: "TEXT", nullable: true),
-                    SmtpPort = table.Column<int>(type: "INTEGER", nullable: true),
-                    SmtpUser = table.Column<string>(type: "TEXT", nullable: true),
-                    SmtpPassword = table.Column<string>(type: "TEXT", nullable: true),
-                    SmtpFrom = table.Column<string>(type: "TEXT", nullable: true),
-                    BackupPasswordCriptografada = table.Column<string>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Nome = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Email = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SenhaHash = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SmtpHost = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SmtpPort = table.Column<int>(type: "int", nullable: true),
+                    SmtpUser = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SmtpPassword = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    SmtpFrom = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    BackupPasswordCriptografada = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    UltimaVerificacaoVersao = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    VersaoConhecida = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    DiasAntecipacao = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Configuracoes", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Contas",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Banco = table.Column<string>(type: "TEXT", nullable: true),
-                    Agencia = table.Column<string>(type: "TEXT", nullable: true),
-                    ContaEDigito = table.Column<string>(type: "TEXT", nullable: true),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Banco = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Agencia = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ContaEDigito = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Nome = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Limite = table.Column<decimal>(type: "decimal(65,30)", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Contas", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "MesesFechados",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Mes = table.Column<int>(type: "INTEGER", nullable: false),
-                    Ano = table.Column<int>(type: "INTEGER", nullable: false),
-                    DataFechamento = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    SaldoAcumulado = table.Column<decimal>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    ContaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Mes = table.Column<int>(type: "int", nullable: false),
+                    Ano = table.Column<int>(type: "int", nullable: false),
+                    DataFechamento = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    SaldoAcumulado = table.Column<decimal>(type: "decimal(65,30)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MesesFechados", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Pessoas",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    CorDeExibicao = table.Column<string>(type: "TEXT", nullable: true),
-                    Observacao = table.Column<string>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Nome = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CorDeExibicao = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Observacao = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Pessoas", x => x.Id);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Subcategorias",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    IsProtected = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CategoriaId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Nome = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsProtected = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    CategoriaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -127,19 +161,21 @@ namespace Finort.Migrations
                         principalTable: "Categorias",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "PasswordResetTokens",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TokenHash = table.Column<string>(type: "TEXT", nullable: false),
-                    ConfiguracaoId = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UsedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    TokenHash = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ConfiguracaoId = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    UsedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -150,20 +186,23 @@ namespace Finort.Migrations
                         principalTable: "Configuracoes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "CartoesCredito",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Banco = table.Column<string>(type: "TEXT", nullable: false),
-                    Ultimos4Digitos = table.Column<string>(type: "TEXT", maxLength: 4, nullable: false),
-                    MelhorDiaCompra = table.Column<int>(type: "INTEGER", nullable: false),
-                    DiaVencimento = table.Column<int>(type: "INTEGER", nullable: false),
-                    Limite = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Ativo = table.Column<bool>(type: "INTEGER", nullable: false),
-                    ContaId = table.Column<Guid>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Banco = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Ultimos4Digitos = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    MelhorDiaCompra = table.Column<int>(type: "int", nullable: false),
+                    DiaVencimento = table.Column<int>(type: "int", nullable: false),
+                    Limite = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Ativo = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    ContaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -174,22 +213,26 @@ namespace Finort.Migrations
                         principalTable: "Contas",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Investimentos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    ContaVinculadaId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Subtipo = table.Column<string>(type: "TEXT", nullable: true),
-                    Descricao = table.Column<string>(type: "TEXT", nullable: true),
-                    ValorCotaAtual = table.Column<decimal>(type: "TEXT", nullable: false),
-                    DataCotacao = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DataVencimento = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Ativo = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Nome = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    ContaVinculadaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Subtipo = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Descricao = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ValorCotaAtual = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    DataCotacao = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    DataVencimento = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    Ativo = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -200,18 +243,20 @@ namespace Finort.Migrations
                         principalTable: "Contas",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Lembretes",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PessoaId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    Texto = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Dia = table.Column<int>(type: "INTEGER", nullable: true),
-                    Data = table.Column<DateOnly>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    PessoaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    Texto = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Dia = table.Column<int>(type: "int", nullable: true),
+                    Data = table.Column<DateOnly>(type: "date", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -222,19 +267,21 @@ namespace Finort.Migrations
                         principalTable: "Pessoas",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Projetos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Descricao = table.Column<string>(type: "TEXT", nullable: false),
-                    DataContratacao = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    ValorContratado = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Concluido = table.Column<bool>(type: "INTEGER", nullable: false),
-                    DataConclusao = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                    PessoaId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Descricao = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    DataContratacao = table.Column<DateOnly>(type: "date", nullable: false),
+                    ValorContratado = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Concluido = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    DataConclusao = table.Column<DateOnly>(type: "date", nullable: true),
+                    PessoaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -245,19 +292,20 @@ namespace Finort.Migrations
                         principalTable: "Pessoas",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Faturas",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CartaoCreditoId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    AnoReferencia = table.Column<int>(type: "INTEGER", nullable: false),
-                    MesReferencia = table.Column<int>(type: "INTEGER", nullable: false),
-                    ValorTotal = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Fechada = table.Column<bool>(type: "INTEGER", nullable: false),
-                    DataFechamento = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    CartaoCreditoId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    AnoReferencia = table.Column<int>(type: "int", nullable: false),
+                    MesReferencia = table.Column<int>(type: "int", nullable: false),
+                    ValorTotal = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Fechada = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    DataFechamento = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -268,25 +316,26 @@ namespace Finort.Migrations
                         principalTable: "CartoesCredito",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Provisoes",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Onde = table.Column<int>(type: "INTEGER", nullable: false),
-                    Frequencia = table.Column<int>(type: "INTEGER", nullable: false),
-                    Dia = table.Column<int>(type: "INTEGER", nullable: false),
-                    PessoaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    ContaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    CartaoCreditoId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Valor = table.Column<decimal>(type: "TEXT", nullable: false),
-                    ValorVariante = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CategoriaId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    SubcategoriaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    UltimoMesLancado = table.Column<int>(type: "INTEGER", nullable: true),
-                    UltimoAnoLancado = table.Column<int>(type: "INTEGER", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Onde = table.Column<int>(type: "int", nullable: false),
+                    Frequencia = table.Column<int>(type: "int", nullable: false),
+                    Dia = table.Column<int>(type: "int", nullable: false),
+                    PessoaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    ContaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    CartaoCreditoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    Valor = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    ValorVariante = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    CategoriaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    SubcategoriaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    UltimoMesLancado = table.Column<int>(type: "int", nullable: true),
+                    UltimoAnoLancado = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -321,32 +370,32 @@ namespace Finort.Migrations
                         principalTable: "Subcategorias",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "Lancamentos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Data = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    Valor = table.Column<decimal>(type: "TEXT", nullable: false),
-                    ContaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    CategoriaId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    SubcategoriaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    PessoaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Confirmado = table.Column<bool>(type: "INTEGER", nullable: false),
-                    ReferenciaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    CartaoCreditoId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    DataCompra = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                    DataVencimentoCartao = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                    ParcelamentoId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    ParcelaAtual = table.Column<int>(type: "INTEGER", nullable: true),
-                    TotalParcelas = table.Column<int>(type: "INTEGER", nullable: true),
-                    RecorrenciaId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    ReembolsoId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    ProvisaoId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    ProjetoId = table.Column<Guid>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Data = table.Column<DateOnly>(type: "date", nullable: false),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    Valor = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    ContaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    CategoriaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    SubcategoriaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    PessoaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    Confirmado = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    ReferenciaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    DataCompra = table.Column<DateOnly>(type: "date", nullable: true),
+                    CartaoCreditoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    DataVencimentoCartao = table.Column<DateOnly>(type: "date", nullable: true),
+                    ParcelamentoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    ParcelaAtual = table.Column<int>(type: "int", nullable: true),
+                    TotalParcelas = table.Column<int>(type: "int", nullable: true),
+                    RecorrenciaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    ProvisaoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    ProjetoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -387,20 +436,22 @@ namespace Finort.Migrations
                         principalTable: "Subcategorias",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "InvestimentosMovimentos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    InvestimentoId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Data = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    Quantidade = table.Column<decimal>(type: "TEXT", nullable: true),
-                    ValorPorCota = table.Column<decimal>(type: "TEXT", nullable: true),
-                    Valor = table.Column<decimal>(type: "TEXT", nullable: false),
-                    LancamentoId = table.Column<Guid>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    InvestimentoId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Data = table.Column<DateOnly>(type: "date", nullable: false),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    Quantidade = table.Column<decimal>(type: "decimal(65,30)", nullable: true),
+                    ValorPorCota = table.Column<decimal>(type: "decimal(65,30)", nullable: true),
+                    Taxa = table.Column<decimal>(type: "decimal(65,30)", nullable: true),
+                    Valor = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    LancamentoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -417,18 +468,19 @@ namespace Finort.Migrations
                         principalTable: "Lancamentos",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "InvestimentosProventos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    InvestimentoId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Data = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Valor = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Tipo = table.Column<int>(type: "INTEGER", nullable: false),
-                    LancamentoId = table.Column<Guid>(type: "TEXT", nullable: true)
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    InvestimentoId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    Data = table.Column<DateOnly>(type: "date", nullable: false),
+                    Valor = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Tipo = table.Column<int>(type: "int", nullable: false),
+                    LancamentoId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -445,7 +497,54 @@ namespace Finort.Migrations
                         principalTable: "Lancamentos",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "Reembolsos",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    PessoaId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    CartaoCreditoId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    LancamentoId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    ParcelaAtual = table.Column<int>(type: "int", nullable: true),
+                    TotalParcelas = table.Column<int>(type: "int", nullable: true),
+                    Valor = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Vencimento = table.Column<DateOnly>(type: "date", nullable: false),
+                    Fechado = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    DataFechamento = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    ReceitaId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Reembolsos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Reembolsos_CartoesCredito_CartaoCreditoId",
+                        column: x => x.CartaoCreditoId,
+                        principalTable: "CartoesCredito",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Reembolsos_Lancamentos_LancamentoId",
+                        column: x => x.LancamentoId,
+                        principalTable: "Lancamentos",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Reembolsos_Lancamentos_ReceitaId",
+                        column: x => x.ReceitaId,
+                        principalTable: "Lancamentos",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Reembolsos_Pessoas_PessoaId",
+                        column: x => x.PessoaId,
+                        principalTable: "Pessoas",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.InsertData(
                 table: "Categorias",
@@ -453,7 +552,7 @@ namespace Finort.Migrations
                 values: new object[,]
                 {
                     { new Guid("10000000-0000-0000-0000-000000000001"), false, "Contas de casa" },
-                    { new Guid("10000000-0000-0000-0000-000000000002"), false, "Renda" },
+                    { new Guid("10000000-0000-0000-0000-000000000002"), false, "Receita" },
                     { new Guid("10000000-0000-0000-0000-000000000003"), false, "Alimentação" },
                     { new Guid("10000000-0000-0000-0000-000000000004"), false, "Transporte" },
                     { new Guid("10000000-0000-0000-0000-000000000005"), false, "Saúde" },
@@ -464,7 +563,9 @@ namespace Finort.Migrations
                     { new Guid("10000000-0000-0000-0000-000000000010"), false, "Familia" },
                     { new Guid("10000000-0000-0000-0000-000000000011"), false, "Impostos" },
                     { new Guid("10000000-0000-0000-0000-000000000012"), false, "Investimento" },
-                    { new Guid("10000000-0000-0000-0000-000000000013"), true, "Acerto de saldo" }
+                    { new Guid("10000000-0000-0000-0000-000000000013"), true, "Acerto de saldo" },
+                    { new Guid("10000000-0000-0000-0000-000000000014"), false, "Indefinida" },
+                    { new Guid("10000000-0000-0000-0000-000000000015"), false, "Serviços" }
                 });
 
             migrationBuilder.InsertData(
@@ -477,9 +578,7 @@ namespace Finort.Migrations
                     { new Guid("20000000-0000-0000-0000-000000000003"), new Guid("10000000-0000-0000-0000-000000000001"), false, "Internet" },
                     { new Guid("20000000-0000-0000-0000-000000000004"), new Guid("10000000-0000-0000-0000-000000000002"), false, "Contrato mensal" },
                     { new Guid("20000000-0000-0000-0000-000000000005"), new Guid("10000000-0000-0000-0000-000000000002"), false, "Extra" },
-                    { new Guid("20000000-0000-0000-0000-000000000006"), new Guid("10000000-0000-0000-0000-000000000003"), false, "Mercado" },
-                    { new Guid("20000000-0000-0000-0000-000000000007"), new Guid("10000000-0000-0000-0000-000000000003"), false, "Açougue" },
-                    { new Guid("20000000-0000-0000-0000-000000000008"), new Guid("10000000-0000-0000-0000-000000000003"), false, "Feira" },
+                    { new Guid("20000000-0000-0000-0000-000000000006"), new Guid("10000000-0000-0000-0000-000000000003"), false, "Mercado / Feira / Açougue" },
                     { new Guid("20000000-0000-0000-0000-000000000009"), new Guid("10000000-0000-0000-0000-000000000003"), false, "Restaurante" },
                     { new Guid("20000000-0000-0000-0000-000000000010"), new Guid("10000000-0000-0000-0000-000000000004"), false, "Combustível" },
                     { new Guid("20000000-0000-0000-0000-000000000011"), new Guid("10000000-0000-0000-0000-000000000004"), false, "Estacionamento" },
@@ -528,7 +627,9 @@ namespace Finort.Migrations
                     { new Guid("20000000-0000-0000-0000-000000000054"), new Guid("10000000-0000-0000-0000-000000000012"), false, "Compra/Aporte" },
                     { new Guid("20000000-0000-0000-0000-000000000055"), new Guid("10000000-0000-0000-0000-000000000012"), false, "Venda / Resgate" },
                     { new Guid("20000000-0000-0000-0000-000000000056"), new Guid("10000000-0000-0000-0000-000000000013"), true, "Acerto" },
-                    { new Guid("20000000-0000-0000-0000-000000000057"), new Guid("10000000-0000-0000-0000-000000000009"), true, "Cartão de crédito" }
+                    { new Guid("20000000-0000-0000-0000-000000000057"), new Guid("10000000-0000-0000-0000-000000000009"), true, "Cartão de crédito" },
+                    { new Guid("20000000-0000-0000-0000-000000000058"), new Guid("10000000-0000-0000-0000-000000000001"), false, "Manutenção" },
+                    { new Guid("20000000-0000-0000-0000-000000000059"), new Guid("10000000-0000-0000-0000-000000000015"), false, "Assinaturas" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -634,9 +735,9 @@ namespace Finort.Migrations
                 column: "PessoaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_MesesFechados_Mes_Ano",
+                name: "IX_MesesFechados_ContaId_Mes_Ano",
                 table: "MesesFechados",
-                columns: new[] { "Mes", "Ano" },
+                columns: new[] { "ContaId", "Mes", "Ano" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -675,6 +776,27 @@ namespace Finort.Migrations
                 column: "SubcategoriaId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Reembolsos_CartaoCreditoId_Vencimento",
+                table: "Reembolsos",
+                columns: new[] { "CartaoCreditoId", "Vencimento" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reembolsos_LancamentoId",
+                table: "Reembolsos",
+                column: "LancamentoId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reembolsos_PessoaId_Vencimento",
+                table: "Reembolsos",
+                columns: new[] { "PessoaId", "Vencimento" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reembolsos_ReceitaId",
+                table: "Reembolsos",
+                column: "ReceitaId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Subcategorias_CategoriaId",
                 table: "Subcategorias",
                 column: "CategoriaId");
@@ -708,13 +830,16 @@ namespace Finort.Migrations
                 name: "Provisoes");
 
             migrationBuilder.DropTable(
+                name: "Reembolsos");
+
+            migrationBuilder.DropTable(
                 name: "Investimentos");
 
             migrationBuilder.DropTable(
-                name: "Lancamentos");
+                name: "Configuracoes");
 
             migrationBuilder.DropTable(
-                name: "Configuracoes");
+                name: "Lancamentos");
 
             migrationBuilder.DropTable(
                 name: "CartoesCredito");

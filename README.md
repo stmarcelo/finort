@@ -74,7 +74,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - CRUD com banco, últimos 4 dígitos, melhor dia de compra, dia de vencimento, limite e conta vinculada.
 - Fatura: conferência de itens, fechamento (exige todos confirmados), pagamento (cria débito na conta + cobre diferença em parcela futura), histórico e estorno.
 - Entrada na fatura: desconta o valor do total da fatura (útil para estornos feitos pelo operador do cartão).
-- Reembolso: gera automaticamente um lançamento de receita para a pessoa (devedor) com data 1 dia antes do vencimento da fatura.
+- Reembolso: ao lançar despesa (ou entrada) com reembolso, cria item no cadastro de reembolsos (pessoa, cartão, parcela, valor, vencimento = vencimento da fatura menos 1 dia); a receita agregada por pessoa é gerada só no fechamento da fatura (conta + categoria escolhidas na hora); reabrir a fatura reverte. Entrada com reembolso gera valor negativo.
 - Edição de parcelado: ao editar a primeira parcela, as alterações são aplicadas a todas as parcelas futuras não confirmadas.
 - A fatura do mês aparece automaticamente no calendário na data de vencimento.
 
@@ -102,7 +102,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 ### Fluxo mensal (`/fluxo`)
 - Carrossel mês anterior / corrente / próximo com receitas, despesas, totais por cartão e saldo acumulado.
 - Pagamento de fatura refletido no mês em que ocorreu.
-- **Dias de antecipação**: ajuste (0–15) que define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual. Exemplo: com 5 dias em setembro, despesas e faturas com vencimento até 05/10 aparecem no fluxo de setembro, e outubro começa em 06/10. A antecipação também se aplica a receitas de reembolso. Cada lançamento pertence a apenas um mês. Configuração persistida no banco de dados.
+- **Dias de antecipação**: ajuste (0–15) que define quantos dias do início do mês seguinte são incluídos no fluxo do mês atual. Exemplo: com 5 dias em setembro, despesas e faturas com vencimento até 05/10 aparecem no fluxo de setembro, e outubro começa em 06/10. A antecipação também se aplica a reembolsos pendentes (não fechados). Cada lançamento pertence a apenas um mês. Configuração persistida no banco de dados.
 
 ### Dashboard (`/dashboard`)
 - Cards de resumo no topo: total de receitas, total de despesas, saldo do mês e saldo acumulado.
@@ -125,6 +125,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Detalhe por pessoa: tabela de lançamentos (data, cartão, conta, parcela, categoria, valor, status) e subtotais por origem (cartão/conta).
 - Despesas por pessoa: igual ao de receitas, adicionando filtros por cartão de crédito e categoria (inclui subcategorias); subtotais por origem e por categoria.
 - Despesas de cartão entram pela data de vencimento da fatura (como no fluxo); as demais, pela data do lançamento.
+- Reembolsos (`/relatorios/reembolsos`): filtros por período de vencimento, cartão e pessoa; totais pendente/fechado e exportação em PDF próprio (`GET /api/relatorios/reembolsos/pdf`).
 - Exportação em PDF (`GET /api/relatorios/receitas/pdf`, `GET /api/relatorios/despesas/pdf`) com o mesmo conteúdo da tela.
 
 ### Fechamento de mês (`/fechar-mes`)

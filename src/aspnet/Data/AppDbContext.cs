@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<MesFechado> MesesFechados => Set<MesFechado>();
     public DbSet<Projeto> Projetos => Set<Projeto>();
     public DbSet<Lembrete> Lembretes => Set<Lembrete>();
+    public DbSet<Reembolso> Reembolsos => Set<Reembolso>();
 
     public DbSet<Investimento> Investimentos => Set<Investimento>();
     public DbSet<InvestimentoProvento> InvestimentosProventos => Set<InvestimentoProvento>();
@@ -212,6 +213,14 @@ public class AppDbContext : DbContext
                 .HasForeignKey(e => e.PessoaId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<Reembolso>().HasOne(r => r.Pessoa).WithMany().HasForeignKey(r => r.PessoaId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Reembolso>().HasOne(r => r.CartaoCredito).WithMany().HasForeignKey(r => r.CartaoCreditoId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Reembolso>().HasOne(r => r.Lancamento).WithMany().HasForeignKey(r => r.LancamentoId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Reembolso>().HasOne(r => r.Receita).WithMany().HasForeignKey(r => r.ReceitaId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Reembolso>().HasIndex(r => r.LancamentoId).IsUnique();
+        modelBuilder.Entity<Reembolso>().HasIndex(r => new { r.CartaoCreditoId, r.Vencimento });
+        modelBuilder.Entity<Reembolso>().HasIndex(r => new { r.PessoaId, r.Vencimento });
 
         SeedCategorias(modelBuilder);
     }

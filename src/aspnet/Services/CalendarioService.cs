@@ -41,6 +41,27 @@ public class CalendarioService
         var entradas = lancamentos.Select(l => (Data: l.Data, Item: ParaItem(l))).ToList();
         entradas.AddRange(await ProjetarProvisoesAsync(inicio, fim.AddDays(-1)));
 
+        var reembolsos = await _db.Reembolsos
+            .Include(r => r.Pessoa)
+            .Include(r => r.CartaoCredito)
+            .Where(r => !r.Fechado && r.Vencimento >= inicio && r.Vencimento < fim)
+            .ToListAsync();
+        foreach (var r in reembolsos)
+        {
+            entradas.Add((r.Vencimento, new CompromissoItem(
+                Valor: r.Valor,
+                Tipo: LancamentoTipo.Receita,
+                Confirmado: false,
+                Descricao: r.Pessoa?.Nome ?? "Reembolso",
+                Origem: r.CartaoCredito is null ? null : $"Cartão {r.CartaoCredito.Banco}",
+                Projetada: false,
+                LancamentoId: null,
+                Riscada: false,
+                IsLembrete: false,
+                IsFatura: false,
+                PessoaNome: r.Pessoa?.Nome)));
+        }
+
         var lembretes = await _lembreteService.ObterLembretesDoMesAsync(ano, mes);
 
         foreach (var lembrete in lembretes)

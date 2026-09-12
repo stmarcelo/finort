@@ -31,7 +31,7 @@
         @if (EhEntrada)
         {
             <MudText Typo="Typo.caption" Class="mb-2">
-                Gravado como crédito: reduz o total da fatura. Sem parcelamento nem reembolso.
+                Gravado como crédito: reduz o total da fatura. Sem parcelamento. Pode ter reembolso (valor negativo).
             </MudText>
         }
 
@@ -45,32 +45,18 @@
                                      Variant="@gVariant" Min="2" Max="48" Class="ml-4 parcelas-inline" />
                 }
             </div>
+        }
 
-            <MudCheckBox @bind-Value="ComReembolso" Label="Terá reembolso" />
-            @if (ComReembolso)
-            {
-                <MudGrid Class="mt-n2">
-                    <MudItem xs="12" sm="6">
-                        <PessoaSelect Label="Pessoa do reembolso" Required="true"
-                                      RequiredError="Informe a pessoa do reembolso."
-                                      @bind-Value="_reembolsoPessoaId" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <ContaSelect Label="Conta do reembolso (crédito)" Placeholder="Opcional"
-                                     @bind-Value="_reembolsoContaId" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <CategoriaSelect Label="Categoria do reembolso" Required="true"
-                                         RequiredError="Selecione a categoria do reembolso."
-                                         @bind-Value="_reembolsoCategoriaId" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <SubcategoriaSelect Label="Subcategoria do reembolso"
-                                            CategoriaId="@_reembolsoCategoriaId"
-                                            @bind-Value="_reembolsoSubcategoriaId" />
-                    </MudItem>
-                </MudGrid>
-            }
+        <MudCheckBox @bind-Value="ComReembolso" Label="Terá reembolso" />
+        @if (ComReembolso)
+        {
+            <MudGrid Class="mt-n2">
+                <MudItem xs="12">
+                    <PessoaSelect Label="Pessoa do reembolso" Required="true"
+                                  RequiredError="Informe a pessoa do reembolso."
+                                  @bind-Value="_reembolsoPessoaId" />
+                </MudItem>
+            </MudGrid>
         }
     }
     else

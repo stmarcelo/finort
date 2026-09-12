@@ -24,7 +24,7 @@ public class LancamentoFiltrosReembolsoTests
     private static Categoria Renda(AppDbContext db) => db.Categorias.First(c => c.Nome == "Receita");
 
     [Fact]
-    public async Task CriarDespesaCartaoAsync_ReembolsoComConta_GravaContaNoReembolso()
+    public async Task CriarDespesaCartaoAsync_ReembolsoIgnoraConta_GravaReembolsoSemReceita()
     {
         var (db, file, service, conta, cartao) = await SetupAsync();
         try
@@ -39,9 +39,13 @@ public class LancamentoFiltrosReembolsoTests
                 vencimentoExato: null, reembolsoContaId: conta.Id);
 
             var despesa = Assert.Single(despesas);
-            var reembolso = await db.Lancamentos.FindAsync(despesa.ReembolsoId!.Value);
-            Assert.NotNull(reembolso);
-            Assert.Equal(conta.Id, reembolso!.ContaId);
+            // conta de reembolso é ignorada: receita agregada só no fechamento
+            Assert.Empty(db.Lancamentos.Where(l => l.Tipo == LancamentoTipo.Receita));
+            var reembolso = Assert.Single(db.Reembolsos.Where(r => r.LancamentoId == despesa.Id).ToList());
+            Assert.Equal(pessoa.Id, reembolso.PessoaId);
+            Assert.Equal(60m, reembolso.Valor);
+            Assert.False(reembolso.Fechado);
+            Assert.Equal(despesa.DataVencimentoCartao!.Value.AddDays(-1), reembolso.Vencimento);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

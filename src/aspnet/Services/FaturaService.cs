@@ -312,6 +312,45 @@ public class FaturaService
         return resultado;
     }
 
+    /// <summary>Fecha a fatura e agrega reembolsos por pessoa em 1 receita cada.
+    /// Vencimento do reembolso = DataVencimentoCartao menos 1 dia (definido na criação).</summary>
+    public async Task<Fatura> FecharComReembolsosAsync(Guid cartaoId, int ano, int mes, DateOnly inicio, DateOnly fim, Guid contaId, Guid categoriaId, Guid? subcategoriaId)
+    {
+        if (!await _db.Contas.AnyAsync(c => c.Id == contaId)) throw new InvalidOperationException("Conta não encontrada.");
+        var categoria = await _db.Categorias.FindAsync(categoriaId)
+            ?? throw new InvalidOperationException("Categoria não encontrada.");
+        if (categoria.Nome == "Financeiro" || categoria.Nome == "Acerto de saldo")
+            throw new InvalidOperationException("Categoria inválida para reembolso; escolha uma categoria de receita.");
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        if (await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == hoje.Year && m.Mes == hoje.Month))
+            throw new InvalidOperationException("Mês da conta fechado; reabra o mês antes.");
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var fatura = await FecharAsync(cartaoId, ano, mes, inicio, fim); // valida pendentes e cria fatura fechada
+            var reembolsos = await _db.Reembolsos.Include(r => r.Lancamento)
+                .Where(r => r.CartaoCreditoId == cartaoId && !r.Fechado && r.Lancamento.DataVencimentoCartao >= inicio && r.Lancamento.DataVencimentoCartao <= fim)
+                .ToListAsync();
+            if (reembolsos.Count == 0) { await tx.CommitAsync(); return fatura; }
+            foreach (var g in reembolsos.GroupBy(r => r.PessoaId))
+            {
+                var total = g.Sum(r => r.Valor);
+                if (total <= 0) { foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; } continue; }
+                var receita = new Lancamento { Data = hoje, Tipo = LancamentoTipo.Receita, Valor = total, ContaId = contaId, CategoriaId = categoriaId, SubcategoriaId = subcategoriaId, PessoaId = g.Key, Confirmado = true };
+                _db.Lancamentos.Add(receita);
+                foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; r.ReceitaId = receita.Id; }
+            }
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+            return fatura;
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+
     /// <summary>Reabre a fatura: remove Fechada, DataFechamento e ValorTotal.</summary>
     public async Task ReabrirAsync(Guid cartaoId, int ano, int mes)
     {
@@ -319,6 +358,26 @@ public class FaturaService
             f.CartaoCreditoId == cartaoId && f.AnoReferencia == ano &&
             f.MesReferencia == mes && f.Fechada)
             ?? throw new InvalidOperationException("Fatura não encontrada ou já aberta.");
+
+        var inicio = new DateOnly(ano, mes, 1);
+        var fim = inicio.AddMonths(1).AddDays(-1);
+        var reembolsos = await _db.Reembolsos.Include(r => r.Lancamento)
+            .Where(r => r.CartaoCreditoId == cartaoId && r.Fechado &&
+                        r.Lancamento.DataVencimentoCartao >= inicio && r.Lancamento.DataVencimentoCartao <= fim)
+            .ToListAsync();
+        var receitaIds = reembolsos.Where(r => r.ReceitaId.HasValue).Select(r => r.ReceitaId!.Value).Distinct().ToList();
+        if (receitaIds.Count > 0)
+        {
+            var receitas = await _db.Lancamentos.Where(l => receitaIds.Contains(l.Id)).ToListAsync();
+            foreach (var rec in receitas)
+            {
+                if (rec.ContaId.HasValue && await _db.MesesFechados.AnyAsync(m =>
+                    m.ContaId == rec.ContaId.Value && m.Ano == rec.Data.Year && m.Mes == rec.Data.Month))
+                    throw new InvalidOperationException("Mês da conta fechado; reabra o mês antes de reabrir a fatura.");
+            }
+            _db.Lancamentos.RemoveRange(receitas);
+        }
+        foreach (var r in reembolsos) { r.Fechado = false; r.DataFechamento = null; r.ReceitaId = null; }
 
         fatura.Fechada = false;
         fatura.DataFechamento = null;

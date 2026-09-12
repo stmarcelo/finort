@@ -42,8 +42,8 @@ public class LancamentoServiceFase4aTests
             var despesa = Assert.Single(despesas);
             Assert.Equal(new DateOnly(2026, 8, 6), despesa.Data);
             Assert.Equal(new DateOnly(2026, 8, 6), despesa.DataCompra);
-            // compra dia 6 >= melhorDia 5 → vencimento mês+2 = out/2026
-            Assert.Equal(new DateOnly(2026, 10, 10), despesa.DataVencimentoCartao);
+            // compra dia 6 >= melhorDia 5 → vencimento mês+1 = set/2026
+            Assert.Equal(new DateOnly(2026, 9, 10), despesa.DataVencimentoCartao);
             Assert.Equal(-120m, despesa.Valor);
             Assert.Equal(cartao.Id, despesa.CartaoCreditoId);
             Assert.Null(despesa.ParcelamentoId);
@@ -70,15 +70,15 @@ public class LancamentoServiceFase4aTests
             Assert.Equal(-100m, despesas.Sum(d => d.Valor));
             Assert.Equal(new[] { "33.33", "33.33", "33.34" },
                 despesas.Select(d => Math.Abs(d.Valor).ToString("F2", CultureInfo.InvariantCulture)));
-            // compra dia 6 >= melhorDia 5 → vencimento base mês+2 = out/2026; parcelas +1 mês cada
-            Assert.Equal(new DateOnly(2026, 10, 10), despesas[0].DataVencimentoCartao);
-            Assert.Equal(new DateOnly(2026, 12, 10), despesas[2].DataVencimentoCartao);
+            // compra dia 6 >= melhorDia 5 → vencimento base mês+1 = set/2026; parcelas +1 mês cada
+            Assert.Equal(new DateOnly(2026, 9, 10), despesas[0].DataVencimentoCartao);
+            Assert.Equal(new DateOnly(2026, 11, 10), despesas[2].DataVencimentoCartao);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
 
     [Fact]
-    public async Task CriarDespesaCartaoAsync_ComReembolso_CriaReceitaVinculadaPorParcela()
+    public async Task CriarDespesaCartaoAsync_ComReembolso_CriaReembolsoVinculadoPorParcela()
     {
         var (db, file, service, _, cartao) = await SetupAsync();
         try
@@ -91,17 +91,20 @@ public class LancamentoServiceFase4aTests
                 cartao.Id, new DateOnly(2026, 8, 6), 60m, Renda(db).Id, null, null,
                 parcelas: 2, reembolsoPessoaId: pessoa.Id, reembolsoVencimento: null);
 
+            Assert.Equal(2, despesas.Count);
             foreach (var despesa in despesas)
             {
-                Assert.NotNull(despesa.ReembolsoId);
-                var reembolso = await db.Lancamentos.FindAsync(despesa.ReembolsoId!.Value);
-                Assert.NotNull(reembolso);
-                Assert.Equal(LancamentoTipo.Receita, reembolso!.Tipo);
-                Assert.Equal(30m, reembolso.Valor);
+                var reembolso = Assert.Single(db.Reembolsos.Where(r => r.LancamentoId == despesa.Id).ToList());
                 Assert.Equal(pessoa.Id, reembolso.PessoaId);
+                Assert.Equal(cartao.Id, reembolso.CartaoCreditoId);
+                Assert.Equal(30m, reembolso.Valor);
+                Assert.False(reembolso.Fechado);
+                Assert.Null(reembolso.ReceitaId);
                 // reembolso vence um dia antes do vencimento calculado da parcela
-                Assert.Equal(despesa.DataVencimentoCartao!.Value.AddDays(-1), reembolso.Data);
+                Assert.Equal(despesa.DataVencimentoCartao!.Value.AddDays(-1), reembolso.Vencimento);
             }
+            // nenhuma receita imediata: só no fechamento da fatura
+            Assert.Empty(db.Lancamentos.Where(l => l.Tipo == LancamentoTipo.Receita));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -187,8 +190,8 @@ public class LancamentoServiceFase4aTests
 
             var atualizada = await service.ObterAsync(despesa.Id);
             Assert.Equal(-75m, atualizada!.Valor);
-            var reembolso = await db.Lancamentos.FindAsync(despesa.ReembolsoId!.Value);
-            Assert.Equal(75m, reembolso!.Valor);
+            var reembolso = Assert.Single(db.Reembolsos.Where(r => r.LancamentoId == despesa.Id).ToList());
+            Assert.Equal(75m, reembolso.Valor);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -210,6 +213,7 @@ public class LancamentoServiceFase4aTests
             await service.ExcluirAsync(despesas[0].Id);
 
             Assert.Empty(db.Lancamentos.ToList());
+            Assert.Empty(db.Reembolsos.ToList());
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -246,14 +250,14 @@ public class LancamentoServiceFase4aTests
                 parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null);
             var despesa = despesas.Single();
             await service.AlternarConfirmadoAsync(despesa.Id);
-            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/10/2026 → fatura out/2026
-            await faturaService.FecharAsync(cartao.Id, 2026, 10);
+            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/09/2026 → fatura set/2026
+            await faturaService.FecharAsync(cartao.Id, 2026, 9);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAnyAsync<InvalidOperationException>(
                 () => service.AtualizarValorAsync(despesa.Id, 99m));
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAnyAsync<InvalidOperationException>(
                 () => service.ExcluirAsync(despesa.Id));
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAnyAsync<InvalidOperationException>(
                 () => service.AlternarConfirmadoAsync(despesa.Id));
         }
         finally { TestDbContext.Cleanup(db, file); }
@@ -270,8 +274,8 @@ public class LancamentoServiceFase4aTests
                 cartao.Id, new DateOnly(2026, 8, 6), 50m, Renda(db).Id, null, null,
                 parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null);
             await service.AlternarConfirmadoAsync(existentes[0].Id);
-            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/10/2026 → fatura out/2026
-            await faturaService.FecharAsync(cartao.Id, 2026, 10);
+            // compra 06/08 (dia >= melhorDia 5) → vencimento 10/09/2026 → fatura set/2026
+            await faturaService.FecharAsync(cartao.Id, 2026, 9);
 
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.CriarDespesaCartaoAsync(
@@ -284,7 +288,7 @@ public class LancamentoServiceFase4aTests
     }
 
     [Fact]
-    public async Task AtualizarReceitaDespesaAsync_DespesaComReembolso_PropagaParaReembolso()
+    public async Task AtualizarReceitaDespesaAsync_DespesaAtualizaCampos()
     {
         var (db, file, service, conta, _) = await SetupAsync();
         try
@@ -296,27 +300,14 @@ public class LancamentoServiceFase4aTests
             var despesas = await service.CriarParceladoAsync(
                 LancamentoTipo.Despesa, conta.Id, new DateOnly(2026, 8, 1), 100m, 1, Renda(db).Id, null, null);
             var despesa = despesas.Single();
-            var reembolso = new Lancamento
-            {
-                Data = new DateOnly(2026, 8, 20),
-                Tipo = LancamentoTipo.Receita,
-                Valor = 100m,
-                ContaId = conta.Id,
-                CategoriaId = Renda(db).Id,
-                PessoaId = pessoa.Id
-            };
-            db.Lancamentos.Add(reembolso);
-            await db.SaveChangesAsync();
-            despesa.ReembolsoId = reembolso.Id;
-            await db.SaveChangesAsync();
 
             await service.AtualizarReceitaDespesaAsync(
                 despesa.Id, conta.Id, new DateOnly(2026, 8, 5), 150m, Renda(db).Id, null, pessoa.Id);
 
-            var reembolsoAtualizado = await db.Lancamentos.FindAsync(reembolso.Id);
-            Assert.Equal(150m, reembolsoAtualizado!.Valor);
-            Assert.Equal(new DateOnly(2026, 8, 5), reembolsoAtualizado.Data);
-            Assert.Equal(pessoa.Id, reembolsoAtualizado.PessoaId);
+            var atualizada = await db.Lancamentos.FindAsync(despesa.Id);
+            Assert.Equal(-150m, atualizada!.Valor);
+            Assert.Equal(new DateOnly(2026, 8, 5), atualizada.Data);
+            Assert.Equal(pessoa.Id, atualizada.PessoaId);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

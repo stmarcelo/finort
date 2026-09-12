@@ -49,12 +49,12 @@ public class CartaoCreditoServiceTests
     }
 
     [Theory]
-    // compra dia 1 < melhorDia 5 e <= vencimento 10 → vencimento neste mês
+    // compra dia 1 < melhorDia 5 → vencimento neste mês
     [InlineData("2026-08-01", 2026, 8, 10)]
-    // compra dia 5 >= melhorDia 5 → vencimento mês+2
-    [InlineData("2026-08-05", 2026, 10, 10)]
-    // compra dia 6 >= melhorDia 5 → vencimento mês+2
-    [InlineData("2026-08-06", 2026, 10, 10)]
+    // compra dia 5 = melhorDia 5 → abre novo ciclo, vencimento mês+1
+    [InlineData("2026-08-05", 2026, 9, 10)]
+    // compra dia 6 >= melhorDia 5 → vencimento mês+1
+    [InlineData("2026-08-06", 2026, 9, 10)]
     public void CalcularVencimento_UsaMelhorDiaEVencimento(
         string compra, int anoEsperado, int mesEsperado, int diaEsperado)
     {
@@ -70,10 +70,10 @@ public class CartaoCreditoServiceTests
     {
         var cartao = new CartaoCredito { MelhorDiaCompra = 1, DiaVencimento = 31 };
 
-        // compra 02/12/2025 (dia >= melhorDia 1) → vencimento mês+2 = fev/2026 → clamp no último dia
+        // compra 02/12/2025 (dia >= melhorDia 1) → ciclo dez/2025, vencimento 31/12/2025
         var vencimento = CartaoCreditoService.CalcularVencimento(cartao, new DateOnly(2025, 12, 2));
 
-        Assert.Equal(new DateOnly(2026, 2, 28), vencimento);
+        Assert.Equal(new DateOnly(2025, 12, 31), vencimento);
     }
 
     [Fact]
@@ -150,14 +150,15 @@ public class CartaoCreditoServiceTests
     }
 
     [Fact]
-    public void CalcularVencimento_DiaCompraMenorQueAmbos_VaiProMesmo()
+    public void CalcularVencimento_DiaCompraMenorQueAmbos_VaiProMesSeguinte()
     {
         var cartao = new CartaoCredito { MelhorDiaCompra = 15, DiaVencimento = 10 };
         var dataCompra = new DateOnly(2026, 9, 5);
 
         var resultado = CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
 
-        Assert.Equal(new DateOnly(2026, 9, 10), resultado);
+        // ciclo 15/08–14/09 com vencimento dia 10 < melhor dia → +1 mês = 10/10
+        Assert.Equal(new DateOnly(2026, 10, 10), resultado);
     }
 
     [Fact]

@@ -60,7 +60,6 @@ public class FluxoService
                 l.Confirmado,
                 l.ContaId,
                 l.CartaoCreditoId,
-                l.ReembolsoId,
                 BancoCartao = l.CartaoCredito != null ? l.CartaoCredito.Banco : null,
                 DigitosCartao = l.CartaoCredito != null ? l.CartaoCredito.Ultimos4Digitos : null
             })
@@ -76,45 +75,30 @@ public class FluxoService
                         && l.Tipo == LancamentoTipo.Despesa && l.CartaoCreditoId == null)
             .ToList();
 
-        // IDs de receitas que são reembolsos (apontadas por ReembolsoId de despesas de cartão)
-        var idsReembolso = lancamentos
-            .Where(l => l.ReembolsoId.HasValue)
-            .Select(l => l.ReembolsoId!.Value)
-            .ToHashSet();
-
-        // Receitas normais: janela (da+1/m até da/m+1), sem reembolsos
+        // Receitas normais: janela (da+1/m até da/m+1).
+        // Reembolsos pendentes vivem na tabela Reembolsos (sem receita até o fechamento).
         var receitasNormais = lancamentos
             .Where(l => l.Data >= inicioJanela && l.Data <= fimJanela
-                        && l.Tipo == LancamentoTipo.Receita && !idsReembolso.Contains(l.Id))
+                        && l.Tipo == LancamentoTipo.Receita)
             .ToList();
 
-        // Reembolsos: buscar despesas de cartão na janela e pegar seus ReembolsoId
-        // (o reembolso acompanha o vencimento do cartão, não sua própria data)
-        var despesasCartaoNaJanela = lancamentos
-            .Where(l => l.CartaoCreditoId != null && l.Tipo == LancamentoTipo.Despesa
-                        && l.DataVencimentoCartao >= inicioJanela && l.DataVencimentoCartao <= fimJanela
-                        && l.ReembolsoId.HasValue)
-            .Select(l => l.ReembolsoId!.Value)
-            .ToHashSet();
-
-        var reembolsosLista = lancamentos
-            .Where(l => despesasCartaoNaJanela.Contains(l.Id))
-            .ToList();
-        var totalReembolsos = reembolsosLista.Sum(l => l.Valor);
+        // Reembolsos pendentes por vencimento (previsão até o fechamento da fatura).
+        var reembolsosPendentes = await _db.Reembolsos
+            .Where(r => !r.Fechado && r.Vencimento >= inicioJanela && r.Vencimento <= fimJanela)
+            .ToListAsync();
+        var totalReembolsos = reembolsosPendentes.Sum(r => r.Valor);
 
         // Label para exibição
         var labelReembolsos = diasAntecipacao > 0
             ? $"Reembolsos (inclui até {fimJanela.Day:D2}/{fimJanela.Month:D2})"
             : "Reembolsos";
 
-        var receitasDoMes = receitasNormais.Concat(reembolsosLista).ToList();
-
-        var receitas = receitasDoMes.Sum(l => l.Valor)
+        var receitas = receitasNormais.Sum(l => l.Valor) + totalReembolsos
             + projecoesMes.Where(p => p.Data >= inicioJanela && p.Data <= fimJanela
                                       && p.Provisao.Onde == ProvisaoOnde.Receita)
                 .Sum(p => p.Provisao.Valor);
 
-        var receitasReais = receitasDoMes;
+        var receitasReais = receitasNormais;
         var receitasPagas = receitasReais.Count > 0 && receitasReais.All(l => l.Confirmado);
         var despesasPagas = despesasDoMes.Count > 0 && despesasDoMes.All(l => l.Confirmado);
 
