@@ -215,6 +215,10 @@ docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/stmarcelo/fino
 
 Acesse a página de [Releases](https://github.com/stmarcelo/finort/releases) e baixe o arquivo `finort-x.x.x-win-x64-setup.exe`.
 
+**Versão portable:**
+
+Também está disponível o arquivo `finort-x.x.x-win-x64-portable.zip` na página de [Releases](https://github.com/stmarcelo/finort/releases) — basta extrair a pasta e executar `Finort.exe`, sem instalação (ideal para pendrive ou máquinas sem permissão de instalação).
+
 **Build local do instalador:**
 
 ```bash
@@ -237,6 +241,7 @@ Ou execute o script `build-windows.bat` na raiz do projeto.
 | Método | Onde |
 | :-- | :-- |
 | Instalador Windows | [GitHub Releases](https://github.com/stmarcelo/finort/releases) — `finort-x.x.x-win-x64-setup.exe` |
+| Portable Windows | [GitHub Releases](https://github.com/stmarcelo/finort/releases) — `finort-x.x.x-win-x64-portable.zip` (extraia e execute `Finort.exe`) |
 | Container | [`ghcr.io/stmarcelo/finort`](https://github.com/stmarcelo/finort/pkgs/container/finort), multi-arch para `linux/amd64` e `linux/arm64` |
 | Build local | `dotnet publish` ou `.\build-windows.bat` (veja abaixo) |
 
@@ -260,7 +265,8 @@ git push origin v0.1.0
    - Valida se a tag corresponde à versão em `Version.props`
    - Compila o aplicativo para win-x64
    - Gera o instalador com Inno Setup
-   - Cria a release com o instalador anexado
+   - Gera também o pacote portable (`finort-x.y.z-win-x64-portable.zip`)
+   - Cria a release com o instalador e o pacote portable anexados
 
 **Versionamento:**
 
