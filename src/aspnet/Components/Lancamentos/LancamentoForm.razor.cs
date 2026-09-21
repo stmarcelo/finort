@@ -11,6 +11,7 @@ public partial class LancamentoForm : AppComponentBase
     [Parameter] public LancamentoTipo Tipo { get; set; }
     [Parameter] public Guid? LancamentoId { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback<Lancamento> OnCriado { get; set; }
 
     private MudForm _form = null!;
     private bool _salvando;
@@ -87,6 +88,7 @@ public partial class LancamentoForm : AppComponentBase
         _salvando = true;
         try
         {
+            Lancamento? criado = null;
             if (LancamentoId is null)
             {
                 if (Tipo == LancamentoTipo.Transferencia)
@@ -96,22 +98,23 @@ public partial class LancamentoForm : AppComponentBase
                         Snackbar.Add("Informe as duas contas.", Severity.Error);
                         return;
                     }
-                    await LancamentoService.CriarTransferenciaAsync(_contaOrigemId.Value, _contaDestinoId.Value, data, _valor.Value);
+                    var transferencia = await LancamentoService.CriarTransferenciaAsync(_contaOrigemId.Value, _contaDestinoId.Value, data, _valor.Value);
+                    criado = transferencia.Destino;
                 }
                 else
                 {
-                    if (_contaId is null || _categoriaId is null)
+                    if (_categoriaId is null)
                     {
-                        Snackbar.Add("Informe a conta e a categoria.", Severity.Error);
+                        Snackbar.Add("Informe a categoria.", Severity.Error);
                         return;
                     }
                     if (_repetir)
-                        await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId.Value, data, _valor.Value,
-                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                        criado = (await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId, data, _valor.Value,
+                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId))[0];
                     else if (Tipo == LancamentoTipo.Receita)
-                        await LancamentoService.CriarReceitaAsync(_contaId.Value, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                        criado = await LancamentoService.CriarReceitaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
                     else
-                        await LancamentoService.CriarDespesaAsync(_contaId.Value, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                        criado = await LancamentoService.CriarDespesaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
                 }
             }
             else
@@ -128,12 +131,14 @@ public partial class LancamentoForm : AppComponentBase
                 else
                 {
                     var atualizarFuturos = await PerguntarAtualizarFuturosAsync();
-                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId!.Value, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos);
+                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos);
                 }
             }
 
             Snackbar.Add("Lançamento salvo.", Severity.Success);
-            if (OnSaved.HasDelegate)
+            if (OnCriado.HasDelegate && criado is not null)
+                await OnCriado.InvokeAsync(criado);
+            else if (OnSaved.HasDelegate)
                 await OnSaved.InvokeAsync();
             else
                 Navigation.NavigateTo("/lancamentos");

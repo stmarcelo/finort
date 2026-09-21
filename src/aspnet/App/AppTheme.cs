@@ -13,7 +13,7 @@ public static class AppTheme
         {
             Primary = "#1A2F4C",
             Secondary = "#C9A94E",
-            Info = "#1A2F4C",
+            Info = "#2196F3",
             Success = "#248A3D",
             Error = "#D70015",
             Background = "#FBF9F8",

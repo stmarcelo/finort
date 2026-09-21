@@ -14,6 +14,8 @@
         <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Class="mr-2" /> Contas
     </MudText>
     <MudSpacer />
+    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.EventBusy"
+               OnClick="@(() => Navigation.NavigateTo("/fechar-mes"))">Fechar mês</MudButton>
     <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="() => AbrirDialog(null)">Nova conta</MudButton>
 </MudToolBar>

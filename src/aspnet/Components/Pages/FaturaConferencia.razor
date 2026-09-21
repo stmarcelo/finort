@@ -73,17 +73,24 @@
     @if (_reembolsos.Count > 0)
     {
         <MudItem xs="12">
-            <MudAlert Severity="Severity.Info" Dense="true">Esta fatura possui @_reembolsos.Count reembolso(s) (@_reembolsos.Count(r => !r.Fechado) pendente(s)). A receita agregada por pessoa é gerada só no fechamento.</MudAlert>
-            <MudTable Items="@_reembolsos.GroupBy(r => r.Pessoa?.Nome ?? "-").Select(g => new { Pessoa = g.Key, Total = g.Sum(r => r.Valor), Qtd = g.Count() })" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+            <MudAlert Severity="Severity.Info" Dense="true">Esta fatura possui @_reembolsos.Count reembolso(s) (@_reembolsos.Count(r => !r.Fechado) pendente(s)). A receita agregada por pessoa é gerada no fechamento total ou na baixa parcial por pessoa.</MudAlert>
+            <MudTable Items="@_reembolsos.GroupBy(r => r.PessoaId).Select(g => new { Pessoa = g.First().Pessoa?.Nome ?? "-", PessoaId = g.Key, Total = g.Sum(r => r.Valor), Qtd = g.Count() })" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
                 <HeaderContent>
                     <MudTh>Pessoa</MudTh>
                     <MudTh>Itens</MudTh>
                     <MudTh>Total a reembolsar</MudTh>
+                    <MudTh></MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.Pessoa</MudTd>
                     <MudTd>@context.Qtd</MudTd>
                     <MudTd>@context.Total.ToString("N2")</MudTd>
+                    <MudTd>
+                        @if (!_fechada)
+                        {
+                            <MudButton Size="Size.Small" Variant="@gVariant" OnClick="() => AbrirReembolsosGrupo(context.PessoaId, context.Pessoa)">Ver reembolsos</MudButton>
+                        }
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
         </MudItem>
@@ -213,6 +220,21 @@
         var hoje = DateOnly.FromDateTime(DateTime.Today);
         _ano = hoje.Year;
         _mes = hoje.Month;
+
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(NavigationManager.Uri).Query);
+        if (query.TryGetValue("mes", out var valoresMes)
+            && int.TryParse(valoresMes.FirstOrDefault(), out var mesParam)
+            && mesParam is >= 1 and <= 12)
+        {
+            _mes = mesParam;
+        }
+        if (query.TryGetValue("ano", out var valoresAno)
+            && int.TryParse(valoresAno.FirstOrDefault(), out var anoParam)
+            && anoParam >= 1)
+        {
+            _ano = anoParam;
+        }
+
         await CarregarAsync();
     }
 
@@ -429,6 +451,22 @@
             { x => x.CartaoCreditoId, Id }
         };
         await DialogService.ShowAsync<FaturaHistoricoDialog>("Histórico de Faturas", parameters);
+    }
+
+    private async Task AbrirReembolsosGrupo(Guid pessoaId, string pessoaNome)
+    {
+        var parameters = new DialogParameters<ReembolsosGrupoDialog>
+        {
+            { x => x.CartaoId, Id },
+            { x => x.Inicio, _dataInicioPeriodo },
+            { x => x.Fim, _dataFimPeriodo },
+            { x => x.PessoaId, pessoaId },
+            { x => x.PessoaNome, pessoaNome }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ReembolsosGrupoDialog>("Reembolsos", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
     }
 
     private static string RotuloParcela(Lancamento lancamento)

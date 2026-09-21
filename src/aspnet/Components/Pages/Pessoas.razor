@@ -9,79 +9,100 @@
 
 <PageTitle>Pessoas</PageTitle>
 
-<MudGrid Class="mt-4">
-    <MudItem xs="12">
-        <MudToolBar>
-            <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
-                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" /> Pessoas
-            </MudText>
-            <MudSpacer />
-            <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="() => AbrirDialog(null)">Nova pessoa</MudButton>
-        </MudToolBar>
-    </MudItem>
-    <MudItem xs="12">
-        <MudTable Items="@_pessoas" Hover="true" Breakpoint="Breakpoint.Sm">
-            <HeaderContent>
-                <MudTh>Nome</MudTh>
-                <MudTh>Cor</MudTh>
-                <MudTh>Observação</MudTh>
-                <MudTh>Lembretes</MudTh>
-                <MudTh>Ações</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.Nome</MudTd>
-                <MudTd>
-                    @if (!string.IsNullOrEmpty(context.CorDeExibicao))
+<MudToolBar Class="mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" /> Pessoas
+    </MudText>
+    <MudSpacer />
+    <MudButton Variant="@gVariant" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="() => AbrirDialog(null)">Nova pessoa</MudButton>
+</MudToolBar>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_pessoas.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">Nenhuma pessoa cadastrada.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mt-2">
+        @foreach (var p in _pessoas)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            @if (!string.IsNullOrEmpty(p.CorDeExibicao))
+                            {
+                                var hex = p.CorDeExibicao.StartsWith("#") ? p.CorDeExibicao : "#" + p.CorDeExibicao;
+                                <div style="width:24px;height:24px;border-radius:4px;background:@hex;"></div>
+                            }
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600">@p.Nome</MudText>
+                        </MudStack>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="0">
+                            @if (_contagemLembretes.TryGetValue(p.Id, out var count) && count > 0)
+                            {
+                                <MudTooltip Text="@ObterTextosLembretes(p.Id)">
+                                    <MudBadge Content="@count" Color="Color.Primary" Overlap="true" Bordered="true">
+                                        <MudIcon Icon="@Icons.Material.Filled.Notifications" Color="Color.Primary" />
+                                    </MudBadge>
+                                </MudTooltip>
+                            }
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="() => AbrirDialog(p)">Editar</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
+                                             OnClick="() => Excluir(p)">Excluir</MudMenuItem>
+                            </MudMenu>
+                        </MudStack>
+                    </MudStack>
+
+                    @if (!string.IsNullOrEmpty(p.Observacao))
                     {
-                        var hex = context.CorDeExibicao.StartsWith("#") ? context.CorDeExibicao : "#" + context.CorDeExibicao;
-                        <div style="width:24px;height:24px;border-radius:4px;background:@hex;"></div>
+                        <MudText Typo="Typo.body2" Class="mb-1" Style="color:var(--finort-muted);">@p.Observacao</MudText>
                     }
-                </MudTd>
-                <MudTd>@context.Observacao</MudTd>
-                <MudTd>
-                    @if (_contagemLembretes.TryGetValue(context.Id, out var count) && count > 0)
-                    {
-                        <MudTooltip Text="@ObterTextosLembretes(context.Id)">
-                            <MudBadge Content="@count" Color="Color.Primary" Overlap="true" Bordered="true">
-                                <MudIcon Icon="@Icons.Material.Filled.Notifications" Color="Color.Primary" />
-                            </MudBadge>
-                        </MudTooltip>
-                    }
-                </MudTd>
-                <MudTd>
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
-                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                     OnClick="() => AbrirDialog(context)">Editar</MudMenuItem>
-                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
-                                     OnClick="() => Excluir(context)">Excluir</MudMenuItem>
-                    </MudMenu>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
-    </MudItem>
-</MudGrid>
+                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
+                        <MudText Typo="Typo.body2" Class="text-muted">Lembretes</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600;">
+                            @(_contagemLembretes.TryGetValue(p.Id, out var total) ? total.ToString() : "0")
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
 
 @code {
     private List<Pessoa> _pessoas = new();
     private Dictionary<Guid, int> _contagemLembretes = new();
     private Dictionary<Guid, List<Lembrete>> _lembretesPorPessoa = new();
+    private bool _carregando = true;
 
     protected override async Task OnInitializedAsync()
         => await CarregarAsync();
 
     private async Task CarregarAsync()
     {
-        _pessoas = await PessoaService.ListarAsync();
-        var ids = _pessoas.Select(p => p.Id).ToList();
-        _contagemLembretes = await LembreteService.ContarPorPessoasAsync(ids);
-        
-        // Load lembretes for tooltip
-        _lembretesPorPessoa = new();
-        foreach (var id in ids.Where(id => _contagemLembretes.GetValueOrDefault(id) > 0))
+        _carregando = true;
+        try
         {
-            _lembretesPorPessoa[id] = await LembreteService.ListarPorPessoaAsync(id);
+            _pessoas = await PessoaService.ListarAsync();
+            var ids = _pessoas.Select(p => p.Id).ToList();
+            _contagemLembretes = await LembreteService.ContarPorPessoasAsync(ids);
+
+            // Load lembretes for tooltip
+            _lembretesPorPessoa = new();
+            foreach (var id in ids.Where(id => _contagemLembretes.GetValueOrDefault(id) > 0))
+            {
+                _lembretesPorPessoa[id] = await LembreteService.ListarPorPessoaAsync(id);
+            }
         }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        finally { _carregando = false; }
     }
 
     private string ObterTextosLembretes(Guid pessoaId)

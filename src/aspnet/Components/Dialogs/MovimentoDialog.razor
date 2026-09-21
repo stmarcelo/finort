@@ -11,7 +11,7 @@
         {
             <div class="fluxo-linha mb-2">
                 <span class="fluxo-label">Posição atual</span>
-                <span class="fluxo-valor">@PosicaoAtual.ToString("N2")</span>
+                <span class="fluxo-valor">@PosicaoAtual.ToString($"N{CasasDecimaisQuantidade}")</span>
             </div>
         }
         else

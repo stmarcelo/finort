@@ -36,13 +36,15 @@
         _salvando = true;
         try
         {
-            await LancamentoService.CriarDespesaCartaoAsync(
+            var criados = await LancamentoService.CriarDespesaCartaoAsync(
                 d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
                 d.Parcelas, d.ReembolsoPessoaId,
                 vencimentoExato: d.DataVencimentoCartao,
                 ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
             Snackbar.Add("Lançamento salvo.", Severity.Success);
-            Navigation.NavigateTo("/lancamentos");
+            var primeiro = criados[0];
+            var vencimento = primeiro.DataVencimentoCartao ?? primeiro.Data;
+            Navigation.NavigateTo($"/cartoes/{d.CartaoId}/fatura?ano={vencimento.Year}&mes={vencimento.Month}");
         }
         catch (Exception ex)
         {

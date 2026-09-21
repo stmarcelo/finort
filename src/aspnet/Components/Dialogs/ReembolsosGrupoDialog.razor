@@ -1,0 +1,103 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@inject ReembolsoService ReembolsoService
+@inject FaturaService FaturaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Reembolsos — @PessoaNome</MudText></TitleContent>
+    <DialogContent>
+        <MudTable Items="@_itens" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" MultiSelection="true" @bind-SelectedItems="_selecionados">
+            <HeaderContent>
+                <MudTh>Data</MudTh>
+                <MudTh>Parcela</MudTh>
+                <MudTh>Valor</MudTh>
+                <MudTh>Vencimento</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Lancamento.Data.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>@(context.ParcelaAtual.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "—")</MudTd>
+                <MudTd>
+                    <MudMoneyInput Value="@context.Valor" Disabled="@context.Fechado"
+                                   ValueChanged="(decimal? v) => SalvarValor(context, v)" />
+                </MudTd>
+                <MudTd>
+                    <MudDatePicker Date="@(context.Vencimento.ToDateTime(TimeOnly.MinValue))" Disabled="@context.Fechado"
+                                   DateChanged="(DateTime? d) => SalvarVencimento(context, d)" DateFormat="dd/MM/yyyy" />
+                </MudTd>
+                <MudTd>@(context.Fechado ? "Fechado" : "Pendente")</MudTd>
+                <MudTd></MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Fechar">Fechar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@gVariant" Disabled="@(_selecionados.Count == 0)" OnClick="FecharSelecionados">Fechar selecionados</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid CartaoId { get; set; }
+    [Parameter] public DateOnly Inicio { get; set; }
+    [Parameter] public DateOnly Fim { get; set; }
+    [Parameter] public Guid PessoaId { get; set; }
+    [Parameter] public string PessoaNome { get; set; } = string.Empty;
+
+    private List<Reembolso> _itens = new();
+    private HashSet<Reembolso> _selecionados = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        var todos = await ReembolsoService.ObterDaFaturaAsync(CartaoId, Inicio, Fim);
+        _itens = todos.Where(r => r.PessoaId == PessoaId).OrderBy(r => r.Vencimento).ToList();
+        _selecionados.RemoveWhere(s => s.Fechado || !_itens.Any(i => i.Id == s.Id));
+    }
+
+    private async Task SalvarValor(Reembolso r, decimal? v)
+    {
+        if (v is null || v.Value == r.Valor) return;
+        try
+        {
+            await ReembolsoService.AtualizarAsync(r.Id, v.Value, r.Vencimento);
+            await CarregarAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); await CarregarAsync(); }
+    }
+
+    private async Task SalvarVencimento(Reembolso r, DateTime? d)
+    {
+        if (d is null) return;
+        var novo = DateOnly.FromDateTime(d.Value);
+        if (novo == r.Vencimento) return;
+        try
+        {
+            await ReembolsoService.AtualizarAsync(r.Id, r.Valor, novo);
+            await CarregarAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); await CarregarAsync(); }
+    }
+
+    private async Task FecharSelecionados()
+    {
+        var ids = _selecionados.Where(s => !s.Fechado).Select(s => s.Id).ToList();
+        if (ids.Count == 0) return;
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar reembolsos", options);
+        var escolha = await dialog.Result;
+        if (escolha is null || escolha.Canceled || escolha.Data is not FecharFaturaReembolsoDialog.FechamentoReembolsoEscolha sel) return;
+        try
+        {
+            await FaturaService.FecharReembolsosSelecionadosAsync(ids, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId);
+            Snackbar.Add("Reembolsos fechados.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private void Fechar() => MudDialog.Cancel();
+}

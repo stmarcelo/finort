@@ -6,6 +6,7 @@
 @inject ContaService ContaService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Fechar mês</PageTitle>
 
@@ -93,14 +94,18 @@ else
             </TemplateColumn>
             <TemplateColumn Title="Ação">
                 <CellTemplate>
-                    @if (!context.Item.MesFechado && !context.Item.TemPendencias)
-                    {
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                                   Disabled="@(!_saldosReais.ContainsKey(context.Item.ContaId) || _saldosReais[context.Item.ContaId] is null)"
-                                   OnClick="@(() => FecharConta(context.Item.ContaId))">
-                            Fechar
-                        </MudButton>
-                    }
+                    <div class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" Title="Extrato"
+                                       OnClick="@(() => NavigationManager.NavigateTo($"/contas/{context.Item.ContaId}/extrato?ano={_ano}&mes={_mes}"))" />
+                        @if (!context.Item.MesFechado && !context.Item.TemPendencias)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                       Disabled="@(!_saldosReais.ContainsKey(context.Item.ContaId) || _saldosReais[context.Item.ContaId] is null)"
+                                       OnClick="@(() => FecharConta(context.Item.ContaId))">
+                                Fechar
+                            </MudButton>
+                        }
+                    </div>
                 </CellTemplate>
             </TemplateColumn>
         </Columns>

@@ -28,6 +28,24 @@ else if (_cards.Count == 0)
 }
 else
 {
+    <MudGrid Spacing="2" Class="mt-2">
+        <MudItem xs="12" sm="6" md="3">
+            <div class="summary-chip">
+                <span class="label">Total investido</span>
+                <span class="value pos">@TotalGeral.ToString("N2")</span>
+            </div>
+        </MudItem>
+    </MudGrid>
+    <MudGrid Spacing="4" Class="mt-4">
+        @foreach (var t in TotaisPorTipo)
+        {
+            <MudItem xs="6" sm="4" md="4" lg="2" Class="d-flex justify-center">
+            <MudBadge Content="@($"{t.Percentual:N2}%")" Color="Color.Info" Origin="Origin.TopRight" Overlap="true" Bordered="true">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary">@RotuloTipo(t.Tipo) @t.Valor.ToString("N2")</MudChip>
+            </MudBadge>
+            </MudItem>
+        }
+    </MudGrid>
     <MudGrid Spacing="3" Class="mt-2">
         @foreach (var card in _cards)
         {
@@ -168,8 +186,10 @@ else
 
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
-    private static string RotuloTipo(Investimento i)
-        => i.Tipo switch
+    private static string RotuloTipo(Investimento i) => RotuloTipo(i.Tipo);
+
+    private static string RotuloTipo(TipoInvestimento tipo)
+        => tipo switch
         {
             TipoInvestimento.Reserva => "Reserva",
             TipoInvestimento.Dolar => "Dólar",
@@ -177,8 +197,21 @@ else
             TipoInvestimento.Fii => "FII",
             TipoInvestimento.Acao => "Ação",
             TipoInvestimento.Cdb => "CDB / Fundo",
-            _ => i.Tipo.ToString()
+            _ => tipo.ToString()
         };
+
+    private decimal TotalGeral => _cards.Sum(c => c.Saldo);
+
+    private List<(TipoInvestimento Tipo, decimal Valor, decimal Percentual)> TotaisPorTipo =>
+        _cards.GroupBy(c => c.Investimento.Tipo)
+            .Select(g =>
+            {
+                var valor = g.Sum(c => c.Saldo);
+                var pct = TotalGeral == 0m ? 0m : valor / TotalGeral * 100;
+                return (g.Key, valor, pct);
+            })
+            .OrderByDescending(t => t.valor)
+            .ToList();
 
     private static string IconeTipo(Investimento i)
         => i.Tipo switch

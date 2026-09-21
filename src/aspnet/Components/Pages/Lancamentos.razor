@@ -23,7 +23,7 @@
             <MudExpansionPanel @ref="_painelFiltros" Text="@TituloFiltros">
 <MudGrid Class="mt-4">
                     <MudItem xs="12" md="6" lg="3">
-                        <ContaSelect Label="Conta" Placeholder="Todas" PermitirNovo="false"
+                        <ContaSelect Label="Conta" Placeholder="Todas" PermitirNovo="false" IncluirSemConta="true"
                                      @bind-Value="_filtroConta" />
                     </MudItem>
                     <MudItem xs="12" md="6" lg="3">
@@ -67,13 +67,11 @@
 
     <MudItem xs="12">
         <div class="d-flex flex-wrap mb-2">
-            <div class="summary-chip mr-2">
-                <span class="label">Real (confirmado)</span>
-                <span class="value @ClasseTotalReal">@_totalReal.ToString("N2")</span>
-            </div>
-            <div class="summary-chip">
-                <span class="label">Previsão (tudo)</span>
-                <span class="value @ClasseTotalPrevisto">@_totalPrevisto.ToString("N2")</span>
+            <div class="d-flex justify-end flex-grow-1 ga-2">
+                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.ReceiptLong"
+                           OnClick="IrParaExtrato">Extrato</MudButton>
+                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.CreditCard"
+                           OnClick="IrParaFatura">Fatura</MudButton>
             </div>
         </div>
     </MudItem>
@@ -187,9 +185,6 @@
 
     private MudExpansionPanel _painelFiltros = null!;
 
-    private decimal _totalReal;
-    private decimal _totalPrevisto;
-
     private bool TemFiltroAplicado
         => _filtroConta is not null || _filtroCartao is not null ||
            _filtroPessoa is not null || _filtroTipo is not null;
@@ -199,12 +194,6 @@
     private string TituloFiltros => _filtrosAplicados ? "Filtros (aplicado)" : "Filtros";
 
     private string RotuloMes => new DateTime(_anoNav, _mesNav, 1).ToString("MMMM yyyy", CulturaPtBr);
-
-    private string ClasseTotalReal
-        => _totalReal > 0 ? "pos" : _totalReal < 0 ? "neg" : "";
-
-    private string ClasseTotalPrevisto
-        => _totalPrevisto > 0 ? "pos" : _totalPrevisto < 0 ? "neg" : "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,12 +220,11 @@
 
     private async Task CarregarAsync()
     {
+        var semConta = _filtroConta == Guid.Empty;
         _lancamentos = await LancamentoService.ListarAsync(
-            _filtroConta, _filtroTipo, _mesNav, _anoNav,
-            confirmado: null, pessoaId: _filtroPessoa, cartaoId: _filtroCartao);
-
-        _totalReal = _lancamentos.Where(l => l.Confirmado).Sum(l => l.Valor);
-        _totalPrevisto = _lancamentos.Sum(l => l.Valor);
+            semConta ? null : _filtroConta, _filtroTipo, _mesNav, _anoNav,
+            confirmado: null, pessoaId: _filtroPessoa, cartaoId: _filtroCartao,
+            somenteSemConta: semConta);
 
         _rotulosRecorrencia = new();
         var grupos = _lancamentos.Where(l => l.RecorrenciaId.HasValue)
@@ -278,6 +266,34 @@
         _anoNav = hoje.Year;
         _mesNav = hoje.Month;
         await CarregarAsync();
+    }
+
+    private async Task IrParaExtrato()
+    {
+        if (_filtroConta.HasValue && _filtroConta != Guid.Empty)
+        {
+            Navigation.NavigateTo($"/contas/{_filtroConta.Value}/extrato");
+            return;
+        }
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Finort.Components.Dialogs.SelecionarContaDialog>("Selecionar conta", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is Guid id)
+            Navigation.NavigateTo($"/contas/{id}/extrato");
+    }
+
+    private async Task IrParaFatura()
+    {
+        if (_filtroCartao.HasValue)
+        {
+            Navigation.NavigateTo($"/cartoes/{_filtroCartao.Value}/fatura");
+            return;
+        }
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Finort.Components.Dialogs.SelecionarCartaoDialog>("Selecionar cartão", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is Guid id)
+            Navigation.NavigateTo($"/cartoes/{id}/fatura");
     }
 
     private async Task NavegarMes(int delta)

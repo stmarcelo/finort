@@ -130,13 +130,14 @@ public class ReceitaRelatorioServiceTests : IDisposable
 
         var linha = Assert.Single(r.Linhas);
         Assert.Equal(250m, linha.Valor);
-        Assert.True(linha.Confirmado);
+        Assert.False(linha.Confirmado);
         // receita agregada é da conta informada no fechamento, sem vínculo de cartão
         Assert.Null(linha.CartaoNome);
         Assert.Equal("Banco", linha.ContaNome);
         var origem = Assert.Single(r.SubtotaisPorOrigem);
         Assert.Contains("Banco", origem.Rotulo);
-        Assert.Equal(250m, origem.Confirmado);
+        Assert.Equal(0m, origem.Confirmado);
+        Assert.Equal(250m, origem.NaoConfirmado);
     }
 
     [Fact]

@@ -20,6 +20,9 @@
     [Parameter] public string? RequiredError { get; set; }
     [Parameter] public bool PermitirNovo { get; set; } = true;
 
+    /// <summary>Quando true, inclui a opção "Sem conta" (Guid.Empty) no início da lista.</summary>
+    [Parameter] public bool IncluirSemConta { get; set; }
+
     [Parameter] public Guid? Value { get; set; }
     [Parameter] public EventCallback<Guid?> ValueChanged { get; set; }
 
@@ -28,7 +31,10 @@
     private async Task RecarregarAsync()
     {
         var contas = await ContaService.ListarAsync();
-        _opcoes = contas.Select(c => new KeyValuePair<Guid, string>(c.Id, c.Nome)).ToList();
+        var opcoes = contas.Select(c => new KeyValuePair<Guid, string>(c.Id, c.Nome)).ToList();
+        if (IncluirSemConta)
+            opcoes.Insert(0, new KeyValuePair<Guid, string>(Guid.Empty, "Sem conta"));
+        _opcoes = opcoes;
     }
 
     private Task OnValueChanged(Guid? id) => ValueChanged.InvokeAsync(id);

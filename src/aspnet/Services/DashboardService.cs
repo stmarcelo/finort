@@ -16,12 +16,15 @@ public class DashboardService
     }
 
     /// <summary>Agregados do período. Em meses futuros ao mês corrente, as provisões projetadas
-    /// somam nas respectivas categorias (regra da spec).</summary>
+    /// somam nas respectivas categorias (regra da spec). Despesas de cartão com reembolso e
+    /// receitas geradas de reembolsos são ignoradas (fluxo de terceiros, não do usuário).</summary>
     public async Task<DashboardMes> ObterAsync(DateOnly inicio, DateOnly fim)
     {
         var lancamentos = await _db.Lancamentos
             .Where(l => l.Data >= inicio && l.Data <= fim &&
-                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita))
+                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita) &&
+                        !_db.Reembolsos.Any(r => r.LancamentoId == l.Id) &&
+                        !_db.Reembolsos.Any(r => r.ReceitaId == l.Id))
             .Select(l => new
             {
                 l.Data,
@@ -163,7 +166,9 @@ public class DashboardService
         var inicio = fim.AddMonths(-5);
         var lancamentos = await _db.Lancamentos
             .Where(l => l.Data >= new DateOnly(inicio.Year, inicio.Month, 1) && l.Data <= fim &&
-                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita))
+                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita) &&
+                        !_db.Reembolsos.Any(r => r.LancamentoId == l.Id) &&
+                        !_db.Reembolsos.Any(r => r.ReceitaId == l.Id))
             .Select(l => new { l.Data, l.Tipo, l.Valor })
             .ToListAsync();
 

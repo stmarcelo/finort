@@ -14,4 +14,19 @@ public class ReembolsoService
         => _db.Reembolsos.Include(r => r.Pessoa).Include(r => r.CartaoCredito)
             .Where(r => !r.Fechado && r.Vencimento >= inicio && r.Vencimento <= fim)
             .ToListAsync();
+    public async Task<Reembolso> AtualizarAsync(Guid id, decimal valor, DateOnly vencimento)
+    {
+        if (valor <= 0m)
+            throw new ArgumentException("Informe um valor maior que zero.");
+        if (vencimento == default)
+            throw new ArgumentException("Informe o vencimento.");
+        var r = await _db.Reembolsos.FindAsync(id)
+            ?? throw new InvalidOperationException("Reembolso não encontrado.");
+        if (r.Fechado)
+            throw new InvalidOperationException("Reembolso já fechado; reabra a fatura para editar.");
+        r.Valor = valor;
+        r.Vencimento = vencimento;
+        await _db.SaveChangesAsync();
+        return r;
+    }
 }

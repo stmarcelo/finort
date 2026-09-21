@@ -1,0 +1,17 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+<MudDialog>
+    <DialogContent>
+        <CartaoSelect Label="Cartão" Placeholder="Selecione" PermitirNovo="false" @bind-Value="_id" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@gVariant" Disabled="@(_id is null)" OnClick="Confirmar">Ir</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    private Guid? _id;
+    private void Cancelar() => MudDialog.Cancel();
+    private void Confirmar() { if (_id is not null) MudDialog.Close(DialogResult.Ok(_id.Value)); }
+}

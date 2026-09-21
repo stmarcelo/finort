@@ -22,7 +22,7 @@
     }
     else
     {
-        <ContaSelect Label="Conta" Required="true" RequiredError="Selecione a conta."
+        <ContaSelect Label="Conta" Placeholder="Opcional"
                      @bind-Value="_contaId" />
         <DataPicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
         <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />

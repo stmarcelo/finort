@@ -25,7 +25,7 @@ public class LancamentoService
     }
 
     public async Task<Lancamento> CriarReceitaAsync(
-        Guid contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
+        Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
         Guid? projetoId = null)
     {
         Validar(valor, data);
@@ -47,7 +47,7 @@ public class LancamentoService
     }
 
     public async Task<Lancamento> CriarDespesaAsync(
-        Guid contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
+        Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
         Guid? projetoId = null)
     {
         Validar(valor, data);
@@ -135,7 +135,7 @@ public class LancamentoService
     }
 
     public async Task AtualizarReceitaDespesaAsync(
-        Guid id, Guid contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
+        Guid id, Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
         Guid? projetoId = null, bool atualizarFuturos = false)
     {
         Validar(valor, data);
@@ -247,7 +247,8 @@ public class LancamentoService
 
     public async Task<List<Lancamento>> ListarAsync(
         Guid? contaId = null, LancamentoTipo? tipo = null, int? mes = null, int? ano = null,
-        bool? confirmado = null, Guid? pessoaId = null, Guid? cartaoId = null)
+        bool? confirmado = null, Guid? pessoaId = null, Guid? cartaoId = null,
+        bool somenteSemConta = false)
     {
         var query = _db.Lancamentos
             .Include(l => l.Conta)
@@ -265,6 +266,7 @@ public class LancamentoService
         if (confirmado.HasValue) query = query.Where(l => l.Confirmado == confirmado.Value);
         if (pessoaId.HasValue) query = query.Where(l => l.PessoaId == pessoaId.Value);
         if (cartaoId.HasValue) query = query.Where(l => l.CartaoCreditoId == cartaoId.Value);
+        if (somenteSemConta) query = query.Where(l => l.ContaId == null && l.CartaoCreditoId == null);
 
         return await query.OrderBy(l => l.Data).ToListAsync();
     }
@@ -477,7 +479,7 @@ public class LancamentoService
     }
 
     public async Task<List<Lancamento>> CriarRecorrenteAsync(
-        LancamentoTipo tipo, Guid contaId, DateOnly primeiraData, decimal valor,
+        LancamentoTipo tipo, Guid? contaId, DateOnly primeiraData, decimal valor,
         RecorrenciaFrequencia frequencia, int repeticoes, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
         Guid? projetoId = null)
     {

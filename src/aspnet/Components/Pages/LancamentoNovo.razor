@@ -3,6 +3,7 @@
 @inherits AppComponentBase
 @inject NavigationManager Navigation
 @using Finort.Components.Lancamentos
+@using Finort.Models.Financeiro
 
 <PageTitle>Novo lançamento</PageTitle>
 
@@ -16,7 +17,7 @@
             <MudIconButton Icon="@Icons.Material.Filled.ReceiptLong"
                            OnClick="@(() => Navigation.NavigateTo("/lancamentos"))" />
         </MudStack>
-        <LancamentoForm Tipo="@_tipo" />
+        <LancamentoForm Tipo="@_tipo" OnCriado="AposCriar" />
     </MudCardContent>
 </MudCard>
 
@@ -49,5 +50,13 @@
             "transferencia" => LancamentoTipo.Transferencia,
             _ => LancamentoTipo.Despesa
         };
+    }
+
+    private void AposCriar(Lancamento lancamento)
+    {
+        if (lancamento.ContaId.HasValue)
+            Navigation.NavigateTo($"/contas/{lancamento.ContaId.Value}/extrato?ano={lancamento.Data.Year}&mes={lancamento.Data.Month}");
+        else
+            Navigation.NavigateTo("/lancamentos");
     }
 }

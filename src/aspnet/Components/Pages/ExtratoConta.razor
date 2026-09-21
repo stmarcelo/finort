@@ -204,6 +204,21 @@
         var hoje = DateOnly.FromDateTime(DateTime.Today);
         _ano = hoje.Year;
         _mes = hoje.Month;
+
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(NavigationManager.Uri).Query);
+        if (query.TryGetValue("mes", out var valoresMes)
+            && int.TryParse(valoresMes.FirstOrDefault(), out var mesParam)
+            && mesParam is >= 1 and <= 12)
+        {
+            _mes = mesParam;
+        }
+        if (query.TryGetValue("ano", out var valoresAno)
+            && int.TryParse(valoresAno.FirstOrDefault(), out var anoParam)
+            && anoParam >= 1)
+        {
+            _ano = anoParam;
+        }
+
         await CarregarAsync();
     }
 

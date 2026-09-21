@@ -142,7 +142,9 @@
         new("receita", "Receita", Icons.Material.Filled.TrendingUp, new()
         {
             "Uma receita é uma entrada de dinheiro: salário, freelances, vendas, reembolsos (a receita do reembolso de cartão é gerada de forma agregada por pessoa só no fechamento da fatura), etc.",
-            "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou, a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
+            "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou (opcional), a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
+            "Depois de salvar, você vai direto para o extrato da conta no mês do lançamento. Se não informou uma conta, vai para a lista de lançamentos.",
+            "Lançamentos sem conta não podem ser confirmados: confirme primeiro vinculando uma conta ou cartão. Enquanto houver lançamento sem conta não confirmado, o mês não pode ser fechado.",
             "O campo 'Projeto' só aparece depois que você seleciona uma pessoa. Se a pessoa tem apenas um projeto, ele é selecionado automaticamente.",
             "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
         }, new()),
@@ -150,7 +152,8 @@
         new("despesa", "Despesa", Icons.Material.Filled.TrendingDown, new()
         {
             "Uma despesa é uma saída de dinheiro: aluguel, supermercado, conta de luz, etc.",
-            "O processo é igual ao da receita: data, valor, conta, categoria, subcategoria (opcional), pessoa (opcional) e projeto (opcional).",
+            "O processo é igual ao da receita: data, valor, conta (opcional), categoria, subcategoria (opcional), pessoa (opcional) e projeto (opcional).",
+            "Depois de salvar, você vai direto para o extrato da conta no mês do lançamento. Se não informou uma conta, vai para a lista de lançamentos.",
             "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'.",
             "Despesas podem ser marcadas para se repetir (recorrência). Defina quantas vezes a despesa deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
         }, new()),
@@ -161,14 +164,14 @@
             "Selecione o cartão, a data da compra, a categoria e o valor. Configure quantas parcelas será dividido.",
             "Opção 'Entrada na fatura': se marcada, o valor é descontado do total da fatura. Isso é útil quando o estorno é feito pelo próprio operador do cartão.",
             "Opção 'Reembolso': se uma pessoa vai reembolsar essa despesa (ou entrada), marque como reembolsável e selecione a pessoa. O sistema cria um item no cadastro de reembolsos (pessoa, cartão, parcela, valor, vencimento = vencimento da fatura menos 1 dia). A receita agregada por pessoa é gerada só no fechamento da fatura, quando você escolhe a conta e a categoria. Entrada com reembolso gera valor negativo.",
-            "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra."
+            "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra. Depois de salvar, você vai direto para essa fatura."
         }, new()),
 
         new("transferencia", "Transferência", Icons.Material.Filled.SwapHoriz, new()
         {
             "Uma transferência movimenta dinheiro entre suas contas bancárias. Ex: transferir dochecking poupança.",
             "Selecione a conta de origem (de onde sai) e a conta de destino (para onde vai). O valor é o mesmo nas duas contas.",
-            "O sistema cria dois lançamentos: um negativo na conta de origem e um positivo na conta de destino."
+            "O sistema cria dois lançamentos: um negativo na conta de origem e um positivo na conta de destino. Depois de salvar, você vai para o extrato da conta de destino."
         }, new()),
 
         new("fluxo", "Fluxo Mensal", Icons.Material.Filled.StackedLineChart, new()
@@ -219,7 +222,9 @@
             new("Fatura – Reembolso", new()
             {
                 "Se a fatura tem itens com reembolso, a tela de conferência mostra um alerta com os reembolsos agrupados por pessoa.",
-                "Ao fechar, o sistema pede a conta e a categoria (subcategoria opcional) e gera uma única receita por pessoa com o total dos reembolsos dela. O vencimento de cada reembolso é o vencimento da fatura menos 1 dia.",
+                "Na lista por pessoa, use o botão 'Ver reembolsos' para abrir os reembolsos daquela pessoa. Lá dá para corrigir o valor e a data de vencimento de cada um.",
+                "Se a pessoa já pagou algum reembolso antes de fechar a fatura, marque esses itens na lista e use o botão 'Fechar selecionados'. O sistema pede a conta e a categoria (subcategoria opcional) e lança a receita agrupada, marcando esses itens como fechados. Eles ficam de fora do fechamento final da fatura.",
+                "Ao fechar, o sistema pede a conta e a categoria (subcategoria opcional) e gera uma única receita por pessoa com o total dos reembolsos dela. O vencimento de cada reembolso é o vencimento da fatura menos 1 dia. A receita entra sem confirmação: confirme em Lançamentos quando o dinheiro cair na conta.",
                 "Reabrir a fatura desfaz o fechamento: exclui as receitas agregadas e marca os reembolsos como não fechados novamente."
             }),
             new("Fatura – Pagamento", new()
