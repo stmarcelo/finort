@@ -47,8 +47,16 @@ jobs:
         run: |
           iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" "installer/finort.iss"
 
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          $publishDir = Get-ChildItem src/aspnet/bin/Release -Directory -Recurse -Filter "publish" | Select-Object -First 1
+          Compress-Archive -Path "$($publishDir.FullName)/*" -DestinationPath "releases/finort-${{ steps.version.outputs.version }}-win-x64-portable.zip" -Force
+
       - name: Upload installer to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.workflow_run.head_branch }}
-          files: releases/finort-${{ steps.version.outputs.version }}-win-x64-setup.exe
+          files: |
+            releases/finort-${{ steps.version.outputs.version }}-win-x64-setup.exe
+            releases/finort-${{ steps.version.outputs.version }}-win-x64-portable.zip
