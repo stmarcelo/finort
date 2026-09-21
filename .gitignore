@@ -491,6 +491,7 @@ $RECYCLE.BIN/
 
 # Superpowers SDD scratch workspaces
 .superpowers/
+.worktrees/
 
 [Dd]ocs/
 
