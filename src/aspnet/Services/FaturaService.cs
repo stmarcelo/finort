@@ -383,9 +383,9 @@ public class FaturaService
             throw new InvalidOperationException("Os reembolsos selecionados pertencem a faturas diferentes.");
         if (await EhFechadaAsync(cartaoIds[0], periodos[0].Year, periodos[0].Month))
             throw new InvalidOperationException("Fatura já fechada.");
-        var naoConfirmados = selecionados.Where(r => !r.Lancamento.Confirmado).Select(r => r.Lancamento).ToList();
-        if (naoConfirmados.Count > 0)
-            throw new FaturaComPendentesException(naoConfirmados);
+        // Baixa parcial / adiantamento: NÃO valida Confirmado dos lançamentos da fatura.
+        // A fatura permanece intacta/aberta; apenas os reembolsos selecionados são fechados
+        // com geração da receita agregada por pessoa.
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {

@@ -137,7 +137,7 @@ public class ReembolsoBaixaParcialTests
     }
 
     [Fact]
-    public async Task BaixaParcial_DespesaNaoConfirmada_LancaExcecao()
+    public async Task BaixaParcial_DespesaNaoConfirmada_PermiteAdiantamentoSemFecharFatura()
     {
         var (db, file, lancamentos, faturas, cartao, conta, catReceita) = await SetupAsync();
         try
@@ -149,11 +149,13 @@ public class ReembolsoBaixaParcialTests
             // Sem ConfirmarTodosAsync: despesa permanece não confirmada.
             await lancamentos.CriarDespesaCartaoAsync(cartao.Id, compra, 100m, catReceita.Id, null, null, null, pessoaA.Id, null);
             var unico = db.Reembolsos.Single();
-            var antes = db.Lancamentos.Count(l => l.Tipo == LancamentoTipo.Receita);
-            await Assert.ThrowsAsync<FaturaComPendentesException>(() =>
-                faturas.FecharReembolsosSelecionadosAsync(new List<Guid> { unico.Id }, conta.Id, catReceita.Id, null));
-            Assert.Equal(antes, db.Lancamentos.Count(l => l.Tipo == LancamentoTipo.Receita));
-            Assert.False(db.Reembolsos.Single(r => r.Id == unico.Id).Fechado);
+            var receitas = await faturas.FecharReembolsosSelecionadosAsync(new List<Guid> { unico.Id }, conta.Id, catReceita.Id, null);
+            Assert.Single(receitas);
+            Assert.Equal(100m, receitas[0].Valor);
+            Assert.False(receitas[0].Confirmado);
+            Assert.True(db.Reembolsos.Single(r => r.Id == unico.Id).Fechado);
+            // Fatura deve continuar intacta/aberta.
+            Assert.False(await faturas.EhFechadaAsync(cartao.Id, 2026, 9));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
