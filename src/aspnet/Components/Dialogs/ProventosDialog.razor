@@ -18,12 +18,14 @@
                     <MudTh>Data</MudTh>
                     <MudTh>Tipo</MudTh>
                     <MudTh>Valor</MudTh>
+                    <MudTh>Percentual</MudTh>
                     <MudTh>Ações</MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
                     <MudTd>@(context.Tipo == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
                     <MudTd>@context.Valor.ToString("N2")</MudTd>
+                    <MudTd>@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                        OnClick="() => ExcluirProvento(context)" />

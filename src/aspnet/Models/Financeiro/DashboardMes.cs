@@ -7,7 +7,7 @@ public sealed record CategoriaValor(string Nome, decimal Valor);
 public sealed record LancamentoTop(string Categoria, string? Pessoa, decimal Valor);
 
 /// <summary>Patrimônio atual de um investimento.</summary>
-public sealed record InvestimentoPatrimonio(string Nome, decimal Valor);
+public sealed record InvestimentoPatrimonio(string Nome, TipoInvestimento Tipo, decimal Valor);
 
 /// <summary>Saldo de uma conta patrimonial.</summary>
 public sealed record ContaPatrimonio(string Nome, string? Banco, decimal Valor);

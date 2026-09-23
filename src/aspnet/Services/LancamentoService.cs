@@ -26,7 +26,7 @@ public class LancamentoService
 
     public async Task<Lancamento> CriarReceitaAsync(
         Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null)
+        Guid? projetoId = null, bool confirmado = false)
     {
         Validar(valor, data);
         await GarantirMesAbertoAsync(data, contaId);
@@ -39,7 +39,8 @@ public class LancamentoService
             CategoriaId = categoriaId,
             SubcategoriaId = subcategoriaId,
             PessoaId = pessoaId,
-            ProjetoId = projetoId
+            ProjetoId = projetoId,
+            Confirmado = confirmado
         };
         _db.Lancamentos.Add(lancamento);
         await _db.SaveChangesAsync();

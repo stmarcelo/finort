@@ -47,6 +47,45 @@ public class FluxoPagoTests
     }
 
     [Fact]
+    public async Task Cartao_ComAntecipacao_FaturaDoMesDeVencimento_RiscadoNoMesAnterior()
+    {
+        var (db, file, cartao, conta, l, f) = await SetupAsync();
+        try
+        {
+            await l.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 9, 10), 300m,
+                db.Categorias.First().Id, null, null,
+                parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null,
+                vencimentoExato: new DateOnly(2026, 10, 1));
+            var compra = db.Lancamentos.Single(x => x.CartaoCreditoId == cartao.Id);
+            compra.Confirmado = true;
+            db.SaveChanges();
+            await f.FecharAsync(cartao.Id, 2026, 10);
+            await f.PagarAsync(cartao.Id, 2026, 10, conta.Id, new DateOnly(2026, 9, 22), 300m);
+
+            var fluxoSetembro = await new FluxoService(db).ObterCardAsync(2026, 9, diasAntecipacao: 5);
+            Assert.True(fluxoSetembro.TotaisPorCartao.Single(t => t.CartaoId == cartao.Id).Pago);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task Cartao_ComAntecipacao_VencimentoNoMesSeguinte_NaoRiscado()
+    {
+        var (db, file, cartao, _, l, _) = await SetupAsync();
+        try
+        {
+            await l.CriarDespesaCartaoAsync(cartao.Id, new DateOnly(2026, 10, 15), 300m,
+                db.Categorias.First().Id, null, null,
+                parcelas: null, reembolsoPessoaId: null, reembolsoVencimento: null,
+                vencimentoExato: new DateOnly(2026, 11, 1));
+
+            var fluxoOutubro = await new FluxoService(db).ObterCardAsync(2026, 10, diasAntecipacao: 5);
+            Assert.False(fluxoOutubro.TotaisPorCartao.Single(t => t.CartaoId == cartao.Id).Pago);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public async Task Cartao_SemFaturaFechada_NaoVemPago()
     {
         var (db, file, cartao, _, l, _) = await SetupAsync();

@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Finort.Services;
 
+public record SaldoDia(DateOnly Data, decimal Real, decimal Previsto);
+
 public record ExtratoContaResultado(
     Guid ContaId,
     string NomeConta,
@@ -14,6 +16,7 @@ public record ExtratoContaResultado(
     decimal SaldoMes,
     decimal AcumuladoReal,
     decimal AcumuladoPrevisto,
+    List<SaldoDia> SaldosPorDia,
     List<Lancamento> Lancamentos,
     List<FaturaVinculadaResumo> Faturas);
 
@@ -132,10 +135,61 @@ public class ExtratoContaService
         saldoMes += impactoFaturas;
         acumuladoPrevisto += impactoFaturas;
 
+        var cartaoVencimentoDia = await _db.CartoesCredito.AsNoTracking()
+            .Where(c => c.ContaId == contaId)
+            .ToDictionaryAsync(c => c.Id, c => c.DiaVencimento);
+
+        var impactosDia = new Dictionary<DateOnly, decimal>();
+        foreach (var f in faturas)
+        {
+            if (f.Fechada)
+            {
+                var diaF = new DateOnly(ano, mes, Math.Min(cartaoVencimentoDia.GetValueOrDefault(f.CartaoId),
+                    DateTime.DaysInMonth(ano, mes)));
+                impactosDia[diaF] = impactosDia.GetValueOrDefault(diaF) + f.ContribuicaoPrevisto;
+            }
+            else
+            {
+                foreach (var item in f.Itens.Where(i => i.DataVencimentoCartao.HasValue))
+                    impactosDia[item.DataVencimentoCartao.Value] =
+                        impactosDia.GetValueOrDefault(item.DataVencimentoCartao.Value) + item.Valor;
+            }
+        }
+
+        var saldoInicioReal = baseValor + (await _db.Lancamentos
+            .Where(l => l.ContaId == contaId && l.Confirmado && l.Data > baseFim && l.Data < inicio)
+            .SumAsync(l => (decimal?)l.Valor) ?? 0m);
+        var saldoInicioPrevisto = baseValor + (await _db.Lancamentos
+            .Where(l => l.ContaId == contaId && l.Data > baseFim && l.Data < inicio)
+            .SumAsync(l => (decimal?)l.Valor) ?? 0m);
+        if (baseFim >= inicio)
+        {
+            saldoInicioReal = 0m;
+            saldoInicioPrevisto = 0m;
+        }
+
+        var saldosPorDia = CalcularSaldosPorDia(lancamentos, impactosDia, saldoInicioReal, saldoInicioPrevisto);
+
         return new ExtratoContaResultado(
             conta.Id, conta.Nome, ano, mes,
             fechadoAtual is not null, fechadoAtual?.DataFechamento,
-            saldoMes, acumuladoReal, acumuladoPrevisto, lancamentos, faturas);
+            saldoMes, acumuladoReal, acumuladoPrevisto, saldosPorDia, lancamentos, faturas);
+    }
+
+    private static List<SaldoDia> CalcularSaldosPorDia(List<Lancamento> lancamentos,
+        Dictionary<DateOnly, decimal> impactosDia, decimal inicioReal, decimal inicioPrevisto)
+    {
+        decimal real = inicioReal, previsto = inicioPrevisto;
+        var lista = new List<SaldoDia>();
+        foreach (var dia in lancamentos.Select(l => l.Data)
+                     .Union(impactosDia.Keys).Distinct().OrderBy(d => d))
+        {
+            real += lancamentos.Where(l => l.Data == dia && l.Confirmado).Sum(l => l.Valor);
+            previsto += lancamentos.Where(l => l.Data == dia).Sum(l => l.Valor)
+                     + impactosDia.GetValueOrDefault(dia);
+            lista.Add(new SaldoDia(dia, real, previsto));
+        }
+        return lista;
     }
 
     private async Task<List<FaturaVinculadaResumo>> ObterFaturasVinculadasAsync(

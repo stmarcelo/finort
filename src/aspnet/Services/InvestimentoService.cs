@@ -187,6 +187,7 @@ public class InvestimentoService
             throw new ArgumentException("Informe a data do provento.");
 
         var investimento = await ObterAsync(investimentoId);
+        var valorAtivo = await ValorAtualAtivoAsync(investimento);
 
         Lancamento? lancamento = null;
         if (tipo == ProventoTipo.Dividendo)
@@ -195,7 +196,8 @@ public class InvestimentoService
             var subcategoria = await _db.Subcategorias.AsNoTracking()
                 .SingleAsync(s => s.Nome == "Dividendos / Rendimentos");
             lancamento = await _lancamentoService.CriarReceitaAsync(
-                investimento.ContaVinculadaId, data, valor, categoria.Id, subcategoria.Id, null);
+                investimento.ContaVinculadaId, data, valor, categoria.Id, subcategoria.Id, null,
+                confirmado: true);
         }
 
         var provento = new InvestimentoProvento
@@ -204,6 +206,7 @@ public class InvestimentoService
             Data = data,
             Valor = valor,
             Tipo = tipo,
+            Percentual = valorAtivo <= 0m ? 0m : valor / valorAtivo,
             LancamentoId = lancamento?.Id
         };
         _db.InvestimentosProventos.Add(provento);
@@ -216,6 +219,81 @@ public class InvestimentoService
             .Where(p => p.InvestimentoId == investimentoId)
             .OrderByDescending(p => p.Data)
             .ToListAsync();
+
+    public sealed record ProventoRelatorioLinha(
+        DateOnly Data, string NomeInvestimento, TipoInvestimento TipoInvestimento,
+        ProventoTipo TipoProvento, decimal Valor, decimal Percentual);
+
+    public async Task<List<ProventoRelatorioLinha>> ListarProventosPeriodoAsync(DateOnly inicio, DateOnly fim)
+        => await _db.InvestimentosProventos.AsNoTracking()
+            .Where(p => p.Data >= inicio && p.Data <= fim)
+            .OrderBy(p => p.Data)
+            .Select(p => new ProventoRelatorioLinha(
+                p.Data, p.Investimento.Nome, p.Investimento.Tipo,
+                p.Tipo, p.Valor, p.Percentual))
+            .ToListAsync();
+
+    public async Task<List<InvestimentoTendenciaTipo>> TendenciaPatrimonioAsync()
+    {
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        var primeiros = Enumerable.Range(-5, 6)
+            .Select(i => new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(i)).ToList();
+        var fins = primeiros
+            .Select(m => m.AddDays(DateTime.DaysInMonth(m.Year, m.Month) - 1))
+            .ToList();
+
+        var fimUltimo = fins[^1];
+        var investimentos = await _db.Investimentos.AsNoTracking().ToListAsync();
+        var movimentos = await _db.InvestimentosMovimentos.AsNoTracking()
+            .Where(m => m.Data <= fimUltimo)
+            .Select(m => new { m.InvestimentoId, TipoInv = m.Investimento.Tipo,
+                Tipo = m.Tipo, m.Quantidade, m.Valor, m.Data, m.ValorPorCota })
+            .ToListAsync();
+        var rendimentos = await _db.InvestimentosProventos.AsNoTracking()
+            .Where(p => p.Tipo == ProventoTipo.Rendimento && p.Data <= fimUltimo)
+            .Select(p => new { p.InvestimentoId, p.Data, p.Valor })
+            .ToListAsync();
+        var cotas = movimentos.Where(m => m.ValorPorCota.HasValue)
+            .GroupBy(m => m.InvestimentoId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Data).ToList());
+
+        var resultado = new List<InvestimentoTendenciaTipo>();
+        foreach (var gTipo in investimentos.GroupBy(i => i.Tipo))
+        {
+            var valores = new List<decimal>();
+            foreach (var fim in fins)
+            {
+                decimal total = 0m;
+                foreach (var inv in gTipo)
+                {
+                    var movs = movimentos.Where(m => m.InvestimentoId == inv.Id && m.Data <= fim).ToList();
+                    if (inv.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Cdb)
+                    {
+                        total += movs.Where(m => m.Tipo == MovimentoTipo.Aporte).Sum(m => m.Valor)
+                               + rendimentos.Where(r => r.InvestimentoId == inv.Id && r.Data <= fim)
+                                   .Sum(r => r.Valor)
+                               - movs.Where(m => m.Tipo == MovimentoTipo.Resgate).Sum(m => m.Valor);
+                    }
+                    else
+                    {
+                        var qtd = movs.Sum(m => m.Tipo switch
+                        {
+                            MovimentoTipo.Compra => m.Quantidade ?? 0m,
+                            MovimentoTipo.Venda => -(m.Quantidade ?? 0m),
+                            _ => 0m
+                        });
+                        var cota = cotas.GetValueOrDefault(inv.Id)?
+                            .LastOrDefault(c => c.Data <= fim)?.ValorPorCota
+                            ?? inv.ValorCotaAtual;
+                        total += qtd * cota;
+                    }
+                }
+                valores.Add(total);
+            }
+            resultado.Add(new InvestimentoTendenciaTipo(gTipo.Key, valores));
+        }
+        return resultado;
+    }
 
     /// <summary>
     /// Registra compra/venda (ativos: quantidade × valor por cota) ou aporte/resgate (reserva: valor).
@@ -322,6 +400,14 @@ public class InvestimentoService
 
         await _db.SaveChangesAsync();
         return movimento;
+    }
+
+    private async Task<decimal> ValorAtualAtivoAsync(Investimento i)
+    {
+        if (i.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Cdb)
+            return await SaldoReservaAtualAsync(i.Id);
+        var qtd = await PosicaoAtualAsync(i.Id);
+        return qtd * i.ValorCotaAtual;
     }
 
     private async Task<decimal> PosicaoAtualAsync(Guid investimentoId)

@@ -35,16 +35,11 @@ else
                 <span class="value pos">@TotalGeral.ToString("N2")</span>
             </div>
         </MudItem>
-    </MudGrid>
-    <MudGrid Spacing="4" Class="mt-4">
-        @foreach (var t in TotaisPorTipo)
-        {
-            <MudItem xs="6" sm="4" md="4" lg="2" Class="d-flex justify-center">
-            <MudBadge Content="@($"{t.Percentual:N2}%")" Color="Color.Info" Origin="Origin.TopRight" Overlap="true" Bordered="true">
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary">@RotuloTipo(t.Tipo) @t.Valor.ToString("N2")</MudChip>
-            </MudBadge>
-            </MudItem>
-        }
+        <MudItem xs="12" sm="6" md="3" Class="d-flex align-end">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.ReceiptLong"
+                       OnClick="@(() => Navigation.NavigateTo("/investimentos/proventos"))">Proventos</MudButton>
+        </MudItem>
     </MudGrid>
     <MudGrid Spacing="3" Class="mt-2">
         @foreach (var card in _cards)
@@ -171,6 +166,37 @@ else
             </MudItem>
         }
     </MudGrid>
+    @if (_tendencia.Count > 0)
+    {
+        <MudGrid Spacing="3" Class="mt-2">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-3">
+                    <MudText Typo="Typo.subtitle1" Class="mb-1">Progressão — últimos 6 meses</MudText>
+                    <MudChart ChartType="ChartType.Line"
+                              InputData="@_dadosSerieTotal"
+                              InputLabels="@_rotulosTendencia.ToArray()"
+                              ChartSeries="@_seriesTendencia"
+                              Width="100%" Height="190px" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-3">
+                    <MudText Typo="Typo.subtitle1" Class="mb-1">Distribuição por tipo</MudText>
+                    @foreach (var t in TotaisPorTipo)
+                    {
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@RotuloTipo(t.Tipo)</MudText>
+                                <MudText Typo="Typo.body2">@t.Valor.ToString("N2") (@t.Percentual.ToString("N1")%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)t.Percentual)" Rounded="true"
+                                               Color="Color.Primary" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
 }
 
 @code {
@@ -183,6 +209,10 @@ else
     private bool _carregando = true;
     private List<InvestimentoCard> _cards = new();
     private Dictionary<Guid, CotacaoEdicao> _cotacoesEdicao = new();
+    private List<InvestimentoTendenciaTipo> _tendencia = new();
+    private List<string> _rotulosTendencia = new();
+    private List<ChartSeries> _seriesTendencia = new();
+    private double[] _dadosSerieTotal = new double[6];
 
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
@@ -257,6 +287,23 @@ else
             // publica de uma vez para o render nunca misturar listas/dicionários antigos:
             _cards = cards;
             _cotacoesEdicao = edicoes;
+
+            _tendencia = await InvestimentoService.TendenciaPatrimonioAsync();
+            var cultura = new System.Globalization.CultureInfo("pt-BR");
+            _rotulosTendencia = Enumerable.Range(-5, 6)
+                .Select(i => new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(i))
+                .Select(d => d.ToString("MMM/yy", cultura))
+                .ToList();
+            _seriesTendencia = _tendencia.Select(t => new ChartSeries
+            {
+                Name = RotuloTipo(t.Tipo),
+                Data = t.Valores.Select(v => (double)v).ToArray()
+            }).ToList();
+            _dadosSerieTotal = Enumerable.Range(0, 6)
+                .Select(j => _tendencia.Sum(t => t.Valores[j]))
+                .Select(v => (double)v)
+                .ToArray();
+            _seriesTendencia.Add(new ChartSeries { Name = "Total", Data = _dadosSerieTotal });
         }
         catch (Exception ex)
         {

@@ -110,8 +110,8 @@ public class SeedDataService
         var subStreaming = Guid.Parse("20000000-0000-0000-0000-000000000033");
         var subViagens = Guid.Parse("20000000-0000-0000-0000-000000000035");
 
-        // Generate transactions for last 3 months
-        for (int mesOffset = 0; mesOffset < 3; mesOffset++)
+        // Generate transactions for last 6 months
+        for (int mesOffset = 0; mesOffset < 6; mesOffset++)
         {
             var mesBase = hoje.AddMonths(-mesOffset);
             var ano = mesBase.Year;
@@ -121,7 +121,7 @@ public class SeedDataService
             lancamentos.Add(new Lancamento
             {
                 Id = Guid.NewGuid(),
-                Data = new DateOnly(ano, mes, 5),
+                Data = new DateOnly(ano, mes, 1),
                 Tipo = LancamentoTipo.Receita,
                 Valor = 8500m,
                 ContaId = contaSalario.Id,
@@ -136,7 +136,7 @@ public class SeedDataService
                 Id = Guid.NewGuid(),
                 Data = new DateOnly(ano, mes, 15),
                 Tipo = LancamentoTipo.Receita,
-                Valor = 2000m,
+                Valor = 4500m,
                 ContaId = contaCorrente.Id,
                 CategoriaId = catRenda,
                 SubcategoriaId = subContratoMensal,
@@ -310,6 +310,57 @@ public class SeedDataService
                 PessoaId = pessoa3.Id,
                 Confirmado = mesOffset > 0
             });
+
+            // Distribuição mensal do salário para as contas de uso
+            var diaTransf = new DateOnly(ano, mes, mesOffset == 0 ? Math.Min(3, hoje.Day) : 3);
+            var transfCorrente = Guid.NewGuid();
+            lancamentos.Add(new Lancamento
+            {
+                Id = transfCorrente,
+                Data = diaTransf,
+                Tipo = LancamentoTipo.Transferencia,
+                Valor = -6500m,
+                ContaId = contaSalario.Id,
+                CategoriaId = catFinanceiro,
+                SubcategoriaId = Guid.Parse("20000000-0000-0000-0000-000000000043"),
+                Confirmado = true
+            });
+            lancamentos.Add(new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                Data = diaTransf,
+                Tipo = LancamentoTipo.Transferencia,
+                Valor = 6500m,
+                ContaId = contaCorrente.Id,
+                CategoriaId = catFinanceiro,
+                SubcategoriaId = Guid.Parse("20000000-0000-0000-0000-000000000043"),
+                Confirmado = true,
+                ReferenciaId = transfCorrente
+            });
+            var transfPoupanca = Guid.NewGuid();
+            lancamentos.Add(new Lancamento
+            {
+                Id = transfPoupanca,
+                Data = diaTransf,
+                Tipo = LancamentoTipo.Transferencia,
+                Valor = -1800m,
+                ContaId = contaSalario.Id,
+                CategoriaId = catFinanceiro,
+                SubcategoriaId = Guid.Parse("20000000-0000-0000-0000-000000000043"),
+                Confirmado = true
+            });
+            lancamentos.Add(new Lancamento
+            {
+                Id = Guid.NewGuid(),
+                Data = diaTransf,
+                Tipo = LancamentoTipo.Transferencia,
+                Valor = 1800m,
+                ContaId = contaPoupanca.Id,
+                CategoriaId = catFinanceiro,
+                SubcategoriaId = Guid.Parse("20000000-0000-0000-0000-000000000043"),
+                Confirmado = true,
+                ReferenciaId = transfPoupanca
+            });
         }
 
         // Transferências (transfers)
@@ -379,6 +430,100 @@ public class SeedDataService
         };
         _db.Provisoes.AddRange(provisoes);
 
+        await _db.SaveChangesAsync();
+
+        // 8. Investimentos: aportes, compras e proventos distribuídos nos últimos meses
+        var investimentoService = new InvestimentoService(_db, new LancamentoService(_db));
+
+        DateOnly DiaNoMes(int offset, int dia)
+        {
+            var primeiroDia = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(-offset);
+            return new DateOnly(primeiroDia.Year, primeiroDia.Month,
+                Math.Min(dia, DateTime.DaysInMonth(primeiroDia.Year, primeiroDia.Month)));
+        }
+
+        var invReserva = await investimentoService.CriarAsync("Reserva Emergência",
+            TipoInvestimento.Reserva, contaCorrente.Id, null, "Reserva de emergência", 0m, null);
+        var invCdb = await investimentoService.CriarAsync("CDB Banco Inter",
+            TipoInvestimento.Cdb, contaPoupanca.Id, "110% CDI", "CDB com liquidez diária",
+            0m, null, new DateOnly(hoje.Year + 2, hoje.Month, 1).ToDateTime(TimeOnly.MinValue));
+        var invFii = await investimentoService.CriarAsync("FII HGLG11",
+            TipoInvestimento.Fii, contaCorrente.Id, "Logística", "FII de galpões logísticos",
+            168m, DiaNoMes(4, 15).ToDateTime(TimeOnly.MinValue));
+        var invAcao = await investimentoService.CriarAsync("ITSA4",
+            TipoInvestimento.Acao, contaCorrente.Id, "Itaúsa", null,
+            12.80m, DiaNoMes(3, 10).ToDateTime(TimeOnly.MinValue));
+        var invDolar = await investimentoService.CriarAsync("Dólar",
+            TipoInvestimento.Dolar, contaCorrente.Id, null, "Reserva em USD",
+            5.42m, DiaNoMes(2, 8).ToDateTime(TimeOnly.MinValue));
+        var invCripto = await investimentoService.CriarAsync("Bitcoin",
+            TipoInvestimento.Criptomoeda, contaCorrente.Id, null, "BTC",
+            350000m, DiaNoMes(1, 12).ToDateTime(TimeOnly.MinValue));
+
+        foreach (var offset in new[] { 1, 2, 3, 4, 5 })
+        {
+            await investimentoService.RegistrarMovimentoAsync(invReserva.Id, DiaNoMes(offset, 10),
+                MovimentoTipo.Aporte, null, null, 500m);
+            await investimentoService.RegistrarProventoAsync(invReserva.Id, DiaNoMes(offset, 20),
+                8.75m, ProventoTipo.Rendimento);
+        }
+        await investimentoService.RegistrarMovimentoAsync(invReserva.Id, DiaNoMes(2, 25),
+            MovimentoTipo.Resgate, null, null, 300m);
+        await investimentoService.RegistrarProventoAsync(invReserva.Id, hoje, 8.75m, ProventoTipo.Rendimento);
+
+        await investimentoService.RegistrarMovimentoAsync(invCdb.Id, DiaNoMes(1, 5),
+            MovimentoTipo.Aporte, null, null, 6000m);
+        await investimentoService.RegistrarProventoAsync(invCdb.Id, DiaNoMes(1, 20),
+            42m, ProventoTipo.Rendimento);
+        await investimentoService.RegistrarProventoAsync(invCdb.Id, hoje, 42m, ProventoTipo.Rendimento);
+
+        await investimentoService.RegistrarMovimentoAsync(invFii.Id, DiaNoMes(4, 15),
+            MovimentoTipo.Compra, 60m, 168m, null);
+        await investimentoService.AtualizarCotacaoAsync(invFii.Id, 172.40m, null);
+        foreach (var offset in new[] { 1, 2, 3 })
+            await investimentoService.RegistrarProventoAsync(invFii.Id, DiaNoMes(offset, 10),
+                96m, ProventoTipo.Dividendo);
+        await investimentoService.RegistrarProventoAsync(invFii.Id, hoje, 96m, ProventoTipo.Dividendo);
+
+        await investimentoService.RegistrarMovimentoAsync(invAcao.Id, DiaNoMes(3, 10),
+            MovimentoTipo.Compra, 400m, 12.80m, null);
+        await investimentoService.AtualizarCotacaoAsync(invAcao.Id, 13.15m, null);
+        await investimentoService.RegistrarProventoAsync(invAcao.Id, DiaNoMes(2, 15),
+            52m, ProventoTipo.Dividendo);
+        await investimentoService.RegistrarProventoAsync(invAcao.Id, DiaNoMes(1, 15),
+            48m, ProventoTipo.Dividendo);
+
+        await investimentoService.RegistrarMovimentoAsync(invDolar.Id, DiaNoMes(2, 8),
+            MovimentoTipo.Compra, 600m, 5.42m, null);
+        await investimentoService.AtualizarCotacaoAsync(invDolar.Id, 5.58m, null);
+
+        await investimentoService.RegistrarMovimentoAsync(invCripto.Id, DiaNoMes(1, 12),
+            MovimentoTipo.Compra, 0.02m, 350000m, null, taxa: 12m);
+        await investimentoService.AtualizarCotacaoAsync(invCripto.Id, 368000m, null);
+
+        var ultimoDiaPassado = new DateOnly(hoje.Year, hoje.Month, 1).AddDays(-1);
+        var pendentesPassado = await _db.Lancamentos
+            .Where(l => l.Data <= ultimoDiaPassado && !l.Confirmado)
+            .ToListAsync();
+        foreach (var lancamento in pendentesPassado)
+            lancamento.Confirmado = true;
+        await _db.SaveChangesAsync();
+
+        // 9. Faturas dos meses passados: fechadas e pagas integralmente
+        var faturaService = new FaturaService(_db);
+        foreach (var offset in new[] { 1, 2, 3, 4, 5 })
+        {
+            var mesRef = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(-offset);
+            foreach (var cartao in new[] { cartaoNubank, cartaoItau })
+            {
+                var fatura = await faturaService.FecharAsync(cartao.Id, mesRef.Year, mesRef.Month);
+                if (fatura.ValorTotal == 0m) continue;
+                await faturaService.PagarAsync(cartao.Id, mesRef.Year, mesRef.Month,
+                    cartao.ContaId!.Value,
+                    DiaNoMes(offset, cartao.DiaVencimento),
+                    Math.Abs(fatura.ValorTotal));
+            }
+        }
         await _db.SaveChangesAsync();
     }
 }

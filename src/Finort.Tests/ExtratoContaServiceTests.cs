@@ -327,6 +327,38 @@ public class ExtratoContaServiceTests
     }
 
     [Fact]
+    public async Task SaldoPorDia_RealEPrevisto_AcumuladoPorDia()
+    {
+        var (db, file) = TestDbContext.Create();
+        try
+        {
+            var conta = new Conta { Nome = "Banco" };
+            db.Contas.Add(conta);
+            await db.SaveChangesAsync();
+            var cat = CategoriaId(db);
+            var l = new LancamentoService(db);
+            await l.CriarReceitaAsync(conta.Id, new DateOnly(2026, 9, 5), 1000m, cat, null, null);
+            await l.CriarDespesaAsync(conta.Id, new DateOnly(2026, 9, 10), 300m, cat, null, null);
+            await l.CriarDespesaAsync(conta.Id, new DateOnly(2026, 9, 12), 200m, cat, null, null);
+            var receita = db.Lancamentos.OrderBy(x => x.Data).First(x => x.ContaId == conta.Id);
+            receita.Confirmado = true;
+            db.SaveChanges();
+
+            var r = await Servico(db).ObterAsync(conta.Id, 2026, 9);
+            var s5 = r.SaldosPorDia.Last(x => x.Data == new DateOnly(2026, 9, 5));
+            Assert.Equal(1000m, s5.Real);
+            Assert.Equal(s5.Real, s5.Previsto);
+            var s10 = r.SaldosPorDia.Last(x => x.Data == new DateOnly(2026, 9, 10));
+            Assert.Equal(1000m, s10.Real);
+            Assert.Equal(700m, s10.Previsto);
+            var s12 = r.SaldosPorDia.Last(x => x.Data == new DateOnly(2026, 9, 12));
+            Assert.Equal(1000m, s12.Real);
+            Assert.Equal(500m, s12.Previsto);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public void AgruparPorVencimento_ChaveEhVencimentoNaoDataCompra()
     {
         var cat = Guid.NewGuid();

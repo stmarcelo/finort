@@ -1,0 +1,103 @@
+@page "/investimentos/proventos"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject InvestimentoService InvestimentoService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Proventos</PageTitle>
+
+<MudToolBar Class="mt-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/investimentos"))" Title="Voltar para investimentos" />
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Class="mr-2" /> Proventos
+    </MudText>
+</MudToolBar>
+
+<MudGrid Spacing="2" Class="mt-2 mb-3" AlignItems="AlignItems.End">
+    <MudItem xs="6" sm="3" md="2">
+        <MudDatePicker T="DateTime?" Label="De" @bind-Date="_de" />
+    </MudItem>
+    <MudItem xs="6" sm="3" md="2">
+        <MudDatePicker T="DateTime?" Label="Até" @bind-Date="_ate" />
+    </MudItem>
+    <MudItem xs="12" sm="3" md="2">
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" FullWidth
+                   OnClick="CarregarProventos">filtrar</MudButton>
+    </MudItem>
+</MudGrid>
+
+@if (_subtotais.Count > 0)
+{
+    <MudStack Row Spacing="1" Class="mb-2 flex-wrap">
+        @foreach (var st in _subtotais)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">@RotuloTipo(st.Tipo) @st.Total.ToString("N2")</MudChip>
+        }
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Style="font-weight:bold">Total @_subtotais.Sum(s => s.Total).ToString("N2")</MudChip>
+    </MudStack>
+}
+
+@if (_linhas.Count > 0)
+{
+    <MudTable Items="@_linhas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Data</MudTh>
+            <MudTh>Investimento</MudTh>
+            <MudTh>Tipo investimento</MudTh>
+            <MudTh>Provento</MudTh>
+            <MudTh Align="Align.Right">Valor</MudTh>
+            <MudTh Align="Align.Right">Percentual</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
+            <MudTd>@context.NomeInvestimento</MudTd>
+            <MudTd>@RotuloTipo(context.TipoInvestimento)</MudTd>
+            <MudTd>@(context.TipoProvento == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
+            <MudTd Align="Align.Right"><span class="extrato-valor pos">@context.Valor.ToString("N2")</span></MudTd>
+            <MudTd Align="Align.Right">@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudText Typo="Typo.body2">Nenhum provento no período.</MudText>
+}
+
+@code {
+    private DateTime? _de = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? _ate = DateTime.Today;
+    private List<InvestimentoService.ProventoRelatorioLinha> _linhas = new();
+    private List<(TipoInvestimento Tipo, decimal Total)> _subtotais = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarProventos();
+
+    private static string RotuloTipo(TipoInvestimento tipo)
+        => tipo switch
+        {
+            TipoInvestimento.Reserva => "Reserva",
+            TipoInvestimento.Dolar => "Dólar",
+            TipoInvestimento.Criptomoeda => "Criptomoeda",
+            TipoInvestimento.Fii => "FII",
+            TipoInvestimento.Acao => "Ação",
+            TipoInvestimento.Cdb => "CDB / Fundo",
+            _ => tipo.ToString()
+        };
+
+    private async Task CarregarProventos()
+    {
+        try
+        {
+            var inicio = DateOnly.FromDateTime(_de ?? DateTime.Today);
+            var fim = DateOnly.FromDateTime(_ate ?? DateTime.Today);
+            var linhas = await InvestimentoService.ListarProventosPeriodoAsync(inicio, fim);
+            _linhas = linhas;
+            _subtotais = linhas.GroupBy(l => l.TipoInvestimento)
+                .Select(g => (g.Key, g.Sum(x => x.Valor)))
+                .OrderByDescending(x => x.Item2)
+                .ToList();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+}

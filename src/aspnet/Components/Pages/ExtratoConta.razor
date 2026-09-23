@@ -5,6 +5,7 @@
 @inject LancamentoService LancamentoService
 @inject ContaService ContaService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Extrato</PageTitle>
@@ -62,8 +63,10 @@
         else
         {
             <MudExpansionPanels MultiExpansion="true">
-                @foreach (var g in _grupos)
+                @foreach (var dia in _grupos.Select(g => g.Data).Distinct().OrderBy(d => d))
                 {
+                    @foreach (var g in _grupos.Where(x => x.Data == dia))
+                    {
                     <MudExpansionPanel>
                         <TitleContent>
                             <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
@@ -93,6 +96,7 @@
                                     <MudTh>Tipo</MudTh>
                                     <MudTh>Valor</MudTh>
                                     <MudTh>Confirmado</MudTh>
+                                    <MudTh>Ações</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
                                     <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
@@ -103,10 +107,33 @@
                                         <MudSwitch T="bool" Value="@context.Confirmado" Disabled="@_fechado"
                                                    ValueChanged="v => AlternarConfirmado(context, v)" />
                                     </MudTd>
+                                    <MudTd>
+                                        @if (!context.Confirmado && !_fechado)
+                                        {
+                                            <MudStack Row Spacing="0" Justify="Justify.FlexEnd">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                               OnClick="() => EditarLancamento(context)" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                               OnClick="() => ExcluirLancamento(context)" />
+                                            </MudStack>
+                                        }
+                                    </MudTd>
                                 </RowTemplate>
                             </MudTable>
                         </ChildContent>
                     </MudExpansionPanel>
+                    }
+                    var saldoDia = _saldosDia.FirstOrDefault(s => s.Data == dia);
+                    @if (saldoDia is not null)
+                    {
+                        <div class="fluxo-linha mt-1 mb-2 px-2">
+                            <span class="fluxo-label">@($"{dia:dd/MM}") • Saldo real / previsto</span>
+                            <MudStack Row Spacing="3">
+                                <span class="fluxo-valor @(saldoDia.Real >= 0 ? "pos" : "neg")">@saldoDia.Real.ToString("N2")</span>
+                                <span class="fluxo-valor @(saldoDia.Previsto >= 0 ? "pos" : "neg")">@saldoDia.Previsto.ToString("N2")</span>
+                            </MudStack>
+                        </div>
+                    }
                 }
             </MudExpansionPanels>
         }
@@ -165,6 +192,7 @@
                                     <MudTh>Tipo</MudTh>
                                     <MudTh>Valor</MudTh>
                                     <MudTh>Confirmado</MudTh>
+                                    <MudTh>Ações</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
                                     <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
@@ -174,6 +202,17 @@
                                     <MudTd>
                                         <MudSwitch T="bool" Value="@context.Confirmado" Disabled="@f.Fechada"
                                                    ValueChanged="v => AlternarConfirmado(context, v)" />
+                                    </MudTd>
+                                    <MudTd>
+                                        @if (!context.Confirmado && !f.Fechada)
+                                        {
+                                            <MudStack Row Spacing="0" Justify="Justify.FlexEnd">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                               OnClick="() => EditarLancamento(context)" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                               OnClick="() => ExcluirLancamento(context)" />
+                                            </MudStack>
+                                        }
                                     </MudTd>
                                 </RowTemplate>
                             </MudTable>
@@ -198,6 +237,7 @@
     private decimal _acumuladoPrevisto;
     private List<GrupoExtrato> _grupos = new();
     private List<FaturaVinculadaResumo> _faturas = new();
+    private List<SaldoDia> _saldosDia = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -250,6 +290,7 @@
             _acumuladoPrevisto = r.AcumuladoPrevisto;
             _grupos = ExtratoContaService.Agrupar(r.Lancamentos);
             _faturas = r.Faturas;
+            _saldosDia = r.SaldosPorDia;
         }
         catch (Exception ex)
         {
@@ -270,6 +311,38 @@
             Snackbar.Add(ex.Message, Severity.Error);
             await CarregarAsync();
         }
+    }
+
+    private async Task EditarLancamento(Lancamento lancamento)
+    {
+        var parameters = new DialogParameters
+        {
+            ["TipoTransacao"] = lancamento.CartaoCreditoId is null
+                ? lancamento.Tipo.ToString().ToLowerInvariant()
+                : lancamento.Tipo == LancamentoTipo.Receita ? "receita" : "cartao",
+            ["LancamentoId"] = lancamento.Id
+        };
+        var dialog = await DialogService.ShowAsync<Finort.Components.Dialogs.TransacaoDialog>(
+            "Editar lançamento", parameters,
+            new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled) await CarregarAsync();
+    }
+
+    private async Task ExcluirLancamento(Lancamento lancamento)
+    {
+        var confirm = await DialogService.ShowMessageBox("Excluir lançamento",
+            $"Excluir o lançamento de {lancamento.Data:dd/MM/yyyy} ({lancamento.Tipo}, R$ {lancamento.Valor:N2})?",
+            "Excluir", null, "Cancelar",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (confirm != true) return;
+        try
+        {
+            await LancamentoService.ExcluirAsync(lancamento.Id);
+            Snackbar.Add("Lançamento excluído.", Severity.Success);
+            await CarregarAsync();
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
     }
 
     private async Task ConfirmarGrupo(GrupoExtrato grupo)

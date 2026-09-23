@@ -433,6 +433,9 @@ namespace Finort.Data.Migrations
                     b.Property<Guid?>("LancamentoId")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("Percentual")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
 

@@ -81,7 +81,8 @@ else
                               InputData="@(_dados.TendenciaMensal.Select(m => (double)m.Receitas).ToArray())"
                               InputLabels="@(_dados.TendenciaMensal.Select(m => $"{MesAbrev(m.Mes)}/{m.Ano}").ToArray())"
                               ChartSeries="@_tendenciaSeries"
-                              Width="100%" Height="160px" />
+                              ChartOptions="@_tendenciaOptions"
+                              Width="100%" Height="260px" />
                 }
                 else
                 {
@@ -98,7 +99,8 @@ else
                 }
                 else
                 {
-                    @foreach (var c in _dados.UtilizacaoCartoes)
+                    <div style="max-height: 340px; overflow-y: auto;" class="pr-1">
+                    @foreach (var c in _dados.UtilizacaoCartoes.OrderByDescending(x => x.Utilizado))
                     {
                         var pctUtilizado = c.Limite > 0 ? c.Utilizado / c.Limite * 100m : 0m;
                         <div class="mb-2">
@@ -113,6 +115,7 @@ else
                             </div>
                         </div>
                     }
+                    </div>
                 }
             </div>
         </MudItem>
@@ -128,29 +131,18 @@ else
                 }
                 else
                 {
-                    <MudChart ChartType="ChartType.Donut"
-                              InputData="@(_dados.DespesasPorCategoria.Select(c => (double)c.Valor).ToArray())"
-                              InputLabels="@(_dados.DespesasPorCategoria.Select(c => c.Nome).ToArray())"
-                              Width="100%" Height="130px" />
-                    <ul class="chart-legenda">
-                        @foreach (var c in _dados.DespesasPorCategoria.Take(5))
-                        {
-                            var pct = TotalDonut(_dados.DespesasPorCategoria) == 0m ? 0m
-                                : c.Valor / TotalDonut(_dados.DespesasPorCategoria) * 100m;
-                            <li>
-                                <span class="d-block">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
-                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome</span>
-                            </li>
-                        }
-                        @if (_dados.DespesasPorCategoria.Count > 5)
-                        {
-                            <li>
-                                <MudLink OnClick="@(() => AbrirDialogItens(_dados.DespesasPorCategoria, "Despesas por categoria"))" Typo="Typo.body2">
-                                    +@(_dados.DespesasPorCategoria.Count - 5) itens
-                                </MudLink>
-                            </li>
-                        }
-                    </ul>
+                    @foreach (var c in _dados.DespesasPorCategoria)
+                    {
+                        var totalCat = TotalDonut(_dados.DespesasPorCategoria);
+                        var pct = totalCat == 0m ? 0m : c.Valor / totalCat * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@c.Nome</MudText>
+                                <MudText Typo="Typo.body2">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Primary" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
                 }
             </div>
         </MudItem>
@@ -163,29 +155,18 @@ else
                 }
                 else
                 {
-                    <MudChart ChartType="ChartType.Donut"
-                              InputData="@(_dados.ReceitasPorCategoria.Select(c => (double)c.Valor).ToArray())"
-                              InputLabels="@(_dados.ReceitasPorCategoria.Select(c => c.Nome).ToArray())"
-                              Width="100%" Height="130px" />
-                    <ul class="chart-legenda">
-                        @foreach (var c in _dados.ReceitasPorCategoria.Take(5))
-                        {
-                            var pct = TotalDonut(_dados.ReceitasPorCategoria) == 0m ? 0m
-                                : c.Valor / TotalDonut(_dados.ReceitasPorCategoria) * 100m;
-                            <li>
-                                <span class="d-block">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
-                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome</span>
-                            </li>
-                        }
-                        @if (_dados.ReceitasPorCategoria.Count > 5)
-                        {
-                            <li>
-                                <MudLink OnClick="@(() => AbrirDialogItens(_dados.ReceitasPorCategoria, "Receitas por categoria"))" Typo="Typo.body2">
-                                    +@(_dados.ReceitasPorCategoria.Count - 5) itens
-                                </MudLink>
-                            </li>
-                        }
-                    </ul>
+                    @foreach (var c in _dados.ReceitasPorCategoria)
+                    {
+                        var totalCat = TotalDonut(_dados.ReceitasPorCategoria);
+                        var pct = totalCat == 0m ? 0m : c.Valor / totalCat * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@c.Nome</MudText>
+                                <MudText Typo="Typo.body2">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Success" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
                 }
             </div>
         </MudItem>
@@ -198,29 +179,21 @@ else
                 }
                 else
                 {
-                    <MudChart ChartType="ChartType.Donut"
-                              InputData="@(_dados.Patrimonios.Select(p => (double)p.Valor).ToArray())"
-                              InputLabels="@(_dados.Patrimonios.Select(p => p.Nome).ToArray())"
-                              Width="100%" Height="130px" ChartOptions="@_roseOptions" />
-                    <ul class="chart-legenda">
-                        @foreach (var p in _dados.Patrimonios.Take(5))
-                        {
-                            var totalInv = _dados.Patrimonios.Sum(x => x.Valor);
-                            var pct = totalInv == 0m ? 0m : p.Valor / totalInv * 100m;
-                            <li>
-                                <span class="d-block">R$ @p.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
-                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@p.Nome</span>
-                            </li>
-                        }
-                        @if (_dados.Patrimonios.Count > 5)
-                        {
-                            <li>
-                                <MudLink OnClick="() => AbrirDialogInvestimentos()" Typo="Typo.body2">
-                                    +@(_dados.Patrimonios.Count - 5) itens
-                                </MudLink>
-                            </li>
-                        }
-                    </ul>
+                    var totalInv = _dados.Patrimonios.Sum(x => x.Valor);
+                    @foreach (var g in _dados.Patrimonios
+                        .GroupBy(p => p.Tipo)
+                        .Select(g => new { Tipo = g.Key, Valor = g.Sum(p => p.Valor) })
+                        .OrderByDescending(x => x.Valor))
+                    {
+                        var pct = totalInv == 0m ? 0m : g.Valor / totalInv * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@g.Tipo.Rotulo()</MudText>
+                                <MudText Typo="Typo.body2">R$ @g.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Primary" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
                 }
             </div>
         </MudItem>
@@ -233,83 +206,23 @@ else
                 }
                 else
                 {
-                    <MudChart ChartType="ChartType.Donut"
-                              InputData="@(_dados.Contas.Select(c => (double)Math.Abs(c.Valor)).ToArray())"
-                              InputLabels="@(_dados.Contas.Select(c => c.Nome).ToArray())"
-                              Width="100%" Height="130px" ChartOptions="@_roseOptions" />
-                    <ul class="chart-legenda">
-                        @foreach (var c in _dados.Contas.Take(5))
-                        {
-                            var totalContas = _dados.Contas.Sum(x => Math.Abs(x.Valor));
-                            var pct = totalContas == 0m ? 0m : Math.Abs(c.Valor) / totalContas * 100m;
-                            <li>
-                                <span class="d-block" style="@($"color:{CorSaldo(c.Valor)}")">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</span>
-                                <span class="d-block" style="font-size: 0.85em; opacity:0.7">@c.Nome@(c.Banco is not null ? $" ({c.Banco})" : "")</span>
-                            </li>
-                        }
-                        @if (_dados.Contas.Count > 5)
-                        {
-                            <li>
-                                <MudLink OnClick="() => AbrirDialogContas()" Typo="Typo.body2">
-                                    +@(_dados.Contas.Count - 5) itens
-                                </MudLink>
-                            </li>
-                        }
-                    </ul>
+                    var totalContas = _dados.Contas.Sum(x => Math.Abs(x.Valor));
+                    @foreach (var c in _dados.Contas.OrderByDescending(x => x.Valor))
+                    {
+                        var pct = totalContas == 0m ? 0m : Math.Abs(c.Valor) / totalContas * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@c.Nome@(c.Banco is not null ? $" ({c.Banco})" : "")</MudText>
+                                <MudText Typo="Typo.body2" Style="@($"color:{CorSaldo(c.Valor)}")">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Info" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
                 }
             </div>
         </MudItem>
     </MudGrid>
 
-    <MudGrid Class="mt-4">
-        <MudItem xs="12">
-            <div class="surface-card pa-4">
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Top 10 despesas</MudText>
-                @if (_dados.TopDespesas.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Sem despesas neste período.</MudText>
-                }
-                else
-                {
-                    <MudTable Items="@_dados.TopDespesas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
-                        <HeaderContent>
-                            <MudTh>Categoria</MudTh>
-                            <MudTh>Pessoa</MudTh>
-                            <MudTh>Valor</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd>@context.Categoria</MudTd>
-                            <MudTd>@(context.Pessoa ?? "-")</MudTd>
-                            <MudTd><span class="fluxo-valor neg">@context.Valor.ToString("N2")</span></MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                }
-
-                <MudDivider Class="my-4" />
-
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Top 10 receitas</MudText>
-                @if (_dados.TopReceitas.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Sem receitas neste período.</MudText>
-                }
-                else
-                {
-                    <MudTable Items="@_dados.TopReceitas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
-                        <HeaderContent>
-                            <MudTh>Categoria</MudTh>
-                            <MudTh>Pessoa</MudTh>
-                            <MudTh>Valor</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd>@context.Categoria</MudTd>
-                            <MudTd>@(context.Pessoa ?? "-")</MudTd>
-                            <MudTd><span class="fluxo-valor pos">@context.Valor.ToString("N2")</span></MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                }
-            </div>
-        </MudItem>
-    </MudGrid>
 }
 
 @code {
@@ -320,12 +233,12 @@ else
     private DateTime? _periodoFim;
     private DashboardMes? _dados;
 
-    private ChartOptions _roseOptions = new()
+    private ChartOptions _tendenciaOptions = new()
     {
-        ChartPalette = new[] { Colors.Blue.Default, Colors.Red.Default, Colors.Green.Default,
-            Colors.Amber.Default, Colors.Purple.Default, Colors.Teal.Default,
-            Colors.Pink.Default, Colors.Lime.Default, Colors.Orange.Default,
-            Colors.Cyan.Default }
+        YAxisFormat = "N0",
+        MaxNumYAxisTicks = 6,
+        LineStrokeWidth = 3,
+        ShowToolTips = true
     };
 
     private List<ChartSeries> _tendenciaSeries = new();
@@ -423,43 +336,5 @@ else
         {
             _carregando = false;
         }
-    }
-
-    private async Task AbrirDialogItens(IReadOnlyList<CategoriaValor> itens, string titulo)
-    {
-        var total = itens.Sum(i => i.Valor);
-        var parameters = new DialogParameters
-        {
-            ["Itens"] = itens,
-            ["Total"] = total
-        };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        await DialogService.ShowAsync<DashboardItensDialog>(titulo, parameters, options);
-    }
-
-    private async Task AbrirDialogInvestimentos()
-    {
-        if (_dados is null) return;
-        var total = _dados.Patrimonios.Sum(p => p.Valor);
-        var parameters = new DialogParameters
-        {
-            ["Patrimonios"] = _dados.Patrimonios,
-            ["Total"] = total
-        };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        await DialogService.ShowAsync<DashboardInvestimentosDialog>("Investimentos — patrimônio", parameters, options);
-    }
-
-    private async Task AbrirDialogContas()
-    {
-        if (_dados is null) return;
-        var total = _dados.Contas.Sum(c => Math.Abs(c.Valor));
-        var parameters = new DialogParameters
-        {
-            ["Contas"] = _dados.Contas,
-            ["Total"] = total
-        };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        await DialogService.ShowAsync<DashboardContasDialog>("Contas — saldos", parameters, options);
     }
 }

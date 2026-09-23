@@ -711,3 +711,20 @@ h1:focus {
     padding: 6px 12px;
     font-size: 0.875rem;
 }
+
+/* ---- Menu lateral: apenas rolagem vertical ---- */
+.mud-drawer {
+    overflow-x: hidden !important;
+}
+
+.mud-drawer .mud-navmenu {
+    overflow-x: hidden;
+    min-width: 0;
+}
+
+.mud-drawer .mud-nav-link-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

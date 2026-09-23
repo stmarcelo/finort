@@ -16,3 +16,5 @@ public sealed record InvestimentoCard(
         ? SaldoReserva
         : QuantidadeTotal * Investimento.ValorCotaAtual;
 }
+
+public sealed record InvestimentoTendenciaTipo(TipoInvestimento Tipo, List<decimal> Valores);

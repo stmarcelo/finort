@@ -19,21 +19,6 @@
     <MudButton Variant="@gVariant" OnClick="IrParaHoje">Hoje</MudButton>
 </div>
 
-<div class="d-flex flex-wrap mb-2">
-    <div class="summary-chip mr-2">
-        <span class="label">A pagar</span>
-        <span class="value neg">@(_dadosMes?.TotalApagar.ToString("N2") ?? "0,00")</span>
-    </div>
-    <div class="summary-chip mr-2">
-        <span class="label">A receber</span>
-        <span class="value pos">@(_dadosMes?.TotalAreceber.ToString("N2") ?? "0,00")</span>
-    </div>
-    <div class="summary-chip">
-        <span class="label">Saldo previsto</span>
-        <span class="value @ClasseSaldo">@(_dadosMes?.SaldoPrevisto.ToString("N2") ?? "0,00")</span>
-    </div>
-</div>
-
 <div class="surface-card pa-3">
     <div class="cal-grid">
         @foreach (var diaSemana in DiasSemana)
@@ -97,15 +82,6 @@
 
     private string RotuloMes
         => _dadosMes is null ? "" : new DateTime(_ano, _mes, 1).ToString("MMMM yyyy", CulturaPtBr);
-
-    private string ClasseSaldo
-    {
-        get
-        {
-            var saldo = _dadosMes?.SaldoPrevisto ?? 0;
-            return saldo > 0 ? "pos" : saldo < 0 ? "neg" : "";
-        }
-    }
 
     private static IReadOnlyList<CompromissoAgrupado> AgruparItens(IReadOnlyList<CompromissoItem> itens)
     {

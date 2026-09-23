@@ -12,6 +12,21 @@ public enum TipoInvestimento
     Cdb
 }
 
+public static class TipoInvestimentoRotulos
+{
+    public static string Rotulo(this TipoInvestimento tipo)
+        => tipo switch
+        {
+            TipoInvestimento.Reserva => "Reserva",
+            TipoInvestimento.Dolar => "Dólar",
+            TipoInvestimento.Criptomoeda => "Criptomoeda",
+            TipoInvestimento.Fii => "FII",
+            TipoInvestimento.Acao => "Ação",
+            TipoInvestimento.Cdb => "CDB / Fundo",
+            _ => tipo.ToString()
+        };
+}
+
 /// <summary>Investimento vinculado a uma conta bancária (reserva, dólar, cripto, fii, ação, cdb).</summary>
 public class Investimento
 {

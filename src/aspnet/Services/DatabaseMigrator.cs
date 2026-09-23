@@ -239,7 +239,7 @@ public class DatabaseMigrator
             var sqlite = conn is SqliteConnection;
             if (!ColunaExiste(conn, sqlite, "Lancamentos", "ReembolsoId"))
             {
-                _logger.LogInformation("Sem coluna legada ReembolsoId; conversão ignorada");
+                _logger.LogDebug("Sem coluna legada ReembolsoId; conversão ignorada");
                 return;
             }
             if (!TabelaExiste(conn, sqlite, "Reembolsos"))

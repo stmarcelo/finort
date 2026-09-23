@@ -121,23 +121,37 @@ public class FluxoService
             .ToList();
 
         var itensCartao = despesasCartaoMes
-            .Select(l => (Id: l.CartaoCreditoId!.Value, l.BancoCartao, l.DigitosCartao, Magnitude: -l.Valor))
+            .Select(l => (Id: l.CartaoCreditoId!.Value, l.BancoCartao, l.DigitosCartao,
+                Vencimento: l.DataVencimentoCartao!.Value, Magnitude: -l.Valor))
             .Concat(projecoesCartaoMes
                 .Select(p => (Id: p.Provisao.CartaoCreditoId!.Value,
                     BancoCartao: p.Provisao.CartaoCredito != null ? p.Provisao.CartaoCredito.Banco : null,
                     DigitosCartao: p.Provisao.CartaoCredito != null ? p.Provisao.CartaoCredito.Ultimos4Digitos : null,
+                    Vencimento: DataVencimentoCartao(p),
                     Magnitude: p.Provisao.Valor)))
             .GroupBy(x => x.Id)
-            .Select(g => new TotalCartao(
-                CartaoId: g.Key,
-                Nome: RotuloCartao(g.First().BancoCartao, g.First().DigitosCartao),
-                Total: g.Sum(x => x.Magnitude)))
-            .OrderBy(t => t.Nome)
+            .Select(g => new
+            {
+                g.Key,
+                Nome = RotuloCartao(g.First().BancoCartao, g.First().DigitosCartao),
+                Total = g.Sum(x => x.Magnitude),
+                MesesVencimento = g.Select(x => x.Vencimento).Distinct().ToList()
+            })
+            .OrderBy(x => x.Nome)
             .ToList();
 
         var itensComStatus = new List<TotalCartao>();
         foreach (var item in itensCartao)
-            itensComStatus.Add(item with { Pago = await FaturaPagaAsync(item.CartaoId, ano, mes) });
+        {
+            var pago = true;
+            foreach (var venc in item.MesesVencimento)
+                if (!await FaturaPagaAsync(item.Key, venc.Year, venc.Month))
+                {
+                    pago = false;
+                    break;
+                }
+            itensComStatus.Add(new TotalCartao(item.Key, item.Nome, item.Total, pago));
+        }
 
         var mesAnterior = mes == 1 ? 12 : mes - 1;
         var anoAnterior = mes == 1 ? ano - 1 : ano;

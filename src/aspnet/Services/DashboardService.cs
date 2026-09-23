@@ -126,7 +126,7 @@ public class DashboardService
                 var resgates = movs.Where(m => m.Tipo == MovimentoTipo.Resgate).Sum(m => m.Valor);
                 var rendimentosDoInvestimento = rendimentos
                     .Where(r => r.InvestimentoId == i.Id).Sum(r => r.Valor);
-                return new InvestimentoPatrimonio(i.Nome, aportes + rendimentosDoInvestimento - resgates);
+                return new InvestimentoPatrimonio(i.Nome, i.Tipo, aportes + rendimentosDoInvestimento - resgates);
             }
 
             var quantidade = movimentos
@@ -137,7 +137,7 @@ public class DashboardService
                     MovimentoTipo.Venda => -(m.Quantidade ?? 0m),
                     _ => 0m
                 });
-            return new InvestimentoPatrimonio(i.Nome, quantidade * i.ValorCotaAtual);
+            return new InvestimentoPatrimonio(i.Nome, i.Tipo, quantidade * i.ValorCotaAtual);
         }).ToList();
     }
 

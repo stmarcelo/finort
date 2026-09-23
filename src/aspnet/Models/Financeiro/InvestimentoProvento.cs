@@ -14,6 +14,7 @@ public class InvestimentoProvento
     public Investimento Investimento { get; set; } = null!;
     public DateOnly Data { get; set; }
     public decimal Valor { get; set; }
+    public decimal Percentual { get; set; }
     public ProventoTipo Tipo { get; set; }
     public Guid? LancamentoId { get; set; }
     public Lancamento? Lancamento { get; set; }

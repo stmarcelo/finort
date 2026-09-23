@@ -178,6 +178,27 @@ public class InvestimentoServiceTests
     }
 
     [Fact]
+    public async Task RegistrarDividendo_GravaPercentualECriaReceitaConfirmada()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var inv = await service.CriarAsync("PETR4", TipoInvestimento.Acao, conta.Id,
+                null, "Ação", 22.50m, new DateTime(2026, 9, 1));
+            await service.RegistrarMovimentoAsync(inv.Id, new DateOnly(2026, 9, 2),
+                MovimentoTipo.Compra, 100, 22.50m, null);
+            var provento = await service.RegistrarProventoAsync(inv.Id,
+                new DateOnly(2026, 9, 5), 0.90m, ProventoTipo.Dividendo);
+
+            Assert.Equal(0.90m / 2250m, provento.Percentual, 6);
+            var receita = db.Lancamentos.Single(x =>
+                x.Tipo == LancamentoTipo.Receita && x.ContaId == conta.Id);
+            Assert.True(receita.Confirmado);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public async Task RegistrarProvento_ValorInvalido_Lanca()
     {
         var (db, file, conta, service) = await SetupAsync();
@@ -214,6 +235,30 @@ public class InvestimentoServiceTests
             Assert.Equal(2, proventos.Count);
             Assert.Equal(new DateOnly(2026, 8, 10), proventos[0].Data);
             Assert.Equal(new DateOnly(2026, 7, 10), proventos[1].Data);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarProventosPeriodo_ListaDoPeriodoOrdenada()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var inv = await service.CriarAsync("ITSA4", TipoInvestimento.Fii, conta.Id,
+                null, "FII", 10m, new DateTime(2026, 9, 1));
+            await service.RegistrarMovimentoAsync(inv.Id, new DateOnly(2026, 9, 2),
+                MovimentoTipo.Compra, 100, 10m, null);
+            await service.RegistrarProventoAsync(inv.Id, new DateOnly(2026, 10, 5), 0.50m, ProventoTipo.Dividendo);
+            await service.RegistrarProventoAsync(inv.Id, new DateOnly(2026, 11, 20), 0.60m, ProventoTipo.Dividendo);
+
+            var linhas = await service.ListarProventosPeriodoAsync(
+                new DateOnly(2026, 10, 1), new DateOnly(2026, 11, 30));
+
+            Assert.Equal(2, linhas.Count);
+            Assert.All(linhas, x => Assert.Equal(TipoInvestimento.Fii, x.TipoInvestimento));
+            Assert.True(linhas[0].Data < linhas[1].Data);
+            Assert.Equal(0.0005m, linhas[0].Percentual, 6);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -693,6 +738,28 @@ public class InvestimentoServiceTests
                     new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 10m, 10m, null,
                     lancarNaConta: true, taxa: 2m));
             Assert.Contains("Taxa", ex.Message);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task TendenciaPatrimonio_AcumulaSaldosPorMes()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var inv = await service.CriarAsync("ITSA4", TipoInvestimento.Acao, conta.Id,
+                null, "Ação", 10m, new DateTime(hoje.Year, hoje.Month, 1));
+            await service.RegistrarMovimentoAsync(inv.Id, hoje, MovimentoTipo.Compra, 100, 10m, null);
+
+            var tendencia = await service.TendenciaPatrimonioAsync();
+
+            var serie = Assert.Single(tendencia);
+            Assert.Equal(TipoInvestimento.Acao, serie.Tipo);
+            Assert.Equal(6, serie.Valores.Count);
+            Assert.Equal(0m, serie.Valores[^2]);
+            Assert.Equal(1000m, serie.Valores[^1]);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
