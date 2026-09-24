@@ -66,6 +66,8 @@ public class LancamentoServiceTests
             Assert.Equal(LancamentoTipo.Transferencia, destinoLancamento.Tipo);
             Assert.Equal(Financeiro(db).Id, origem.CategoriaId);
             Assert.Equal("Transferência", (await db.Subcategorias.FindAsync(origem.SubcategoriaId))!.Nome);
+            Assert.True(origem.Confirmado);
+            Assert.True(destinoLancamento.Confirmado);
 
             var soma = db.Lancamentos.Sum(l => l.Valor);
             Assert.Equal(0m, soma);
@@ -100,8 +102,10 @@ public class LancamentoServiceTests
             var contaService = new ContaService(db);
             var destino = await contaService.CriarAsync("Destino", null, null, null);
             var outroDestino = await contaService.CriarAsync("Outro destino", null, null, null);
-            var (origem, _) = await service.CriarTransferenciaAsync(conta.Id, destino.Id, new DateOnly(2026, 8, 1), 250m);
+            var (origem, destinoLancamento) = await service.CriarTransferenciaAsync(conta.Id, destino.Id, new DateOnly(2026, 8, 1), 250m);
 
+            await service.AlternarConfirmadoAsync(origem.Id);
+            await service.AlternarConfirmadoAsync(destinoLancamento.Id);
             await service.AtualizarTransferenciaAsync(origem.Id, conta.Id, outroDestino.Id, new DateOnly(2026, 8, 10), 500m);
 
             var pernas = await service.ObterPernasAsync(origem.Id);
@@ -109,6 +113,26 @@ public class LancamentoServiceTests
             Assert.Equal(-500m, pernas.Single(p => p.ContaId == conta.Id).Valor);
             Assert.Equal(500m, pernas.Single(p => p.ContaId == outroDestino.Id).Valor);
             Assert.Equal(new DateOnly(2026, 8, 10), pernas[0].Data);
+            Assert.All(pernas, p => Assert.False(p.Confirmado));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarTransferencia_Confirmada_LancaComLista()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var contaService = new ContaService(db);
+            var destino = await contaService.CriarAsync("Destino", null, null, null);
+            var (origem, destinoLancamento) = await service.CriarTransferenciaAsync(conta.Id, destino.Id, new DateOnly(2026, 8, 1), 250m);
+
+            var ex = await Assert.ThrowsAsync<LancamentoConfirmadoException>(
+                () => service.AtualizarTransferenciaAsync(origem.Id, conta.Id, destino.Id, new DateOnly(2026, 8, 5), 300m));
+
+            Assert.Contains(ex.Confirmados, l => l.Id == origem.Id);
+            Assert.Contains(ex.Confirmados, l => l.Id == destinoLancamento.Id);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -138,8 +162,10 @@ public class LancamentoServiceTests
         {
             var contaService = new ContaService(db);
             var destino = await contaService.CriarAsync("Destino", null, null, null);
-            var (origem, _) = await service.CriarTransferenciaAsync(conta.Id, destino.Id, new DateOnly(2026, 8, 1), 250m);
+            var (origem, destinoLancamento) = await service.CriarTransferenciaAsync(conta.Id, destino.Id, new DateOnly(2026, 8, 1), 250m);
 
+            await service.AlternarConfirmadoAsync(origem.Id);
+            await service.AlternarConfirmadoAsync(destinoLancamento.Id);
             await service.ExcluirAsync(origem.Id);
 
             Assert.Empty(db.Lancamentos.Where(l => l.ReferenciaId == origem.ReferenciaId));
@@ -227,6 +253,26 @@ public class LancamentoServiceTests
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.CriarReceitaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null));
+
+            Assert.Contains("mês está fechado", ex.Message);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task CriarTransferencia_DestinoEmMesFechado_Lanca()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var contaService = new ContaService(db);
+            var destino = await contaService.CriarAsync("Destino", null, null, null);
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            db.MesesFechados.Add(new MesFechado { ContaId = destino.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.CriarTransferenciaAsync(conta.Id, destino.Id, hoje, 100m));
 
             Assert.Contains("mês está fechado", ex.Message);
         }

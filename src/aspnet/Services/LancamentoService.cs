@@ -74,6 +74,7 @@ public class LancamentoService
     {
         Validar(valor, data);
         await GarantirMesAbertoAsync(data, contaOrigemId);
+        await GarantirMesAbertoAsync(data, contaDestinoId);
         var transferencia = await _db.Subcategorias.FirstOrDefaultAsync(s => s.IsProtected && s.Nome == "Transferência")
             ?? throw new InvalidOperationException("Categoria de transferência não encontrada no seed.");
 
@@ -86,7 +87,8 @@ public class LancamentoService
             ContaId = contaOrigemId,
             CategoriaId = transferencia.CategoriaId,
             SubcategoriaId = transferencia.Id,
-            ReferenciaId = referenciaId
+            ReferenciaId = referenciaId,
+            Confirmado = true
         };
         var destino = new Lancamento
         {
@@ -96,7 +98,8 @@ public class LancamentoService
             ContaId = contaDestinoId,
             CategoriaId = transferencia.CategoriaId,
             SubcategoriaId = transferencia.Id,
-            ReferenciaId = referenciaId
+            ReferenciaId = referenciaId,
+            Confirmado = true
         };
         _db.Lancamentos.AddRange(origem, destino);
         await _db.SaveChangesAsync();
