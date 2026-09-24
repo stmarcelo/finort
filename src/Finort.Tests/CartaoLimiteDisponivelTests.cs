@@ -79,4 +79,81 @@ public class CartaoLimiteDisponivelTests
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
+
+    [Fact]
+    public async Task TotalNaoPago_ExcluiFaturaPaga_PorMesDoVencimentoNaoDaCompra()
+    {
+        var (db, file, lancamentoService, cartaoService, cartao) = await SetupAsync(2000m);
+        try
+        {
+            // compra em setembro com fatura (vencimento) em outubro
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(2026, 9, 10),
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -100m,
+                CartaoCreditoId = cartao.Id,
+                DataVencimentoCartao = new DateOnly(2026, 10, 10),
+                CategoriaId = Renda(db).Id,
+                Confirmado = true
+            });
+            var conta = new Conta { Nome = "Conta" };
+            db.Contas.Add(conta);
+            await db.SaveChangesAsync();
+
+            var faturaService = new FaturaService(db);
+            await faturaService.FecharAsync(cartao.Id, 2026, 10);
+            await faturaService.PagarAsync(cartao.Id, 2026, 10, conta.Id, new DateOnly(2026, 10, 10), 100m);
+
+            var resumo = (await cartaoService.ListarComSaldoAsync()).Single();
+
+            // fatura 10 paga -> compra (Data em mês 9, vencimento em mês 10) sai do TotalNaoPago
+            Assert.Equal(0m, resumo.TotalNaoPago);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task TotalNaoPago_MantemLancamentoDeFaturaAberta_NoMesPago()
+    {
+        var (db, file, lancamentoService, cartaoService, cartao) = await SetupAsync(2000m);
+        try
+        {
+            // compra da fatura 09 (vence 05/09)
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(2026, 9, 5),
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -50m,
+                CartaoCreditoId = cartao.Id,
+                DataVencimentoCartao = new DateOnly(2026, 9, 5),
+                CategoriaId = Renda(db).Id,
+                Confirmado = true
+            });
+            // compra da fatura 10 (vence 15/10), mesma Data month 09 — não pode ser excluída
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(2026, 9, 20),
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -30m,
+                CartaoCreditoId = cartao.Id,
+                DataVencimentoCartao = new DateOnly(2026, 10, 15),
+                CategoriaId = Renda(db).Id,
+                Confirmado = true
+            });
+            var conta = new Conta { Nome = "Conta" };
+            db.Contas.Add(conta);
+            await db.SaveChangesAsync();
+
+            var faturaService = new FaturaService(db);
+            await faturaService.FecharAsync(cartao.Id, 2026, 9);
+            await faturaService.PagarAsync(cartao.Id, 2026, 9, conta.Id, new DateOnly(2026, 9, 10), 50m);
+
+            var resumo = (await cartaoService.ListarComSaldoAsync()).Single();
+
+            // fatura 09 paga exclui só a compra de 05/09; a de 20/09 (fatura 10 aberta) permanece
+            Assert.Equal(-30m, resumo.TotalNaoPago);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

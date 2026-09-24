@@ -45,12 +45,16 @@ public class CartaoCreditoService
         // (perna destino positiva) e os meses de fatura já pagos.
         var naoPagos = await _db.Lancamentos
             .Where(l => l.CartaoCreditoId != null)
-            .Select(l => new { l.CartaoCreditoId, l.Valor, l.Tipo, l.ProvisaoId, l.Data.Year, l.Data.Month })
+            .Select(l => new { l.CartaoCreditoId, l.Valor, l.Tipo, l.ProvisaoId, l.Data, l.DataVencimentoCartao })
             .ToListAsync();
         var mapa = naoPagos
-            .Where(l => l.ProvisaoId == null &&
-                        !(l.Tipo == LancamentoTipo.Transferencia && l.Valor > 0m) &&
-                        !mesesPagos.Contains((l.CartaoCreditoId!.Value, l.Year, l.Month)))
+            .Where(l =>
+            {
+                var vcto = l.DataVencimentoCartao ?? l.Data;
+                return l.ProvisaoId == null &&
+                       !(l.Tipo == LancamentoTipo.Transferencia && l.Valor > 0m) &&
+                       !mesesPagos.Contains((l.CartaoCreditoId!.Value, vcto.Year, vcto.Month));
+            })
             .GroupBy(l => l.CartaoCreditoId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(l => l.Valor));
 

@@ -92,14 +92,80 @@ else
         </MudItem>
         <MudItem xs="12" md="4">
             <div class="surface-card pa-4" style="min-height: 200px;">
-                <MudText Typo="Typo.subtitle1" Class="mb-2">Utilização de cartões</MudText>
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudText Typo="Typo.subtitle1">Investimentos — patrimônio</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @TotalInvestimentos.ToString("N2", CulturaPtBr)</MudText>
+                </div>
+                @if (_dados.Patrimonios.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Nenhum investimento cadastrado.</MudText>
+                }
+                else
+                {
+                    @foreach (var g in _dados.Patrimonios
+                        .GroupBy(p => p.Tipo)
+                        .Select(g => new { Tipo = g.Key, Valor = g.Sum(p => p.Valor) })
+                        .OrderByDescending(x => x.Valor))
+                    {
+                        var pct = TotalInvestimentos == 0m ? 0m : g.Valor / TotalInvestimentos * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@g.Tipo.Rotulo()</MudText>
+                                <MudText Typo="Typo.body2">R$ @g.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Primary" Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <div class="surface-card pa-4" style="min-height: 260px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Categorias@(SufixoProjecao)</MudText>
+                @if (_dados.CategoriasLiquidas.Count == 0)
+                {
+                    <MudText Typo="Typo.body2">Sem movimentações neste período.</MudText>
+                }
+                else
+                {
+                    var maxAbs = _dados.CategoriasLiquidas.Max(c => Math.Abs(c.Valor));
+                    @foreach (var c in _dados.CategoriasLiquidas)
+                    {
+                        var pct = maxAbs == 0m ? 0m : Math.Abs(c.Valor) / maxAbs * 100m;
+                        var positivo = c.Valor > 0;
+                        var cor = positivo ? "var(--mud-palette-info)" : "var(--mud-palette-error)";
+                        var totalRef = positivo ? _dados.TotalReceitas : _dados.TotalDespesas;
+                        var pctPeriodo = totalRef <= 0m ? 0m : Math.Abs(c.Valor) / totalRef * 100m;
+                        <div class="mb-3">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">@c.Nome</MudText>
+                                <MudText Typo="Typo.body2" Style="@($"color:{cor}")">
+                                    @(positivo ? "+" : "−")R$ @Math.Abs(c.Valor).ToString("N2", CulturaPtBr) (@pctPeriodo.ToString("N1", CulturaPtBr)%)
+                                </MudText>
+                            </div>
+                            <MudProgressLinear Value="@((double)pct)" Rounded="true"
+                                               Color="@(positivo ? Color.Info : Color.Error)"
+                                               Style="height:14px" Class="mt-1" />
+                        </div>
+                    }
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <div class="surface-card pa-4" style="min-height: 200px;">
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudText Typo="Typo.subtitle1">Utilização de cartões</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @TotalCartoes.ToString("N2", CulturaPtBr)</MudText>
+                </div>
                 @if (_dados.UtilizacaoCartoes.Count == 0)
                 {
                     <MudText Typo="Typo.body2">Nenhum cartão ativo.</MudText>
                 }
                 else
                 {
-                    <div style="max-height: 340px; overflow-y: auto;" class="pr-1">
                     @foreach (var c in _dados.UtilizacaoCartoes.OrderByDescending(x => x.Utilizado))
                     {
                         var pctUtilizado = c.Limite > 0 ? c.Utilizado / c.Limite * 100m : 0m;
@@ -113,109 +179,6 @@ else
                                 <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @c.Utilizado.ToString("N2", CulturaPtBr)</MudText>
                                 <MudText Typo="Typo.caption" Style="opacity:0.7">R$ @c.Limite.ToString("N2", CulturaPtBr)</MudText>
                             </div>
-                        </div>
-                    }
-                    </div>
-                }
-            </div>
-        </MudItem>
-    </MudGrid>
-
-    <MudGrid>
-        <MudItem xs="12" md="3">
-            <div class="surface-card pa-4" style="min-height: 260px;">
-                <MudText Typo="Typo.subtitle1">Despesas por categoria@(SufixoProjecao)</MudText>
-                @if (_dados.DespesasPorCategoria.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Sem despesas neste período.</MudText>
-                }
-                else
-                {
-                    @foreach (var c in _dados.DespesasPorCategoria)
-                    {
-                        var totalCat = TotalDonut(_dados.DespesasPorCategoria);
-                        var pct = totalCat == 0m ? 0m : c.Valor / totalCat * 100m;
-                        <div class="mb-3">
-                            <div class="d-flex justify-space-between">
-                                <MudText Typo="Typo.body2">@c.Nome</MudText>
-                                <MudText Typo="Typo.body2">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
-                            </div>
-                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Primary" Style="height:14px" Class="mt-1" />
-                        </div>
-                    }
-                }
-            </div>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <div class="surface-card pa-4" style="min-height: 260px;">
-                <MudText Typo="Typo.subtitle1">Receitas por categoria@(SufixoProjecao)</MudText>
-                @if (_dados.ReceitasPorCategoria.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Sem receitas neste período.</MudText>
-                }
-                else
-                {
-                    @foreach (var c in _dados.ReceitasPorCategoria)
-                    {
-                        var totalCat = TotalDonut(_dados.ReceitasPorCategoria);
-                        var pct = totalCat == 0m ? 0m : c.Valor / totalCat * 100m;
-                        <div class="mb-3">
-                            <div class="d-flex justify-space-between">
-                                <MudText Typo="Typo.body2">@c.Nome</MudText>
-                                <MudText Typo="Typo.body2">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
-                            </div>
-                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Success" Style="height:14px" Class="mt-1" />
-                        </div>
-                    }
-                }
-            </div>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <div class="surface-card pa-4" style="min-height: 260px;">
-                <MudText Typo="Typo.subtitle1">Investimentos — patrimônio</MudText>
-                @if (_dados.Patrimonios.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Nenhum investimento cadastrado.</MudText>
-                }
-                else
-                {
-                    var totalInv = _dados.Patrimonios.Sum(x => x.Valor);
-                    @foreach (var g in _dados.Patrimonios
-                        .GroupBy(p => p.Tipo)
-                        .Select(g => new { Tipo = g.Key, Valor = g.Sum(p => p.Valor) })
-                        .OrderByDescending(x => x.Valor))
-                    {
-                        var pct = totalInv == 0m ? 0m : g.Valor / totalInv * 100m;
-                        <div class="mb-3">
-                            <div class="d-flex justify-space-between">
-                                <MudText Typo="Typo.body2">@g.Tipo.Rotulo()</MudText>
-                                <MudText Typo="Typo.body2">R$ @g.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
-                            </div>
-                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Primary" Style="height:14px" Class="mt-1" />
-                        </div>
-                    }
-                }
-            </div>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <div class="surface-card pa-4" style="min-height: 260px;">
-                <MudText Typo="Typo.subtitle1">Contas — saldos</MudText>
-                @if (_dados.Contas.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">Nenhuma conta cadastrada.</MudText>
-                }
-                else
-                {
-                    var totalContas = _dados.Contas.Sum(x => Math.Abs(x.Valor));
-                    @foreach (var c in _dados.Contas.OrderByDescending(x => x.Valor))
-                    {
-                        var pct = totalContas == 0m ? 0m : Math.Abs(c.Valor) / totalContas * 100m;
-                        <div class="mb-3">
-                            <div class="d-flex justify-space-between">
-                                <MudText Typo="Typo.body2">@c.Nome@(c.Banco is not null ? $" ({c.Banco})" : "")</MudText>
-                                <MudText Typo="Typo.body2" Style="@($"color:{CorSaldo(c.Valor)}")">R$ @c.Valor.ToString("N2", CulturaPtBr) (@pct.ToString("N1", CulturaPtBr)%)</MudText>
-                            </div>
-                            <MudProgressLinear Value="@((double)pct)" Rounded="true" Color="Color.Info" Style="height:14px" Class="mt-1" />
                         </div>
                     }
                 }
@@ -247,11 +210,14 @@ else
         ? $"{_periodoInicio.Value.ToString("MMM/yyyy", CulturaPtBr)} – {_periodoFim.Value.ToString("MMM/yyyy", CulturaPtBr)}"
         : "";
 
-    private static decimal TotalDonut(IReadOnlyList<CategoriaValor> itens)
-        => itens.Sum(i => i.Valor);
-
     private static string CorSaldo(decimal valor)
         => valor > 0 ? "var(--mud-palette-success)" : valor < 0 ? "var(--mud-palette-error)" : "inherit";
+
+    private decimal TotalInvestimentos
+        => _dados is null ? 0m : _dados.Patrimonios.Sum(p => p.Valor);
+
+    private decimal TotalCartoes
+        => _dados is null ? 0m : _dados.UtilizacaoCartoes.Sum(c => c.Utilizado);
 
     private string SufixoProjecao
         => _periodoFim is not null &&

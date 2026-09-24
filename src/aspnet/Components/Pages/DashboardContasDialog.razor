@@ -32,6 +32,8 @@
 </MudDialog>
 
 @code {
+    public sealed record ContaPatrimonio(string Nome, string? Banco, decimal Valor);
+
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public IReadOnlyList<ContaPatrimonio>? Contas { get; set; }
     [Parameter] public decimal Total { get; set; }

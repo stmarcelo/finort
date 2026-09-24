@@ -66,6 +66,13 @@ public class DashboardService
             }
         }
 
+        var categoriasLiquidas = despesasPorCategoria.Keys.Union(receitasPorCategoria.Keys)
+            .Select(nome => new CategoriaValor(nome,
+                receitasPorCategoria.GetValueOrDefault(nome) - despesasPorCategoria.GetValueOrDefault(nome)))
+            .Where(c => c.Valor != 0m)
+            .OrderByDescending(c => Math.Abs(c.Valor))
+            .ToList();
+
         var topDespesas = despesasDoMes
             .GroupBy(l => new { l.CategoriaNome, l.SubcategoriaNome, l.PessoaNome })
             .Select(g => new LancamentoTop(
@@ -93,10 +100,9 @@ public class DashboardService
         var utilizacao = await ObterUtilizacaoCartoesAsync();
 
         return new DashboardMes(inicio, fim,
-            Ordenar(despesasPorCategoria), Ordenar(receitasPorCategoria),
+            categoriasLiquidas,
             topDespesas, topReceitas,
             await CalcularPatrimoniosAsync(),
-            await CalcularContasAsync(),
             totalReceitas, totalDespesas, taxaPoupanca,
             tendencia, utilizacao);
     }
@@ -140,23 +146,6 @@ public class DashboardService
             return new InvestimentoPatrimonio(i.Nome, i.Tipo, quantidade * i.ValorCotaAtual);
         }).ToList();
     }
-
-    private async Task<List<ContaPatrimonio>> CalcularContasAsync()
-    {
-        var contas = await _db.Contas.OrderBy(c => c.Nome).ToListAsync();
-        var hoje = DateOnly.FromDateTime(DateTime.Today);
-        var fimDoMes = new DateOnly(hoje.Year, hoje.Month, DateTime.DaysInMonth(hoje.Year, hoje.Month));
-        var saldos = await _db.Lancamentos
-            .Where(l => l.ContaId != null && l.Data <= fimDoMes)
-            .GroupBy(l => l.ContaId!.Value)
-            .Select(g => new { ContaId = g.Key, Valor = g.Sum(l => l.Valor) })
-            .ToListAsync();
-        var mapa = saldos.ToDictionary(s => s.ContaId, s => s.Valor);
-        return contas.Select(c => new ContaPatrimonio(c.Nome, c.Banco, mapa.GetValueOrDefault(c.Id))).ToList();
-    }
-
-    private static List<CategoriaValor> Ordenar(Dictionary<string, decimal> mapa)
-        => mapa.OrderByDescending(kv => kv.Value).Select(kv => new CategoriaValor(kv.Key, kv.Value)).ToList();
 
     private static string RotuloCategoria(string categoriaNome, string? subcategoriaNome)
         => string.IsNullOrWhiteSpace(subcategoriaNome) ? categoriaNome : $"{categoriaNome} › {subcategoriaNome}";

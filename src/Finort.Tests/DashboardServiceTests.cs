@@ -65,9 +65,9 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(2026, 8);
             var dashboard = await service.ObterAsync(inicio, fim);
 
-            Assert.Contains(dashboard.DespesasPorCategoria, c => c.Nome == "Mercado" && c.Valor == 150m);
-            Assert.Contains(dashboard.DespesasPorCategoria, c => c.Nome == "Contas de casa" && c.Valor == 30m);
-            Assert.Single(dashboard.ReceitasPorCategoria, c => c.Nome == "Receita" && c.Valor == 500m);
+            Assert.Contains(dashboard.CategoriasLiquidas, c => c.Nome == "Mercado" && c.Valor == -150m);
+            Assert.Contains(dashboard.CategoriasLiquidas, c => c.Nome == "Contas de casa" && c.Valor == -30m);
+            Assert.Contains(dashboard.CategoriasLiquidas, c => c.Nome == "Receita" && c.Valor == 500m);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -92,7 +92,7 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(alvo.Year, alvo.Month);
             var dashboard = await service.ObterAsync(inicio, fim);
 
-            Assert.Contains(dashboard.DespesasPorCategoria, c => c.Nome == "Mercado" && c.Valor == 100m);
+            Assert.Contains(dashboard.CategoriasLiquidas, c => c.Nome == "Mercado" && c.Valor == -100m);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -116,7 +116,7 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(hoje.Year, hoje.Month);
             var dashboard = await service.ObterAsync(inicio, fim);
 
-            Assert.Empty(dashboard.DespesasPorCategoria);
+            Assert.Empty(dashboard.CategoriasLiquidas);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -225,8 +225,7 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(2026, 8);
             var dashboard = await service.ObterAsync(inicio, fim);
 
-            Assert.Empty(dashboard.DespesasPorCategoria);
-            Assert.Empty(dashboard.ReceitasPorCategoria);
+            Assert.Empty(dashboard.CategoriasLiquidas);
             Assert.Empty(dashboard.TopDespesas);
             Assert.Empty(dashboard.TopReceitas);
             Assert.Empty(dashboard.Patrimonios);
@@ -278,7 +277,7 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(hoje.Year, hoje.Month);
             var dados = await service.ObterAsync(inicio, fim);
 
-            Assert.Equal(60m, dados.DespesasPorCategoria.Single(c => c.Nome == "Alimentação").Valor);
+            Assert.Equal(-60m, dados.CategoriasLiquidas.Single(c => c.Nome == "Alimentação").Valor);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -306,7 +305,60 @@ public class DashboardServiceTests
             var (inicio, fim) = Mes(hoje.Year, hoje.Month);
             var dados = await service.ObterAsync(inicio, fim);
 
-            Assert.DoesNotContain(dados.DespesasPorCategoria, c => c.Nome == "Alimentação");
+            Assert.DoesNotContain(dados.CategoriasLiquidas, c => c.Nome == "Alimentação");
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task Obter_CategoriasLiquidas_AnulaReceitaIgualDespesa()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            db.Categorias.Add(new Categoria { Nome = "Estorno" });
+            await db.SaveChangesAsync();
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 5), LancamentoTipo.Despesa, -100m, "Estorno");
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 6), LancamentoTipo.Receita, 100m, "Estorno");
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 7), LancamentoTipo.Despesa, -50m, "Mercado");
+
+            var (inicio, fim) = Mes(2026, 8);
+            var dashboard = await service.ObterAsync(inicio, fim);
+
+            var mercado = Assert.Single(dashboard.CategoriasLiquidas, c => c.Nome == "Mercado");
+            Assert.Equal(-50m, mercado.Valor);
+            Assert.DoesNotContain(dashboard.CategoriasLiquidas, c => c.Nome == "Estorno");
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task Obter_CategoriasLiquidas_OrdenaPorValorAbsolutoEDoSinais()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            db.Categorias.Add(new Categoria { Nome = "Salario" });
+            db.Categorias.Add(new Categoria { Nome = "Bônus" });
+            await db.SaveChangesAsync();
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 5), LancamentoTipo.Receita, 500m, "Salario");
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 6), LancamentoTipo.Receita, 50m, "Bônus");
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 7), LancamentoTipo.Despesa, -150m, "Mercado");
+            await LanAsync(db, conta.Id, new DateOnly(2026, 8, 8), LancamentoTipo.Despesa, -30m, "Contas de casa");
+
+            var (inicio, fim) = Mes(2026, 8);
+            var dashboard = await service.ObterAsync(inicio, fim);
+
+            var liquidas = dashboard.CategoriasLiquidas;
+            Assert.Equal(4, liquidas.Count);
+            Assert.Equal("Salario", liquidas[0].Nome);
+            Assert.Equal(500m, liquidas[0].Valor);
+            Assert.Equal("Mercado", liquidas[1].Nome);
+            Assert.Equal(-150m, liquidas[1].Valor);
+            Assert.Equal("Bônus", liquidas[2].Nome);
+            Assert.Equal(50m, liquidas[2].Valor);
+            Assert.Equal("Contas de casa", liquidas[3].Nome);
+            Assert.Equal(-30m, liquidas[3].Valor);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

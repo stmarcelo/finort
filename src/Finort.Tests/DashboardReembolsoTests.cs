@@ -68,7 +68,7 @@ public class DashboardReembolsoTests
             var dash = await dashboard.ObterAsync(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30));
 
             Assert.Equal(0m, dash.TotalReceitas);
-            Assert.Empty(dash.ReceitasPorCategoria);
+            Assert.Empty(dash.CategoriasLiquidas);
             Assert.Empty(dash.TopReceitas);
             Assert.Equal(0m, dash.TotalDespesas);
         }
