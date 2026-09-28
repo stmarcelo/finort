@@ -315,15 +315,15 @@ public class FaturaService
     /// <summary>Fecha a fatura e agrega reembolsos por pessoa em 1 receita cada, sem confirmação
     /// (o usuário confirma a receita ao receber o valor).
     /// Vencimento do reembolso = DataVencimentoCartao menos 1 dia (definido na criação).</summary>
-    public async Task<Fatura> FecharComReembolsosAsync(Guid cartaoId, int ano, int mes, DateOnly inicio, DateOnly fim, Guid contaId, Guid categoriaId, Guid? subcategoriaId)
+    public async Task<Fatura> FecharComReembolsosAsync(Guid cartaoId, int ano, int mes, DateOnly inicio, DateOnly fim, Guid contaId, Guid categoriaId, Guid? subcategoriaId, DateOnly? dataReceita = null)
     {
         if (!await _db.Contas.AnyAsync(c => c.Id == contaId)) throw new InvalidOperationException("Conta não encontrada.");
         var categoria = await _db.Categorias.FindAsync(categoriaId)
             ?? throw new InvalidOperationException("Categoria não encontrada.");
         if (categoria.Nome == "Financeiro" || categoria.Nome == "Acerto de saldo")
             throw new InvalidOperationException("Categoria inválida para reembolso; escolha uma categoria de receita.");
-        var hoje = DateOnly.FromDateTime(DateTime.Today);
-        if (await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == hoje.Year && m.Mes == hoje.Month))
+        var dataLanc = dataReceita ?? DateOnly.FromDateTime(DateTime.Today);
+        if (await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == dataLanc.Year && m.Mes == dataLanc.Month))
             throw new InvalidOperationException("Mês da conta fechado; reabra o mês antes.");
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
@@ -337,7 +337,7 @@ public class FaturaService
             {
                 var total = g.Sum(r => r.Valor);
                 if (total <= 0) { foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; } continue; }
-                var receita = new Lancamento { Data = hoje, Tipo = LancamentoTipo.Receita, Valor = total, ContaId = contaId, CategoriaId = categoriaId, SubcategoriaId = subcategoriaId, PessoaId = g.Key, Confirmado = false };
+                var receita = new Lancamento { Data = dataLanc, Tipo = LancamentoTipo.Receita, Valor = total, ContaId = contaId, CategoriaId = categoriaId, SubcategoriaId = subcategoriaId, PessoaId = g.Key, Confirmado = false };
                 _db.Lancamentos.Add(receita);
                 foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; r.ReceitaId = receita.Id; }
             }
@@ -354,7 +354,7 @@ public class FaturaService
 
     /// <summary>Baixa parcial antecipada: fecha apenas os reembolsos selecionados,
     /// criando 1 receita por pessoa, sem confirmação. Os já fechados ficam fora do fechamento final.</summary>
-    public async Task<List<Lancamento>> FecharReembolsosSelecionadosAsync(List<Guid> reembolsoIds, Guid contaId, Guid categoriaId, Guid? subcategoriaId)
+    public async Task<List<Lancamento>> FecharReembolsosSelecionadosAsync(List<Guid> reembolsoIds, Guid contaId, Guid categoriaId, Guid? subcategoriaId, DateOnly? dataReceita = null)
     {
         if (reembolsoIds is null || reembolsoIds.Count == 0)
             throw new ArgumentException("Selecione ao menos um reembolso.");
@@ -363,8 +363,8 @@ public class FaturaService
             ?? throw new InvalidOperationException("Categoria não encontrada.");
         if (categoria.Nome == "Financeiro" || categoria.Nome == "Acerto de saldo")
             throw new InvalidOperationException("Categoria inválida para reembolso; escolha uma categoria de receita.");
-        var hoje = DateOnly.FromDateTime(DateTime.Today);
-        if (await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == hoje.Year && m.Mes == hoje.Month))
+        var dataLanc = dataReceita ?? DateOnly.FromDateTime(DateTime.Today);
+        if (await _db.MesesFechados.AnyAsync(m => m.ContaId == contaId && m.Ano == dataLanc.Year && m.Mes == dataLanc.Month))
             throw new InvalidOperationException("Mês da conta fechado; reabra o mês antes.");
         var selecionados = await _db.Reembolsos.Include(r => r.Lancamento)
             .Where(r => reembolsoIds.Contains(r.Id))
@@ -394,7 +394,7 @@ public class FaturaService
             {
                 var total = g.Sum(r => r.Valor);
                 if (total <= 0) { foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; } continue; }
-                var receita = new Lancamento { Data = hoje, Tipo = LancamentoTipo.Receita, Valor = total, ContaId = contaId, CategoriaId = categoriaId, SubcategoriaId = subcategoriaId, PessoaId = g.Key, Confirmado = false };
+                var receita = new Lancamento { Data = dataLanc, Tipo = LancamentoTipo.Receita, Valor = total, ContaId = contaId, CategoriaId = categoriaId, SubcategoriaId = subcategoriaId, PessoaId = g.Key, Confirmado = false };
                 _db.Lancamentos.Add(receita);
                 await _db.SaveChangesAsync();
                 foreach (var r in g) { r.Fechado = true; r.DataFechamento = DateTime.Now; r.ReceitaId = receita.Id; }

@@ -144,7 +144,7 @@
             "Para criar uma receita, clique no botão + e escolha 'Receita'. Preencha a data, o valor, a conta onde o dinheiro entrou (opcional), a categoria (ex: Salário, Freelance) e, se quiser, a pessoa que pagou e o projeto vinculado.",
             "Depois de salvar, você vai direto para o extrato da conta no mês do lançamento. Se não informou uma conta, vai para a lista de lançamentos.",
             "Lançamentos sem conta não podem ser confirmados: confirme primeiro vinculando uma conta ou cartão. Enquanto houver lançamento sem conta não confirmado, o mês não pode ser fechado.",
-            "O campo 'Projeto' só aparece depois que você seleciona uma pessoa. Se a pessoa tem apenas um projeto, ele é selecionado automaticamente.",
+            "O campo 'Projeto' está sempre habilitado e lista todos os projetos não concluídos, mesmo sem selecionar uma pessoa. Se houver apenas um projeto, ele é selecionado automaticamente.",
             "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
         }, new()),
 
@@ -320,13 +320,13 @@
         {
             "Projetos permitem agrupar lançamentos por atividade específica. Ex: reforma da casa, evento, obra, consultoria.",
             "Ao criar um projeto, informe a pessoa associada, uma descrição, a data de contratação e o valor contratado.",
-            "Para vincular um lançamento a um projeto, selecione o projeto no formulário de Receita, Despesa ou Despesa de Cartão. O campo 'Projeto' aparece depois que você seleciona a pessoa.",
+            "Para vincular um lançamento a um projeto, selecione o projeto no formulário de Receita, Despesa ou Despesa de Cartão. O campo 'Projeto' lista todos os projetos não concluídos, com ou sem pessoa selecionada.",
             "Na tela de Projetos, há um botão de relatório em cada linha. Clique para ver o resumo do projeto: receitas, despesas, resultado e quanto ainda falta receber."
         }, new()
         {
             new("Relatório do Projeto", new()
             {
-                "O relatório mostra quatro cards no topo: Receitas (verde), Despesas (vermelho), Resultado (azul se positivo, vermelho se negativo) e Pendente a receber (valor contratado menos receitas já registradas).",
+                "O relatório mostra quatro cards no topo: Receitas (verde), Despesas (vermelho, com o percentual sobre as receitas no título), Resultado (azul se positivo, vermelho se negativo, também com o percentual sobre as receitas no título) e Pendente a receber (valor contratado menos receitas já registradas).",
                 "Abaixo, há uma tabela com todos os lançamentos vinculados ao projeto, com data, tipo, categoria e valor.",
                 "À direita, um gráfico de pizza mostra a distribuição das despesas por categoria.",
                 "Use o botão 'Gerar PDF' para baixar um relatório em PDF com o mesmo layout."

@@ -239,6 +239,20 @@ public class LancamentoServiceTests
         finally { TestDbContext.Cleanup(db, file); }
     }
 
+    [Fact]
+    public async Task CriarDespesa_ComConfirmado_CriaConfirmada()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var svc = service;
+            var l = await svc.CriarDespesaAsync(conta.Id, new DateOnly(2026, 9, 10), 100m, Renda(db).Id, null, null, null, confirmado: true);
+            Assert.True(l.Confirmado);
+            Assert.Equal(-100m, l.Valor);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
     // ---------- Guardas de mês fechado ----------
 
     [Fact]

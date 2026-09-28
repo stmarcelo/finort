@@ -16,7 +16,7 @@ public class ProjetoService
 
     /// <summary>Projetos ativos (não concluídos) para seleção em lançamentos.</summary>
     public Task<List<Projeto>> ListarAtivosAsync()
-        => _db.Projetos.Where(p => !p.Concluido)
+        => _db.Projetos.Include(p => p.Pessoa).Where(p => !p.Concluido)
             .OrderByDescending(p => p.DataContratacao).ToListAsync();
 
     public Task<List<Projeto>> ListarUltimosAsync(int quantidade)

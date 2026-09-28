@@ -88,4 +88,34 @@ public class ReembolsoFechamentoTests
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
+
+    [Fact]
+    public async Task FecharComReembolsos_ComDataCustom_UsaDataInformada()
+    {
+        var (db, file, lancamentos, faturas, cartao, conta, catReceita) = await SetupAsync();
+        try
+        {
+            // Cartão do Setup usa MelhorDiaCompra=5 (vencimento cairia em 09); brief usa md=1
+            // para vencimento em 08 — ajusta para manter os valores verbatim do brief.
+            cartao.MelhorDiaCompra = 1;
+            await db.SaveChangesAsync();
+
+            var ana = new Pessoa { Nome = "Ana" };
+            db.Pessoas.Add(ana);
+            await db.SaveChangesAsync();
+
+            var criados = await lancamentos.CriarDespesaCartaoAsync(
+                cartao.Id, new DateOnly(2026, 8, 6), 250m, catReceita.Id, null, null,
+                parcelas: null, reembolsoPessoaId: ana.Id);
+            await ConfirmarTodosAsync(lancamentos, criados);
+
+            await faturas.FecharComReembolsosAsync(
+                cartao.Id, 2026, 8, new(2026, 8, 1), new(2026, 8, 31),
+                conta.Id, catReceita.Id, null, new DateOnly(2026, 8, 9));
+
+            var receita = db.Lancamentos.First(l => l.Tipo == Models.Financeiro.LancamentoTipo.Receita);
+            Assert.Equal(new DateOnly(2026, 8, 9), receita.Data);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

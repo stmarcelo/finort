@@ -6,8 +6,8 @@
 
 <MudDialog>
     <DialogContent>
-        <PessoaSelect @bind-Value="_pessoaId" Required="true"
-                      RequiredError="Selecione a pessoa." />
+        <PessoaSelect @bind-Value="_pessoaId" @bind-Value:after="Validar" Required="true"
+                       RequiredError="Selecione a pessoa." />
         <MudTextField T="string" Label="Descrição" Variant="@gVariant"
                       @bind-Value="_descricao" Required="true"
                       RequiredError="Informe a descrição."
@@ -17,7 +17,7 @@
                        DateChanged="@((DateTime? d) => { _data = d; Validar(); })"
                        Required="true" />
         <MudMoneyInput Label="Valor contratado" Variant="@gVariant"
-                       @bind-Value="_valor" Required="true" />
+                        @bind-Value="_valor" @bind-Value:after="Validar" Required="true" />
     </DialogContent>
     <DialogActions>
         <MudButton Variant="@gVariant" OnClick="Cancelar">Cancelar</MudButton>

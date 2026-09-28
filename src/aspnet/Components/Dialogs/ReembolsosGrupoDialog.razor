@@ -45,6 +45,7 @@
     [Parameter] public DateOnly Fim { get; set; }
     [Parameter] public Guid PessoaId { get; set; }
     [Parameter] public string PessoaNome { get; set; } = string.Empty;
+    [Parameter] public DateOnly Vencimento { get; set; }
 
     private List<Reembolso> _itens = new();
     private HashSet<Reembolso> _selecionados = new();
@@ -87,12 +88,13 @@
         var ids = _selecionados.Where(s => !s.Fechado).Select(s => s.Id).ToList();
         if (ids.Count == 0) return;
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar reembolsos", options);
+        var parameters = new DialogParameters<FecharFaturaReembolsoDialog> { { x => x.Vencimento, Vencimento } };
+        var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar reembolsos", parameters, options);
         var escolha = await dialog.Result;
         if (escolha is null || escolha.Canceled || escolha.Data is not FecharFaturaReembolsoDialog.FechamentoReembolsoEscolha sel) return;
         try
         {
-            await FaturaService.FecharReembolsosSelecionadosAsync(ids, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId);
+            await FaturaService.FecharReembolsosSelecionadosAsync(ids, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId, sel.DataReceita);
             Snackbar.Add("Reembolsos fechados.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

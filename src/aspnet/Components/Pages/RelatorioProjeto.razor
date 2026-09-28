@@ -37,13 +37,13 @@
             </MudItem>
             <MudItem xs="12" sm="3">
                 <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-error);border-radius:12px;">
-                    <MudText Typo="Typo.caption" Class="mb-1">Despesas</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-1">@TituloDespesas()</MudText>
                     <MudText Typo="Typo.h6" Style="color:var(--mud-palette-error)">R$ @_relatorio.TotalDespesas.ToString("N2")</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="3">
                 <MudPaper Class="pa-4" Style="@($"{EstiloResultado()}border-radius:12px;")">
-                    <MudText Typo="Typo.caption" Class="mb-1">Resultado</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-1">@TituloResultado()</MudText>
                     <MudText Typo="Typo.h6" Style="@CorResultadoCss()">R$ @_relatorio.Resultado.ToString("N2")</MudText>
                 </MudPaper>
             </MudItem>
@@ -144,4 +144,10 @@ else
 
     private string CorResultadoCss()
         => $"color:{ResultadoCor()}";
+
+    private string TituloResultado()
+        => _relatorio?.PercentualResultado is { } p ? $"Resultado ({p:0.0}%)" : "Resultado";
+
+    private string TituloDespesas()
+        => _relatorio?.PercentualDespesas is { } p ? $"Despesas ({p:0.0}%)" : "Despesas";
 }

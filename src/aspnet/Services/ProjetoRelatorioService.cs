@@ -16,7 +16,8 @@ public sealed record ProjetoRelatorio(
     Projeto Projeto, string ProjetoNome, string PessoaNome, DateOnly DataContratacao, decimal ValorContratado,
     bool Concluido, DateOnly? DataConclusao,
     decimal TotalReceitas, decimal TotalDespesas, decimal Resultado, decimal PendenteReceber,
-    IReadOnlyList<RelatorioLinha> Linhas, IReadOnlyList<PizzaFatia> DespesasPorCategoria);
+    IReadOnlyList<RelatorioLinha> Linhas, IReadOnlyList<PizzaFatia> DespesasPorCategoria,
+    double? PercentualResultado, double? PercentualDespesas);
 
 public class ProjetoRelatorioService
 {
@@ -59,10 +60,14 @@ public class ProjetoRelatorioService
             : agrupado.Select(f => f with { Percentual = Math.Round((double)(f.Valor * 100m / despesas), 1) })
                 .ToList();
 
+        double? percentual = receitas > 0 ? (double)(receitas - despesas) / (double)receitas * 100.0 : null;
+        double? percentualDespesas = receitas > 0 ? (double)despesas / (double)receitas * 100.0 : null;
+
         return new ProjetoRelatorio(projeto, projeto.Descricao, projeto.Pessoa?.Nome ?? "", projeto.DataContratacao,
             projeto.ValorContratado, projeto.Concluido, projeto.DataConclusao,
             receitas, despesas, receitas - despesas,
-            Math.Max(0, projeto.ValorContratado - receitas), linhas, fatias);
+            Math.Max(0, projeto.ValorContratado - receitas), linhas, fatias,
+            percentual, percentualDespesas);
     }
 
     public async Task<byte[]?> GerarPdfBytesAsync(Guid projetoId)
@@ -120,8 +125,12 @@ public class ProjetoRelatorioService
                                 }));
                         }
                         Card("Receitas", relatorio.TotalReceitas.ToString("N2"), "#248A3D");
-                        Card("Despesas", relatorio.TotalDespesas.ToString("N2"), "#D70015");
-                        Card("Resultado", relatorio.Resultado.ToString("N2"),
+                        Card(relatorio.PercentualDespesas.HasValue
+                            ? $"Despesas ({relatorio.PercentualDespesas:0.0}%)"
+                            : "Despesas", relatorio.TotalDespesas.ToString("N2"), "#D70015");
+                        Card(relatorio.PercentualResultado.HasValue
+                            ? $"Resultado ({relatorio.PercentualResultado:0.0}%)"
+                            : "Resultado", relatorio.Resultado.ToString("N2"),
                             relatorio.Resultado >= 0 ? "#0066CC" : "#D70015");
                         Card("Pendente a receber", relatorio.PendenteReceber.ToString("N2"), "#F5A623");
                     });

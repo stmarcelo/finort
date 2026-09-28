@@ -12,11 +12,15 @@
                   Placeholder="@Placeholder"
                   MaxHeight="320"
                   PopoverClass="autocomplete-single-scroll"
-                  Disabled="@(_pessoaIdParam is null)"
-                 ResetValueOnEmptyText="false"
-                 CoerceText="true"
-                 DebounceInterval="150"
-                 Clearable="true" />
+                  ResetValueOnEmptyText="false"
+                  CoerceText="true"
+                  DebounceInterval="150"
+                  Clearable="true">
+    <ItemTemplate>
+        <MudText Typo="Typo.body2">@context.Descricao</MudText>
+        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-grey-default)">@context.Pessoa?.Nome</MudText>
+    </ItemTemplate>
+</MudAutocomplete>
 
 @code {
     private List<Projeto> _daPessoa = [];
@@ -32,16 +36,14 @@
     protected override async Task OnParametersSetAsync()
     {
         var pessoaMudou = PessoaId != _pessoaIdParam;
-        if (!pessoaMudou && Value == _valorRecebido) return;
+        if (!pessoaMudou && Value == _valorRecebido && _carregado) return;
 
-        if (pessoaMudou)
-        {
-            _pessoaIdParam = PessoaId;
-            _daPessoa = PessoaId is null ? [] : await ProjetoService.ListarAtivosPorPessoaAsync(PessoaId.Value);
-        }
+        _pessoaIdParam = PessoaId;
+        _daPessoa = await ProjetoService.ListarAtivosAsync();
+        _carregado = true;
         _valorRecebido = Value;
 
-        if (PessoaId is null || !_daPessoa.Any(p => p.Id == Value))
+        if (!_daPessoa.Any(p => p.Id == Value))
         {
             // Mantém um projeto já vinculado (ex.: conclusão de um projeto ainda ativo em lançamento antigo),
             // mesmo que ele tenha sido concluído depois.
@@ -72,6 +74,7 @@
 
     private Guid? _pessoaIdParam;
     private Guid? _valorRecebido;
+    private bool _carregado;
 
     private Task<IEnumerable<Projeto>> Buscar(string texto, CancellationToken _)
         => Task.FromResult<IEnumerable<Projeto>>(ProjetoSelecaoLogica.Filtrar(_daPessoa, texto));

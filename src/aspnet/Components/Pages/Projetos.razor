@@ -51,13 +51,10 @@ else
                                          OnClick="() => Excluir(p)">Excluir</MudMenuItem>
                         </MudMenu>
                     </MudStack>
+                    <MudText Typo="Typo.caption" Style="color:var(--mud-palette-grey-default)">@(p.Pessoa?.Nome ?? "—")</MudText>
 
                     <MudDivider Class="my-2" />
 
-                    <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
-                        <MudText Typo="Typo.body2" Class="text-muted">Pessoa</MudText>
-                        <MudText Typo="Typo.body2" Style="font-weight:600">@(p.Pessoa?.Nome ?? "—")</MudText>
-                    </MudStack>
                     <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
                         <MudText Typo="Typo.body2" Class="text-muted">Valor contratado</MudText>
                         <MudText Typo="Typo.body2" Style="font-weight:600">R$ @p.ValorContratado.ToString("N2")</MudText>

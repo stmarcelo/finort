@@ -49,7 +49,7 @@ public class LancamentoService
 
     public async Task<Lancamento> CriarDespesaAsync(
         Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null)
+        Guid? projetoId = null, bool confirmado = false)
     {
         Validar(valor, data);
         await GarantirMesAbertoAsync(data, contaId);
@@ -62,7 +62,8 @@ public class LancamentoService
             CategoriaId = categoriaId,
             SubcategoriaId = subcategoriaId,
             PessoaId = pessoaId,
-            ProjetoId = projetoId
+            ProjetoId = projetoId,
+            Confirmado = confirmado
         };
         _db.Lancamentos.Add(lancamento);
         await _db.SaveChangesAsync();
@@ -485,7 +486,7 @@ public class LancamentoService
     public async Task<List<Lancamento>> CriarRecorrenteAsync(
         LancamentoTipo tipo, Guid? contaId, DateOnly primeiraData, decimal valor,
         RecorrenciaFrequencia frequencia, int repeticoes, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null)
+        Guid? projetoId = null, bool confirmado = false)
     {
         Validar(valor, primeiraData);
         if (repeticoes < 1 || repeticoes > 120)
@@ -517,7 +518,8 @@ public class LancamentoService
                 RecorrenciaId = recorrenciaId,
                 ParcelaAtual = repeticoes > 1 ? i + 1 : null,
                 TotalParcelas = repeticoes > 1 ? repeticoes : null,
-                ProjetoId = projetoId
+                ProjetoId = projetoId,
+                Confirmado = confirmado
             };
             _db.Lancamentos.Add(lancamento);
             criados.Add(lancamento);

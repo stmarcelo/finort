@@ -47,8 +47,8 @@ else
         <MudGrid Spacing="4" Class="mt-3">
             <MudItem xs="12" sm="6">
                 <MudPaper Class="pa-4" Style="border-left:4px solid #F5A623;border-radius:12px;">
-                    <MudText Typo="Typo.caption" Class="mb-1">Total sem confirmar</MudText>
-                    <MudText Typo="Typo.h6" Style="color:#F5A623;font-weight:700;">R$ @_relatorio.TotalNaoConfirmado.ToString("N2")</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-1">Total sem confirmar@( _incluirReembolsos ? " (inclui previstos)" : "")</MudText>
+                    <MudText Typo="Typo.h6" Style="color:#F5A623;font-weight:700;">R$ @((_relatorio.TotalNaoConfirmado + (_incluirReembolsos ? _relatorio.ReembolsosPendentes.Sum(x => x.Valor) : 0m)).ToString("N2"))</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6">
@@ -59,6 +59,26 @@ else
             </MudItem>
         </MudGrid>
     </MudPaper>
+
+    @if (_relatorio.ReembolsosPendentes.Count > 0)
+    {
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h6">Reembolsos não fechados (previstos) — R$ @_relatorio.ReembolsosPendentes.Sum(x => x.Valor).ToString("N2")</MudText>
+                <MudSpacer />
+                <MudSwitch @bind-Value="_incluirReembolsos" @bind-Value:after="AtualizarPdfUrl" Label="Incluir nos totais" />
+            </MudStack>
+            <MudTable Items="@_relatorio.ReembolsosPendentes" Dense="true" Striped="true" T="ReembolsoPendenteLinha">
+                <HeaderContent><MudTh>Pessoa</MudTh><MudTh>Vencimento</MudTh><MudTh>Cartão</MudTh><MudTh Style="text-align:right">Valor</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.PessoaNome</MudTd>
+                    <MudTd>@context.Vencimento.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@(context.CartaoNome ?? "—")</MudTd>
+                    <MudTd Style="text-align:right;">R$ @context.Valor.ToString("N2")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
 
     @if (_pessoaId.HasValue)
     {
@@ -165,6 +185,7 @@ else
     private string? _pessoaCor;
     private ReceitaRelatorio? _relatorio;
     private string? _pdfUrl;
+    private bool _incluirReembolsos = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,8 +229,14 @@ else
             _pessoaCor = (await PessoaService.ObterAsync(_pessoaId.Value))?.CorDeExibicao;
 
         _relatorio = await RelatorioService.GerarAsync(inicio, fim, _pessoaId);
+        AtualizarPdfUrl();
+    }
+
+    private void AtualizarPdfUrl()
+    {
         _pdfUrl = $"/api/relatorios/receitas/pdf?inicio={_inicio:yyyy-MM-dd}&fim={_fim:yyyy-MM-dd}"
-            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "");
+            + (_pessoaId.HasValue ? $"&pessoaId={_pessoaId}" : "")
+            + $"&incluirReembolsos={_incluirReembolsos}";
     }
 
     private async Task IrParaPessoaAsync(TableRowClickEventArgs<ReceitaPessoaSubtotal> args)

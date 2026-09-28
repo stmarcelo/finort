@@ -31,6 +31,10 @@
         <SubcategoriaSelect CategoriaId="@_categoriaId" @bind-Value="_subcategoriaId" />
         <PessoaSelect Placeholder="Opcional" @bind-Value="_pessoaId" />
         <ProjetoSelect PessoaId="@_pessoaId" @bind-Value="_projetoId" />
+        @if (LancamentoId is null)
+        {
+            <MudCheckBox @bind-Value="_confirmado" Label="Já confirmado" Class="mt-2" />
+        }
         <div class="d-flex align-center flex-wrap mt-2">
             @if (!_temGrupo)
             {

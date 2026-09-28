@@ -220,13 +220,13 @@ app.MapGet("/api/relatorios/projeto/{id:guid}/pdf", async (Guid id, ProjetoRelat
         : Results.File(pdf, "application/pdf", $"relatorio_projeto_{DateTime.Now:yyMMddHHmmss}.pdf");
 }).RequireAuthorization();
 
-app.MapGet("/api/relatorios/receitas/pdf", async (string inicio, string fim, Guid? pessoaId, ReceitaRelatorioService service) =>
+app.MapGet("/api/relatorios/receitas/pdf", async (string inicio, string fim, Guid? pessoaId, ReceitaRelatorioService service, bool incluirReembolsos = false) =>
 {
     if (!DateOnly.TryParseExact(inicio, "yyyy-MM-dd", out var ini)
         || !DateOnly.TryParseExact(fim, "yyyy-MM-dd", out var f))
         return Results.BadRequest("Período inválido. Use yyyy-MM-dd.");
     if (ini > f) return Results.BadRequest("Data de início posterior à data de fim.");
-    var pdf = await service.GerarPdfBytesAsync(ini, f, pessoaId);
+    var pdf = await service.GerarPdfBytesAsync(ini, f, pessoaId, incluirReembolsos);
     return Results.File(pdf, "application/pdf", $"relatorio_receitas_{DateTime.Now:yyMMddHHmmss}.pdf");
 }).RequireAuthorization();
 

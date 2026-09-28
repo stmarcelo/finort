@@ -99,6 +99,31 @@ public class ReceitaRelatorioServiceTests : IDisposable
     public void Dispose() => TestDbContext.Cleanup(_ctx.Db, _ctx.File);
 
     [Fact]
+    public async Task Gerar_ReembolsosPendentes_AparecemSeparadosSemSomar()
+    {
+        var db = _ctx.Db;
+        var ana = db.Pessoas.Add(new Models.Financeiro.Pessoa { Nome = "Ana" }).Entity;
+        var cartao = db.CartoesCredito.Add(new Models.Financeiro.CartaoCredito
+        {
+            Banco = "Nubank", Ultimos4Digitos = "1234",
+            MelhorDiaCompra = 1, DiaVencimento = 10, Limite = 5000m, Ativo = true
+        }).Entity;
+        db.SaveChanges();
+        var renda = db.Categorias.First(c => c.Nome == "Receita");
+        var lanc = new LancamentoService(db);
+        await lanc.CriarDespesaCartaoAsync(
+            cartao.Id, new DateOnly(2026, 9, 6), 250m, renda.Id, null, null,
+            parcelas: null, reembolsoPessoaId: ana.Id);
+
+        var r = await _svc.GerarAsync(new(2026, 9, 1), new(2026, 9, 30), ana.Id);
+
+        Assert.Equal(0m, r.TotalConfirmado + r.TotalNaoConfirmado);
+        var pend = Assert.Single(r.ReembolsosPendentes);
+        Assert.Equal(250m, pend.Valor);
+        Assert.Equal("Ana", pend.PessoaNome);
+    }
+
+    [Fact]
     public async Task Gerar_ReceitaAgregadaDeReembolso_ApareceSemCartaoAposFechar()
     {
         var db = _ctx.Db;

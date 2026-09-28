@@ -68,6 +68,36 @@ public class ProjetoRelatorioServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Gerar_PercentualResultado_SobreReceitas()
+    {
+        var db = _ctx.Db;
+        var pessoa = db.Pessoas.Add(new Models.Financeiro.Pessoa { Nome = "Acme" }).Entity;
+        var conta = db.Contas.Add(new Models.Financeiro.Conta { Nome = "Banco" }).Entity;
+        db.SaveChanges();
+        var projeto = await new ProjetoService(db).CriarAsync("Site", new DateOnly(2026, 1, 5), 10000m, pessoa.Id);
+        var renda = db.Categorias.First(c => c.Nome == "Receita");
+        db.Lancamentos.AddRange(
+            new Models.Financeiro.Lancamento
+            {
+                Data = new(2026, 2, 1), Tipo = Models.Financeiro.LancamentoTipo.Receita, Valor = 3000m,
+                ContaId = conta.Id, CategoriaId = renda.Id, PessoaId = pessoa.Id, ProjetoId = projeto.Id
+            },
+            new Models.Financeiro.Lancamento
+            {
+                Data = new(2026, 2, 3), Tipo = Models.Financeiro.LancamentoTipo.Despesa, Valor = -1000m,
+                ContaId = conta.Id, CategoriaId = renda.Id, PessoaId = pessoa.Id, ProjetoId = projeto.Id
+            });
+        db.SaveChanges();
+
+        var r = await _svc.GerarAsync(projeto.Id);
+
+        Assert.NotNull(r);
+        Assert.Equal(2000m, r!.Resultado);
+        Assert.Equal(66.7, r.PercentualResultado!.Value, 1);
+        Assert.Equal(33.3, r.PercentualDespesas!.Value, 1);
+    }
+
+    [Fact]
     public async Task Gerar_IdInexistente_ReturnNull()
     {
         Assert.Null(await _svc.GerarAsync(Guid.NewGuid()));

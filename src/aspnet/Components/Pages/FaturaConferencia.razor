@@ -361,12 +361,13 @@
         if (_reembolsos.Any(r => !r.Fechado))
         {
             var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-            var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar fatura com reembolsos", options);
+            var parameters = new DialogParameters<FecharFaturaReembolsoDialog> { { x => x.Vencimento, _dataVencimento } };
+            var dialog = await DialogService.ShowAsync<FecharFaturaReembolsoDialog>("Fechar fatura com reembolsos", parameters, options);
             var escolha = await dialog.Result;
             if (escolha is null || escolha.Canceled || escolha.Data is not FecharFaturaReembolsoDialog.FechamentoReembolsoEscolha sel) return;
             try
             {
-                await FaturaService.FecharComReembolsosAsync(Id, _ano, _mes, _dataInicioPeriodo, _dataFimPeriodo, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId);
+                await FaturaService.FecharComReembolsosAsync(Id, _ano, _mes, _dataInicioPeriodo, _dataFimPeriodo, sel.ContaId, sel.CategoriaId, sel.SubcategoriaId, sel.DataReceita);
                 Snackbar.Add("Fatura fechada com reembolsos.", Severity.Success);
                 await CarregarAsync();
             }
@@ -461,7 +462,8 @@
             { x => x.Inicio, _dataInicioPeriodo },
             { x => x.Fim, _dataFimPeriodo },
             { x => x.PessoaId, pessoaId },
-            { x => x.PessoaNome, pessoaNome }
+            { x => x.PessoaNome, pessoaNome },
+            { x => x.Vencimento, _dataVencimento }
         };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ReembolsosGrupoDialog>("Reembolsos", parameters, options);

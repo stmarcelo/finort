@@ -10,28 +10,38 @@
         <CategoriaSelect Label="Categoria da receita" Placeholder="Selecione" Required="true"
                          RequiredError="Informe a categoria." @bind-Value="_categoriaId" />
         <SubcategoriaSelect Label="Subcategoria" CategoriaId="_categoriaId" @bind-Value="_subcategoriaId" />
+        <MudDatePicker Label="Data da receita" @bind-Date="_dataReceita" Required="true" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
-        <MudButton Color="Color.Primary" Variant="@gVariant" OnClick="Confirmar" Disabled="@(_contaId is null || _categoriaId is null)">Confirmar</MudButton>
+        <MudButton Color="Color.Primary" Variant="@gVariant" OnClick="Confirmar" Disabled="@(_contaId is null || _categoriaId is null || _dataReceita is null)">Confirmar</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    public sealed record FechamentoReembolsoEscolha(Guid ContaId, Guid CategoriaId, Guid? SubcategoriaId);
+    public sealed record FechamentoReembolsoEscolha(Guid ContaId, Guid CategoriaId, Guid? SubcategoriaId, DateOnly DataReceita);
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
+    [Parameter]
+    public DateOnly Vencimento { get; set; }
+
     private Guid? _contaId;
     private Guid? _categoriaId;
     private Guid? _subcategoriaId;
+    private DateTime? _dataReceita;
+
+    protected override void OnInitialized()
+    {
+        _dataReceita = Vencimento.AddDays(-1).ToDateTime(TimeOnly.MinValue);
+    }
 
     private void Cancelar() => MudDialog.Cancel();
 
     private void Confirmar()
     {
-        if (_contaId is null || _categoriaId is null) return;
-        MudDialog.Close(DialogResult.Ok(new FechamentoReembolsoEscolha(_contaId.Value, _categoriaId.Value, _subcategoriaId)));
+        if (_contaId is null || _categoriaId is null || _dataReceita is null) return;
+        MudDialog.Close(DialogResult.Ok(new FechamentoReembolsoEscolha(_contaId.Value, _categoriaId.Value, _subcategoriaId, DateOnly.FromDateTime(_dataReceita.Value))));
     }
 }

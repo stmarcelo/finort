@@ -28,6 +28,7 @@ public partial class LancamentoForm : AppComponentBase
     private bool _repetir;
     private int _quantidadeRepeticoes = 2;
     private bool _temGrupo;
+    private bool _confirmado;
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,11 +111,11 @@ public partial class LancamentoForm : AppComponentBase
                     }
                     if (_repetir)
                         criado = (await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId, data, _valor.Value,
-                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId))[0];
+                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado))[0];
                     else if (Tipo == LancamentoTipo.Receita)
-                        criado = await LancamentoService.CriarReceitaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                        criado = await LancamentoService.CriarReceitaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado);
                     else
-                        criado = await LancamentoService.CriarDespesaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId);
+                        criado = await LancamentoService.CriarDespesaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado);
                 }
             }
             else

@@ -36,4 +36,13 @@ public class ProjetoSelectLogicTests
         Assert.NotNull(ProjetoSelecaoLogica.PreSelecaoUnica(1, projetos));
         Assert.Null(ProjetoSelecaoLogica.PreSelecaoUnica(2, Projetos()));
     }
+
+    [Fact]
+    public void Filtrar_PorNomeDaPessoa_RetornaProjetosDela()
+    {
+        var lista = Projetos();
+        lista[0].Pessoa = new Pessoa { Nome = "Maria Silva" };
+        var r = ProjetoSelecaoLogica.Filtrar(lista, "maria");
+        Assert.Contains(r, p => p.Descricao == "Alpha");
+    }
 }

@@ -10,7 +10,9 @@ public static class ProjetoSelecaoLogica
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var termo = texto.Trim();
-            resultado = projetosDaPessoa.Where(p => p.Descricao.Contains(termo, StringComparison.OrdinalIgnoreCase));
+            resultado = projetosDaPessoa.Where(p =>
+                p.Descricao.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                || (p.Pessoa?.Nome?.Contains(termo, StringComparison.OrdinalIgnoreCase) == true));
         }
         return resultado.OrderByDescending(p => p.DataContratacao).ToList();
     }

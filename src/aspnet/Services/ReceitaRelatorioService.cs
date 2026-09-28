@@ -11,11 +11,13 @@ public sealed record ReceitaLinha(Guid Id, DateOnly Data, string? CartaoNome, st
     int? ParcelaAtual, int? TotalParcelas, string CategoriaRotulo, decimal Valor, bool Confirmado);
 public sealed record ReceitaOrigemSubtotal(string Rotulo, decimal Confirmado, decimal NaoConfirmado);
 public sealed record ReceitaPessoaSubtotal(Guid PessoaId, string PessoaNome, string? Cor, decimal Confirmado, decimal NaoConfirmado);
+public sealed record ReembolsoPendenteLinha(Guid Id, string PessoaNome, DateOnly Vencimento, string? CartaoNome, decimal Valor);
 public sealed record ReceitaRelatorio(DateOnly Inicio, DateOnly Fim, Guid? PessoaId, string PessoaNome,
     decimal TotalConfirmado, decimal TotalNaoConfirmado,
     IReadOnlyList<ReceitaLinha> Linhas,
     IReadOnlyList<ReceitaOrigemSubtotal> SubtotaisPorOrigem,
-    IReadOnlyList<ReceitaPessoaSubtotal> SubtotaisPorPessoa);
+    IReadOnlyList<ReceitaPessoaSubtotal> SubtotaisPorPessoa,
+    IReadOnlyList<ReembolsoPendenteLinha> ReembolsosPendentes);
 
 public class ReceitaRelatorioService
 {
@@ -85,8 +87,16 @@ public class ReceitaRelatorioService
                         g.Where(x => !x.Confirmado).Sum(x => Math.Abs(x.Valor)));
                 }).OrderBy(x => x.PessoaNome).ToList();
 
+        var pendQuery = _db.Reembolsos
+            .Include(r => r.Pessoa).Include(r => r.CartaoCredito)
+            .Where(r => !r.Fechado && r.Vencimento >= inicio && r.Vencimento <= fim);
+        if (pessoaId.HasValue) pendQuery = pendQuery.Where(r => r.PessoaId == pessoaId.Value);
+        var pendentes = (await pendQuery.OrderBy(r => r.Vencimento).ToListAsync())
+            .Select(r => new ReembolsoPendenteLinha(r.Id, r.Pessoa.Nome, r.Vencimento, r.CartaoCredito?.Banco, r.Valor))
+            .ToList();
+
         return new ReceitaRelatorio(inicio, fim, pessoaId, pessoaNome, confirmado, naoConfirmado,
-            linhas, origens, porPessoa);
+            linhas, origens, porPessoa, pendentes);
     }
 
     private static string RotuloOrigem(string cartao, string conta)
@@ -97,11 +107,14 @@ public class ReceitaRelatorioService
         return "Sem origem";
     }
 
-    public async Task<byte[]> GerarPdfBytesAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId)
+    public async Task<byte[]> GerarPdfBytesAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId, bool incluirReembolsos = false)
     {
         var r = await GerarAsync(inicio, fim, pessoaId);
         var agora = DateTime.Now;
         var tituloPessoa = pessoaId.HasValue ? r.PessoaNome : "Todas as pessoas";
+        var totalNaoConfirmadoExibido = incluirReembolsos
+            ? r.TotalNaoConfirmado + r.ReembolsosPendentes.Sum(x => x.Valor)
+            : r.TotalNaoConfirmado;
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -143,7 +156,7 @@ public class ReceitaRelatorioService
                                     c.Item().Text($"R$ {valor:N2}").FontSize(12).SemiBold().FontColor(cor);
                                 }));
                         }
-                        Card("Total sem confirmar", r.TotalNaoConfirmado, "#F5A623");
+                        Card("Total sem confirmar", totalNaoConfirmadoExibido, "#F5A623");
                         Card("Total confirmado", r.TotalConfirmado, "#248A3D");
                     });
                     if (r.Linhas.Count > 0)
@@ -223,6 +236,37 @@ public class ReceitaRelatorioService
                     else
                     {
                         col.Item().Text("Sem receitas no período.").FontSize(10).FontColor("#666666");
+                    }
+                    if (r.ReembolsosPendentes.Count > 0)
+                    {
+                        col.Item().Text("Reembolsos não fechados (previstos)").FontSize(12).SemiBold();
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(c =>
+                            {
+                                c.ConstantColumn(60); c.RelativeColumn(); c.RelativeColumn(); c.ConstantColumn(75);
+                            });
+                            t.Header(h =>
+                            {
+                                static QuestPDF.Infrastructure.IContainer Head(QuestPDF.Infrastructure.IContainer c)
+                                    => c.Background("#f5f5f7").Padding(4);
+                                h.Cell().Element(Head).Text("Data").FontSize(9);
+                                h.Cell().Element(Head).Text("Pessoa").FontSize(9);
+                                h.Cell().Element(Head).Text("Cartão").FontSize(9);
+                                h.Cell().Element(Head).AlignRight().Text("Valor").FontSize(9);
+                            });
+                            var linha = 0;
+                            foreach (var p in r.ReembolsosPendentes)
+                            {
+                                var i = linha++;
+                                Func<QuestPDF.Infrastructure.IContainer, QuestPDF.Infrastructure.IContainer> Zebrar =
+                                    c => i % 2 == 1 ? c.Background("#F2F2F7").PaddingVertical(2) : c.PaddingVertical(2);
+                                t.Cell().Element(Zebrar).Text(p.Vencimento.ToString("dd/MM/yyyy")).FontSize(9);
+                                t.Cell().Element(Zebrar).Text(p.PessoaNome).FontSize(9);
+                                t.Cell().Element(Zebrar).Text(p.CartaoNome ?? "—").FontSize(9);
+                                t.Cell().Element(Zebrar).AlignRight().Text($"R$ {p.Valor:N2}").FontSize(9);
+                            }
+                        });
                     }
                 });
             });

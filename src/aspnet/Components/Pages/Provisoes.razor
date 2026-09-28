@@ -19,6 +19,18 @@
                        OnClick="() => AbrirDialog(null)">Nova provisão</MudButton>
         </MudToolBar>
     </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Total receitas</span>
+            <span class="value pos">@TotalReceitas.ToString("N2")</span>
+        </div>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <div class="summary-chip">
+            <span class="label">Total despesas</span>
+            <span class="value neg">@TotalDespesas.ToString("N2")</span>
+        </div>
+    </MudItem>
     <MudItem xs="12">
         <MudTable Items="@_provisoes" Hover="true" Breakpoint="Breakpoint.Sm">
             <HeaderContent>
@@ -62,6 +74,12 @@
     protected override async Task OnInitializedAsync() => await CarregarAsync();
 
     private async Task CarregarAsync() => _provisoes = await ProvisaoService.ListarAsync();
+
+    private decimal TotalReceitas
+        => _provisoes.Where(p => p.Onde == ProvisaoOnde.Receita).Sum(p => p.Valor);
+
+    private decimal TotalDespesas
+        => _provisoes.Where(p => p.Onde != ProvisaoOnde.Receita).Sum(p => p.Valor);
 
     private async Task AbrirDialog(Provisao? provisao)
     {
