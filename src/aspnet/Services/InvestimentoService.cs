@@ -60,7 +60,7 @@ public class InvestimentoService
             return new InvestimentoCard(
                 i,
                 mov.Aportes + rendimentos - mov.Resgates,
-                mov.Quantidade,
+                QuantidadeComRendimento(i.Tipo, mov.Quantidade, rendimentos),
                 mov.Aportes,
                 mov.Resgates,
                 rendimentos,
@@ -68,6 +68,10 @@ public class InvestimentoService
                 mov.ValorUltimoAporte);
         }).ToList();
     }
+
+    private static decimal QuantidadeComRendimento(
+        TipoInvestimento tipo, decimal quantidade, decimal rendimentos)
+        => tipo == TipoInvestimento.Dolar ? quantidade + rendimentos : quantidade;
 
     public async Task<Investimento> ObterAsync(Guid id)
         => await _db.Investimentos.Include(i => i.Conta).FirstOrDefaultAsync(i => i.Id == id)
@@ -206,7 +210,11 @@ public class InvestimentoService
             Data = data,
             Valor = valor,
             Tipo = tipo,
-            Percentual = valorAtivo <= 0m ? 0m : valor / valorAtivo,
+            Percentual = valorAtivo <= 0m
+                ? 0m
+                : investimento.Tipo == TipoInvestimento.Dolar
+                    ? valor * investimento.ValorCotaAtual / valorAtivo
+                    : valor / valorAtivo,
             LancamentoId = lancamento?.Id
         };
         _db.InvestimentosProventos.Add(provento);
@@ -285,6 +293,10 @@ public class InvestimentoService
                         var cota = cotas.GetValueOrDefault(inv.Id)?
                             .LastOrDefault(c => c.Data <= fim)?.ValorPorCota
                             ?? inv.ValorCotaAtual;
+                        if (inv.Tipo == TipoInvestimento.Dolar)
+                            qtd += rendimentos
+                                .Where(r => r.InvestimentoId == inv.Id && r.Data <= fim)
+                                .Sum(r => r.Valor);
                         total += qtd * cota;
                     }
                 }
@@ -416,12 +428,24 @@ public class InvestimentoService
             .Where(m => m.InvestimentoId == investimentoId)
             .Select(m => new { m.Tipo, m.Quantidade })
             .ToListAsync();
-        return movimentos.Sum(m => m.Tipo switch
+        var posicao = movimentos.Sum(m => m.Tipo switch
         {
             MovimentoTipo.Compra => m.Quantidade ?? 0m,
             MovimentoTipo.Venda => -(m.Quantidade ?? 0m),
             _ => 0m
         });
+
+        var ehDolar = await _db.Investimentos
+            .Where(i => i.Id == investimentoId)
+            .Select(i => i.Tipo == TipoInvestimento.Dolar)
+            .FirstOrDefaultAsync();
+        if (ehDolar)
+        {
+            posicao += await _db.InvestimentosProventos
+                .Where(p => p.InvestimentoId == investimentoId && p.Tipo == ProventoTipo.Rendimento)
+                .SumAsync(p => (decimal?)p.Valor) ?? 0m;
+        }
+        return posicao;
     }
 
     private async Task<decimal> SaldoReservaAtualAsync(Guid investimentoId)

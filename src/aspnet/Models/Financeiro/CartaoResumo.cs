@@ -12,4 +12,7 @@ public class CartaoResumo
     public decimal LimiteDisponivel => Limite + TotalNaoPago;
     public bool Ativo { get; set; }
     public Guid? ContaId { get; set; }
+
+    /// <summary>Última fatura fechada do cartão; null quando não há fatura fechada.</summary>
+    public FaturaSituacao? UltimaFaturaFechada { get; set; }
 }

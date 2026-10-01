@@ -166,6 +166,10 @@ public class CalendarioServiceTests
         try
         {
             var anoHoje = DateTime.Today.Year;
+            var mesCorrente = new DateOnly(anoHoje, DateTime.Today.Month, 1);
+            var alvo = new DateOnly(anoHoje, 4, 1);
+            while (alvo < mesCorrente) alvo = alvo.AddMonths(3);
+
             var provisao = NovaProvisaoMensal(db, dia: 10, valor: 300m);
             provisao.Frequencia = ProvisaoFrequencia.Trimestral;
             provisao.UltimoMesLancado = 1;
@@ -174,11 +178,15 @@ public class CalendarioServiceTests
             await db.SaveChangesAsync();
             var service = new CalendarioService(db, new FaturaService(db), new LembreteService(db));
 
-            var abril = await service.ObterMesAsync(anoHoje, 4);   // delta 3 => projeta
-            var maio = await service.ObterMesAsync(anoHoje, 5);    // delta 4 => não projeta
+            var noAlvo = await service.ObterMesAsync(alvo.Year, alvo.Month);
+            var alvoAnterior = alvo.AddMonths(-3);
+            var noAnterior = await service.ObterMesAsync(alvoAnterior.Year, alvoAnterior.Month);
 
-            Assert.All(abril.Dias.SelectMany(d => d.Itens), i => Assert.True(i.Projetada));
-            Assert.All(maio.Dias.SelectMany(d => d.Itens), i => Assert.False(i.Projetada));
+            var itensAlvo = noAlvo.Dias.SelectMany(d => d.Itens).ToList();
+            Assert.NotEmpty(itensAlvo);
+            Assert.All(itensAlvo, i => Assert.True(i.Projetada));
+            // alvoAnterior é anterior ao mês corrente: a régua de ProjetarAsync nunca o projeta.
+            Assert.DoesNotContain(noAnterior.Dias.SelectMany(d => d.Itens), i => i.Projetada);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

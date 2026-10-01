@@ -29,6 +29,7 @@ public partial class LancamentoForm : AppComponentBase
     private int _quantidadeRepeticoes = 2;
     private bool _temGrupo;
     private bool _confirmado;
+    private string? _observacao;
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,6 +55,7 @@ public partial class LancamentoForm : AppComponentBase
             _pessoaId = principal.PessoaId;
             _projetoId = principal.ProjetoId;
             _subcategoriaId = principal.SubcategoriaId;
+            _observacao = principal.Observacao;
         }
     }
 
@@ -84,6 +86,11 @@ public partial class LancamentoForm : AppComponentBase
             Snackbar.Add("Informe a data do lançamento.", Severity.Error);
             return;
         }
+        if (_observacao?.Length > 500)
+        {
+            Snackbar.Add("Observação deve ter no máximo 500 caracteres.", Severity.Error);
+            return;
+        }
 
         var data = DateOnly.FromDateTime(_data.Value);
         _salvando = true;
@@ -111,11 +118,11 @@ public partial class LancamentoForm : AppComponentBase
                     }
                     if (_repetir)
                         criado = (await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId, data, _valor.Value,
-                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado))[0];
+                            RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado, _observacao))[0];
                     else if (Tipo == LancamentoTipo.Receita)
-                        criado = await LancamentoService.CriarReceitaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado);
+                        criado = await LancamentoService.CriarReceitaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado, _observacao);
                     else
-                        criado = await LancamentoService.CriarDespesaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado);
+                        criado = await LancamentoService.CriarDespesaAsync(_contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado, _observacao);
                 }
             }
             else
@@ -132,7 +139,7 @@ public partial class LancamentoForm : AppComponentBase
                 else
                 {
                     var atualizarFuturos = await PerguntarAtualizarFuturosAsync();
-                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos);
+                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos: atualizarFuturos, observacao: _observacao);
                 }
             }
 

@@ -487,6 +487,9 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<DateOnly?>("DataVencimentoCartao")
                         .HasColumnType("date");
 
+                    b.Property<string>("Observacao")
+                        .HasColumnType("longtext");
+
                     b.Property<int?>("ParcelaAtual")
                         .HasColumnType("int");
 
@@ -679,6 +682,9 @@ namespace Finort.Data.Migrations.MySql
 
                     b.Property<int>("Frequencia")
                         .HasColumnType("int");
+
+                    b.Property<DateOnly?>("MesInicial")
+                        .HasColumnType("date");
 
                     b.Property<int>("Onde")
                         .HasColumnType("int");

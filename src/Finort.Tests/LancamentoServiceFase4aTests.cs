@@ -2,6 +2,7 @@ using System.Globalization;
 using Finort.Data;
 using Finort.Models.Financeiro;
 using Finort.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Finort.Tests;
 
@@ -73,6 +74,25 @@ public class LancamentoServiceFase4aTests
             // compra dia 6 >= melhorDia 5 → vencimento base mês+1 = set/2026; parcelas +1 mês cada
             Assert.Equal(new DateOnly(2026, 9, 10), despesas[0].DataVencimentoCartao);
             Assert.Equal(new DateOnly(2026, 11, 10), despesas[2].DataVencimentoCartao);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task CriarDespesaCartaoAsync_ComObservacao_PersisteEmTodasAsParcelas()
+    {
+        var (db, file, service, _, cartao) = await SetupAsync();
+        try
+        {
+            var despesas = await service.CriarDespesaCartaoAsync(
+                cartao.Id, new DateOnly(2026, 8, 6), 100m, Renda(db).Id, null, null,
+                parcelas: 3, reembolsoPessoaId: null, reembolsoVencimento: null,
+                observacao: "Presente de aniversario");
+
+            Assert.Equal(3, despesas.Count);
+            Assert.All(despesas, d => Assert.Equal("Presente de aniversario", d.Observacao));
+            db.ChangeTracker.Clear();
+            Assert.Equal(3, (await db.Lancamentos.AsNoTracking().ToListAsync()).Count(l => l.Observacao == "Presente de aniversario"));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

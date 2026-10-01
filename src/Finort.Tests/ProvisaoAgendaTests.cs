@@ -94,6 +94,7 @@ public class ProvisaoAgendaTests
         try
         {
             var anoHoje = DateTime.Today.Year;
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
             var provisao = NovaProvisao(db, dia: 5, valor: 300m);
             provisao.Frequencia = ProvisaoFrequencia.Trimestral;
             provisao.UltimoMesLancado = 1;
@@ -101,10 +102,20 @@ public class ProvisaoAgendaTests
             db.Provisoes.Add(provisao);
             await db.SaveChangesAsync();
             var inicioJanela = new DateOnly(anoHoje, 1, 1);
+            var fimJanela = new DateOnly(anoHoje, 12, 31);
+            var mesCorrente = new DateOnly(anoHoje, hoje.Month, 1);
 
-            var projecoes = await ProvisaoAgenda.ProjetarAsync(db, inicioJanela, new DateOnly(anoHoje, 12, 31));
+            var projecoes = await ProvisaoAgenda.ProjetarAsync(db, inicioJanela, fimJanela);
 
-            Assert.Equal(new[] { 4, 7, 10 }, projecoes.Select(p => p.Data.Month).OrderBy(m => m).ToArray());
+            var esperados = new List<int>();
+            var periodo = new DateOnly(anoHoje, 4, 1);
+            while (periodo <= new DateOnly(anoHoje, 12, 1))
+            {
+                if (periodo >= mesCorrente)
+                    esperados.Add(periodo.Month);
+                periodo = periodo.AddMonths(3);
+            }
+            Assert.Equal(esperados, projecoes.Select(p => p.Data.Month).OrderBy(m => m).ToList());
             Assert.All(projecoes, p => Assert.Equal(provisao.Id, p.Provisao.Id));
         }
         finally { TestDbContext.Cleanup(db, file); }

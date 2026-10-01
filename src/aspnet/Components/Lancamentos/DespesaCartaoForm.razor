@@ -23,6 +23,8 @@
         <SubcategoriaSelect CategoriaId="@_categoriaId" @bind-Value="_subcategoriaId" />
         <PessoaSelect Placeholder="Opcional" @bind-Value="_pessoaId" />
         <ProjetoSelect PessoaId="@_pessoaId" @bind-Value="_projetoId" />
+        <MudTextField T="string" @bind-Value="_observacao" Label="Observação"
+                      Variant="@gVariant" Lines="2" MaxLength="500" />
 
         <div class="d-flex align-center flex-wrap">
             <MudCheckBox @bind-Value="EhEntrada" Label="Entrada na fatura (reembolso/desconto)"

@@ -51,4 +51,7 @@ public class Lancamento
 
     public Guid? ProjetoId { get; set; }
     public Projeto? Projeto { get; set; }
+
+    /// <summary>Texto livre do usuário (máx. 500 caracteres, aplicado na UI).</summary>
+    public string? Observacao { get; set; }
 }

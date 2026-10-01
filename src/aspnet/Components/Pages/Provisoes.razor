@@ -59,6 +59,8 @@
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
                         <MudMenuItem Icon="@Icons.Material.Filled.Edit"
                                      OnClick="() => AbrirDialog(context)">Editar</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.AddTask"
+                                     OnClick="() => LancarProximo(context)">Lançar próximo</MudMenuItem>
                         <MudMenuItem Icon="@Icons.Material.Filled.Delete" Class="mud-text-error"
                                      OnClick="() => Excluir(context)">Excluir</MudMenuItem>
                     </MudMenu>
@@ -102,6 +104,20 @@
         try
         {
             await ProvisaoService.ExcluirAsync(provisao.Id);
+            await CarregarAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task LancarProximo(Provisao provisao)
+    {
+        try
+        {
+            await ProvisaoService.LancarProximoAsync(provisao.Id);
+            Snackbar.Add("Próximo período lançado.", Severity.Success);
             await CarregarAsync();
         }
         catch (Exception ex)

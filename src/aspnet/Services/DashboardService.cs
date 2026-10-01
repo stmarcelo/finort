@@ -125,13 +125,13 @@ public class DashboardService
 
         return investimentos.Select(i =>
         {
+            var rendimentosDoInvestimento = rendimentos
+                .Where(r => r.InvestimentoId == i.Id).Sum(r => r.Valor);
             if (i.Tipo == TipoInvestimento.Reserva)
             {
                 var movs = movimentos.Where(m => m.InvestimentoId == i.Id).ToList();
                 var aportes = movs.Where(m => m.Tipo == MovimentoTipo.Aporte).Sum(m => m.Valor);
                 var resgates = movs.Where(m => m.Tipo == MovimentoTipo.Resgate).Sum(m => m.Valor);
-                var rendimentosDoInvestimento = rendimentos
-                    .Where(r => r.InvestimentoId == i.Id).Sum(r => r.Valor);
                 return new InvestimentoPatrimonio(i.Nome, i.Tipo, aportes + rendimentosDoInvestimento - resgates);
             }
 
@@ -143,6 +143,8 @@ public class DashboardService
                     MovimentoTipo.Venda => -(m.Quantidade ?? 0m),
                     _ => 0m
                 });
+            if (i.Tipo == TipoInvestimento.Dolar)
+                quantidade += rendimentosDoInvestimento;
             return new InvestimentoPatrimonio(i.Nome, i.Tipo, quantidade * i.ValorCotaAtual);
         }).ToList();
     }

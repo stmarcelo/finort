@@ -522,6 +522,29 @@ public class InvestimentoServiceTests
     }
 
     [Fact]
+    public async Task ListarParaCards_Dolar_QuantidadeSomaRendimentosESaldoUsaCota()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var dolar = await service.CriarAsync("Dólar", TipoInvestimento.Dolar,
+                conta.Id, null, null, 5.5m, DateTime.Today);
+            await service.RegistrarMovimentoAsync(dolar.Id,
+                new DateOnly(2026, 8, 5), MovimentoTipo.Compra, 100m, 5.5m, null);
+            await service.RegistrarProventoAsync(dolar.Id,
+                new DateOnly(2026, 8, 10), 30m, ProventoTipo.Rendimento);
+
+            var cards = await service.ListarParaCardsAsync();
+            var card = cards.Single(c => c.Investimento.Id == dolar.Id);
+
+            Assert.Equal(130m, card.QuantidadeTotal);
+            Assert.Equal(715m, card.Saldo);
+            Assert.Equal(30m, card.Proventos);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public async Task ListarMovimentos_RetornaOrdenadoDesc()
     {
         var (db, file, conta, service, ativo, _) = await SetupMovimentosAsync();
@@ -760,6 +783,77 @@ public class InvestimentoServiceTests
             Assert.Equal(6, serie.Valores.Count);
             Assert.Equal(0m, serie.Valores[^2]);
             Assert.Equal(1000m, serie.Valores[^1]);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task TendenciaPatrimonio_Dolar_RendimentoEntraNaQuantidade()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            var dolar = await service.CriarAsync("Dólar", TipoInvestimento.Dolar, conta.Id,
+                null, null, 5.5m, new DateTime(hoje.Year, hoje.Month, 1));
+            await service.RegistrarMovimentoAsync(dolar.Id, hoje, MovimentoTipo.Compra, 100m, 5.5m, null);
+            await service.RegistrarProventoAsync(dolar.Id, hoje, 30m, ProventoTipo.Rendimento);
+
+            var tendencia = await service.TendenciaPatrimonioAsync();
+
+            var serie = Assert.Single(tendencia);
+            Assert.Equal(TipoInvestimento.Dolar, serie.Tipo);
+            Assert.Equal(6, serie.Valores.Count);
+            Assert.Equal(0m, serie.Valores[^2]);
+            Assert.Equal(715m, serie.Valores[^1]);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_VendaDolar_UsaPosicaoComRendimento()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var dolar = await service.CriarAsync("Dólar", TipoInvestimento.Dolar,
+                conta.Id, null, null, 5.5m, DateTime.Today);
+            await service.RegistrarMovimentoAsync(dolar.Id,
+                new DateOnly(2026, 8, 5), MovimentoTipo.Compra, 100m, 5.5m, null);
+            await service.RegistrarProventoAsync(dolar.Id,
+                new DateOnly(2026, 8, 10), 30m, ProventoTipo.Rendimento);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.RegistrarMovimentoAsync(dolar.Id,
+                    new DateOnly(2026, 8, 20), MovimentoTipo.Venda, 131m, 5.6m, null));
+            Assert.Contains("Quantidade insuficiente", ex.Message);
+
+            await service.RegistrarMovimentoAsync(dolar.Id,
+                new DateOnly(2026, 8, 21), MovimentoTipo.Venda, 130m, 5.6m, null);
+
+            var movimentos = await service.ListarMovimentosAsync(dolar.Id);
+            Assert.Equal(2, movimentos.Count);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarProvento_Dolar_PercentualUsaCota()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var dolar = await service.CriarAsync("Dólar", TipoInvestimento.Dolar,
+                conta.Id, null, null, 5.5m, DateTime.Today);
+            await service.RegistrarMovimentoAsync(dolar.Id,
+                new DateOnly(2026, 8, 5), MovimentoTipo.Compra, 100m, 5.5m, null);
+            await service.RegistrarProventoAsync(dolar.Id,
+                new DateOnly(2026, 8, 10), 30m, ProventoTipo.Rendimento);
+
+            var provento = await service.RegistrarProventoAsync(dolar.Id,
+                new DateOnly(2026, 8, 15), 10m, ProventoTipo.Rendimento);
+
+            Assert.Equal(55m / 715m, provento.Percentual);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

@@ -14,7 +14,7 @@ public partial class DespesaCartaoForm : AppComponentBase
         Guid CategoriaId, Guid? SubcategoriaId, Guid? PessoaId,
         int? Parcelas, Guid? ReembolsoPessoaId,
         bool EhEntrada, Guid? ProjetoId,
-        DateOnly? DataVencimentoCartao);
+        DateOnly? DataVencimentoCartao, string? Observacao);
 
     [Parameter] public Guid? CartaoIdFixo { get; set; }
     [Parameter] public int? AnoFatura { get; set; }
@@ -42,6 +42,7 @@ public partial class DespesaCartaoForm : AppComponentBase
     private int _vencimentoAno;
     private int _vencimentoMes;
     private bool _isFirstInstallment = true;
+    private string? _observacao;
     private DateTime? _minDateFatura;
     private DateTime? _maxDateFatura;
 
@@ -107,6 +108,7 @@ public partial class DespesaCartaoForm : AppComponentBase
         _subcategoriaId = lancamento.SubcategoriaId;
         _pessoaId = lancamento.PessoaId;
         _projetoId = lancamento.ProjetoId;
+        _observacao = lancamento.Observacao;
 
         if (lancamento.ParcelamentoId.HasValue && lancamento.TotalParcelas.HasValue && lancamento.TotalParcelas.Value > 1)
         {
@@ -226,6 +228,7 @@ public partial class DespesaCartaoForm : AppComponentBase
         if (_dataCompra is null) { Snackbar.Add("Informe a data da compra.", Severity.Error); return false; }
         if (_cartaoId is null) { Snackbar.Add("Selecione o cartão.", Severity.Error); return false; }
         if (_categoriaId is null) { Snackbar.Add("Selecione a categoria.", Severity.Error); return false; }
+        if (_observacao?.Length > 500) { Snackbar.Add("Observação deve ter no máximo 500 caracteres.", Severity.Error); return false; }
 
         var dataCompra = DateOnly.FromDateTime(_dataCompra.Value);
         if (AnoFatura is not null && MesFatura is not null && _cartaoId.HasValue)
@@ -248,7 +251,8 @@ public partial class DespesaCartaoForm : AppComponentBase
             ComReembolso ? _reembolsoPessoaId : null,
             EhEntrada,
             EhEntrada ? null : _projetoId,
-            _previewVencimento));
+            _previewVencimento,
+            _observacao));
         return true;
     }
 }

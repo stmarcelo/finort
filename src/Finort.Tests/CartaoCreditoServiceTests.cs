@@ -194,4 +194,83 @@ public class CartaoCreditoServiceTests
 
         Assert.Equal(new DateOnly(anoEsperado, mesEsperado, diaEsperado), vencimento);
     }
+
+    private static async Task CriarFaturaFechadaAsync(AppDbContext db, Guid contaId, CartaoCredito cartao,
+        int ano, int mes, decimal valor, decimal? pagoEm)
+    {
+        db.Lancamentos.Add(new Lancamento
+        {
+            Data = new DateOnly(ano, mes, 5),
+            Tipo = LancamentoTipo.Despesa,
+            Valor = -valor,
+            CartaoCreditoId = cartao.Id,
+            DataVencimentoCartao = new DateOnly(ano, mes, 5),
+            CategoriaId = db.Categorias.First(c => c.Nome == "Receita").Id,
+            Confirmado = true
+        });
+        await db.SaveChangesAsync();
+
+        var faturaService = new FaturaService(db);
+        await faturaService.FecharAsync(cartao.Id, ano, mes);
+        if (pagoEm is not null)
+            await faturaService.PagarAsync(cartao.Id, ano, mes, contaId, new DateOnly(ano, mes, 10), pagoEm.Value);
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_UltimaFaturaFechada_MaisRecenteComSituacaoParcial()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 50m, pagoEm: 50m);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 9, 80m, pagoEm: 40m);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            var uf = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaFechada);
+            Assert.Equal(2026, uf.AnoReferencia);
+            Assert.Equal(9, uf.MesReferencia);
+            Assert.Equal(-80m, uf.ValorTotal);
+            Assert.Equal(40m, uf.Pago);
+            Assert.False(uf.Paga);
+            Assert.True(uf.Parcial);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_SemFaturaFechada_RetornaNulo()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            Assert.Null(resumo.UltimaFaturaFechada);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_FaturaFechadaSemPagamento_EhAberta()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 60m, pagoEm: null);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            var uf = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaFechada);
+            Assert.Equal(8, uf.MesReferencia);
+            Assert.Equal(0m, uf.Pago);
+            Assert.False(uf.Paga);
+            Assert.False(uf.Parcial);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

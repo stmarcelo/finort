@@ -40,7 +40,7 @@
                 d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
                 d.Parcelas, d.ReembolsoPessoaId,
                 vencimentoExato: d.DataVencimentoCartao,
-                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
+                ehEntrada: d.EhEntrada, projetoId: d.ProjetoId, observacao: d.Observacao);
             Snackbar.Add("Lançamento salvo.", Severity.Success);
             var primeiro = criados[0];
             var vencimento = primeiro.DataVencimentoCartao ?? primeiro.Data;

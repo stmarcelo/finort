@@ -11,7 +11,7 @@ public sealed record InvestimentoCard(
     DateOnly? DataUltimoAporte = null,
     decimal ValorUltimoAporte = 0m)
 {
-    /// <summary>Saldo exibido: cotação × quantidade para ativos; aportes + proventos − resgates para reserva/CDB.</summary>
+    /// <summary>Saldo exibido: aportes + proventos − resgates para reserva/CDB; cotação × quantidade para os demais (dólar já soma rendimentos na quantidade).</summary>
     public decimal Saldo => Investimento.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Cdb
         ? SaldoReserva
         : QuantidadeTotal * Investimento.ValorCotaAtual;

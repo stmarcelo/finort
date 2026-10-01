@@ -118,7 +118,13 @@
                         <br /><span style="font-size:0.75em;color:#888;">compra @context.DataCompra.Value.ToString("dd/MM/yyyy")</span>
                     }
                 </MudTd>
-                <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)@if (!string.IsNullOrEmpty(context.Observacao))
+                {
+                    <MudTooltip Text="@context.Observacao">
+                        <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Style="font-size:14px;" Class="ml-1" />
+                    </MudTooltip>
+                }
+                </MudTd>
                 <MudTd>@context.Pessoa?.Nome</MudTd>
                 <MudTd>@RotuloParcela(context)</MudTd>
                 <MudTd>

@@ -99,7 +99,13 @@
                                     <MudTh>Ações</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
-                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)@if (!string.IsNullOrEmpty(context.Observacao))
+                                    {
+                                        <MudTooltip Text="@context.Observacao">
+                                            <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Style="font-size:14px;" Class="ml-1" />
+                                        </MudTooltip>
+                                    }
+                                    </MudTd>
                                     <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "")</MudTd>
                                     <MudTd>@context.Tipo</MudTd>
                                     <MudTd><span class="extrato-valor @(context.Valor >= 0 ? "pos" : "neg")">@context.Valor.ToString("N2")</span></MudTd>
@@ -195,7 +201,13 @@
                                     <MudTh>Ações</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
-                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)</MudTd>
+                                    <MudTd>@context.Categoria.Nome@(context.Subcategoria is null ? "" : " › " + context.Subcategoria.Nome)@if (!string.IsNullOrEmpty(context.Observacao))
+                                    {
+                                        <MudTooltip Text="@context.Observacao">
+                                            <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Style="font-size:14px;" Class="ml-1" />
+                                        </MudTooltip>
+                                    }
+                                    </MudTd>
                                     <MudTd>@(context.ParcelaAtual.HasValue && context.TotalParcelas.HasValue ? $"{context.ParcelaAtual}/{context.TotalParcelas}" : "")</MudTd>
                                     <MudTd>@context.Tipo</MudTd>
                                     <MudTd><span class="extrato-valor @(context.Valor >= 0 ? "pos" : "neg")">@context.Valor.ToString("N2")</span></MudTd>

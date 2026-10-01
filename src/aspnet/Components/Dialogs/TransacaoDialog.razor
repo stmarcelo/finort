@@ -131,7 +131,7 @@
                     d.PessoaId, d.Parcelas, d.ReembolsoPessoaId,
                     vencimentoExato: d.DataVencimentoCartao,
                     ehEntrada: d.EhEntrada, projetoId: d.ProjetoId,
-                    atualizarFuturos: atualizarFuturos);
+                    atualizarFuturos: atualizarFuturos, observacao: d.Observacao);
                 Snackbar.Add("Lançamento atualizado.", Severity.Success);
             }
             else
@@ -140,7 +140,7 @@
                     d.CartaoId, d.Data, d.Valor, d.CategoriaId, d.SubcategoriaId, d.PessoaId,
                     d.Parcelas, d.ReembolsoPessoaId,
                     vencimentoExato: d.DataVencimentoCartao,
-                    ehEntrada: d.EhEntrada, projetoId: d.ProjetoId);
+                    ehEntrada: d.EhEntrada, projetoId: d.ProjetoId, observacao: d.Observacao);
                 Snackbar.Add("Lançamento salvo.", Severity.Success);
             }
             MudDialog.Close(DialogResult.Ok(true));

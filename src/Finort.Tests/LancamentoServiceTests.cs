@@ -1,6 +1,7 @@
 using Finort.Data;
 using Finort.Models.Financeiro;
 using Finort.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Finort.Tests;
 
@@ -48,6 +49,80 @@ public class LancamentoServiceTests
     }
 
     [Fact]
+    public async Task Lancamento_Observacao_PersisteNoBanco()
+    {
+        var (db, file, _, conta) = await SetupAsync();
+        try
+        {
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(2026, 8, 1),
+                Tipo = LancamentoTipo.Receita,
+                Valor = 100m,
+                ContaId = conta.Id,
+                CategoriaId = Renda(db).Id,
+                Observacao = "Referente a julho"
+            });
+            await db.SaveChangesAsync();
+
+            db.ChangeTracker.Clear();
+            var lido = await db.Lancamentos.AsNoTracking().SingleAsync();
+
+            Assert.Equal("Referente a julho", lido.Observacao);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task CriarReceitaAsync_ComObservacao_Persiste()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var lancamento = await service.CriarReceitaAsync(conta.Id, new DateOnly(2026, 8, 1), 100m,
+                Renda(db).Id, null, null, observacao: "Salario de julho");
+
+            Assert.Equal("Salario de julho", lancamento.Observacao);
+            db.ChangeTracker.Clear();
+            Assert.Equal("Salario de julho", (await db.Lancamentos.AsNoTracking().SingleAsync()).Observacao);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task CriarDespesaAsync_ComObservacao_Persiste()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var lancamento = await service.CriarDespesaAsync(conta.Id, new DateOnly(2026, 8, 1), 80m,
+                Renda(db).Id, null, null, observacao: "Mercado do dia 10");
+
+            Assert.Equal("Mercado do dia 10", lancamento.Observacao);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task CriarRecorrenteAsync_ComObservacao_PropagaParaTodasAsRepeticoes()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var criados = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 8, 1), 50m, RecorrenciaFrequencia.Mensal, 3,
+                db.Categorias.First(c => c.Nome == "Contas de casa").Id, null, null,
+                observacao: "Energia eletrica");
+
+            Assert.Equal(3, criados.Count);
+            Assert.All(criados, c => Assert.Equal("Energia eletrica", c.Observacao));
+            db.ChangeTracker.Clear();
+            Assert.Equal(3, (await db.Lancamentos.AsNoTracking().ToListAsync()).Count(l => l.Observacao == "Energia eletrica"));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public async Task CriarTransferenciaAsync_CriaDuasPernasComReferencia()
     {
         var (db, file, service, conta) = await SetupAsync();
@@ -89,6 +164,253 @@ public class LancamentoServiceTests
             Assert.NotNull(carregado);
             Assert.Equal(new DateOnly(2026, 8, 5), carregado!.Data);
             Assert.Equal(-30m, carregado.Valor);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_SemAtualizarFuturos_SoAlteraOEditado()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null,
+                observacao: "A");
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: false, observacao: "B");
+
+            db.ChangeTracker.Clear();
+            var daSerie = await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync();
+            Assert.Equal("B", daSerie[0].Observacao);
+            Assert.Equal("A", daSerie[1].Observacao);
+            Assert.Equal("A", daSerie[2].Observacao);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_ComAtualizarFuturos_PropagaObservacao()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null,
+                observacao: "A");
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: true, observacao: "B");
+
+            db.ChangeTracker.Clear();
+            var daSerie = await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).ToListAsync();
+            Assert.Equal(3, daSerie.Count);
+            Assert.All(daSerie, l => Assert.Equal("B", l.Observacao));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_AtualizarFuturos_ReancoraPelaNovaData()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: true);
+
+            db.ChangeTracker.Clear();
+            var datas = (await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync())
+                .Select(l => l.Data).ToList();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 24), new DateOnly(2026, 10, 24), new DateOnly(2026, 11, 24)
+            }, datas);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_SemAtualizarFuturos_SoAlteraADataDoEditado()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: false);
+
+            db.ChangeTracker.Clear();
+            var datas = (await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync())
+                .Select(l => l.Data).ToList();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 24), new DateOnly(2026, 10, 30), new DateOnly(2026, 11, 30)
+            }, datas);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_FuturoEmMesFechado_NaoAlteraNada()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = 2026, Mes = 10, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                    categoria, null, null, atualizarFuturos: true));
+            Assert.Contains("mês está fechado", ex.Message);
+
+            db.ChangeTracker.Clear();
+            var datas = (await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync())
+                .Select(l => l.Data).ToList();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 30), new DateOnly(2026, 10, 30), new DateOnly(2026, 11, 30)
+            }, datas);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_MembroApagado_ReancoraPelaMedianaDosDeltas()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 5, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            var apagado = await db.Lancamentos
+                .FirstAsync(l => l.RecorrenciaId == grupoId && l.Data == new DateOnly(2026, 11, 30));
+            db.Lancamentos.Remove(apagado);
+            await db.SaveChangesAsync();
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: true);
+
+            db.ChangeTracker.Clear();
+            var datas = (await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync())
+                .Select(l => l.Data).ToList();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 24), new DateOnly(2026, 10, 24),
+                new DateOnly(2026, 11, 24), new DateOnly(2026, 12, 24)
+            }, datas);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_ComAtualizarFuturos_PropagaContaParaFuturos()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var conta2 = await new ContaService(db).CriarAsync("Conta 2", null, null, null);
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta2.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: true);
+
+            db.ChangeTracker.Clear();
+            var daSerie = await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).ToListAsync();
+            Assert.Equal(3, daSerie.Count);
+            Assert.All(daSerie, l => Assert.Equal(conta2.Id, l.ContaId));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_ContaAntigaComMesFechado_NaoBloqueiaFuturosDaContaDestino()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var conta2 = await new ContaService(db).CriarAsync("Conta 2", null, null, null);
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+            db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = 2026, Mes = 10, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+
+            await service.AtualizarReceitaDespesaAsync(serie[0].Id, conta2.Id, new DateOnly(2026, 9, 24), 100m,
+                categoria, null, null, atualizarFuturos: true);
+
+            db.ChangeTracker.Clear();
+            var daSerie = await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 24), new DateOnly(2026, 10, 24), new DateOnly(2026, 11, 24)
+            }, daSerie.Select(l => l.Data).ToList());
+            Assert.All(daSerie, l => Assert.Equal(conta2.Id, l.ContaId));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task AtualizarReceitaDespesaAsync_ContaDestinoComMesFechado_NaoAlteraNada()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var conta2 = await new ContaService(db).CriarAsync("Conta 2", null, null, null);
+            var categoria = db.Categorias.First(c => c.Nome == "Contas de casa").Id;
+            var serie = await service.CriarRecorrenteAsync(LancamentoTipo.Despesa, conta.Id,
+                new DateOnly(2026, 9, 30), 100m, RecorrenciaFrequencia.Mensal, 3, categoria, null, null);
+            var grupoId = serie[0].RecorrenciaId!.Value;
+            db.MesesFechados.Add(new MesFechado { ContaId = conta2.Id, Ano = 2026, Mes = 10, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.AtualizarReceitaDespesaAsync(serie[0].Id, conta2.Id, new DateOnly(2026, 9, 24), 100m,
+                    categoria, null, null, atualizarFuturos: true));
+            Assert.Contains("mês está fechado", ex.Message);
+
+            db.ChangeTracker.Clear();
+            var daSerie = await db.Lancamentos.AsNoTracking()
+                .Where(l => l.RecorrenciaId == grupoId).OrderBy(l => l.Data).ToListAsync();
+            Assert.Equal(new[]
+            {
+                new DateOnly(2026, 9, 30), new DateOnly(2026, 10, 30), new DateOnly(2026, 11, 30)
+            }, daSerie.Select(l => l.Data).ToList());
+            Assert.All(daSerie, l => Assert.Equal(conta.Id, l.ContaId));
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -266,7 +588,7 @@ public class LancamentoServiceTests
             await db.SaveChangesAsync();
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.CriarReceitaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null));
+                () => service.CriarReceitaAsync(conta.Id, new DateOnly(hoje.Year, hoje.Month, 1), 10m, Renda(db).Id, null, null));
 
             Assert.Contains("mês está fechado", ex.Message);
         }
@@ -300,7 +622,7 @@ public class LancamentoServiceTests
         try
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            var lancamento = await service.CriarReceitaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null);
+            var lancamento = await service.CriarReceitaAsync(conta.Id, new DateOnly(hoje.Year, hoje.Month, 1), 10m, Renda(db).Id, null, null);
 
             db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();
@@ -320,7 +642,7 @@ public class LancamentoServiceTests
         try
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            var lancamento = await service.CriarDespesaAsync(conta.Id, hoje.AddDays(1), 10m, Renda(db).Id, null, null);
+            var lancamento = await service.CriarDespesaAsync(conta.Id, new DateOnly(hoje.Year, hoje.Month, 1), 10m, Renda(db).Id, null, null);
 
             db.MesesFechados.Add(new MesFechado { ContaId = conta.Id, Ano = hoje.Year, Mes = hoje.Month, DataFechamento = DateTime.Now });
             await db.SaveChangesAsync();

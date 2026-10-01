@@ -217,6 +217,28 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task Obter_Patrimonios_DolarRendimentoNaQuantidade()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var investimentoService = new InvestimentoService(db, new LancamentoService(db));
+            var dolar = await investimentoService.CriarAsync("Dólar", TipoInvestimento.Dolar,
+                conta.Id, null, null, 5.5m, DateTime.Today);
+            await investimentoService.RegistrarMovimentoAsync(dolar.Id,
+                new DateOnly(2026, 8, 5), MovimentoTipo.Compra, 100m, 5.5m, null);
+            await investimentoService.RegistrarProventoAsync(dolar.Id,
+                new DateOnly(2026, 8, 10), 30m, ProventoTipo.Rendimento);
+
+            var (inicio, fim) = Mes(2026, 8);
+            var dashboard = await service.ObterAsync(inicio, fim);
+
+            Assert.Contains(dashboard.Patrimonios, p => p.Nome == "Dólar" && p.Valor == 715m);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
     public async Task Obter_MesSemDados_ListasVazias()
     {
         var (db, file, conta, service) = await SetupAsync();

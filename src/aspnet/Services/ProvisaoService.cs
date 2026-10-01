@@ -39,15 +39,33 @@ public class ProvisaoService
         if (lancarMesCorrente)
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
-                await LancarAsync(provisao, hoje.Year, hoje.Month);
+            var mesCorrente = new DateOnly(hoje.Year, hoje.Month, 1);
 
-            var proximoMes = hoje.AddMonths(1);
-            if (!await EstaFechadoAsync(provisao.ContaId, proximoMes.Year, proximoMes.Month))
-                await LancarAsync(provisao, proximoMes.Year, proximoMes.Month);
+            if (provisao.Frequencia == ProvisaoFrequencia.Mensal)
+            {
+                if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
+                    await LancarAsync(provisao, hoje.Year, hoje.Month);
 
-            provisao.UltimoMesLancado = proximoMes.Month;
-            provisao.UltimoAnoLancado = proximoMes.Year;
+                var proximoMes = hoje.AddMonths(1);
+                if (!await EstaFechadoAsync(provisao.ContaId, proximoMes.Year, proximoMes.Month))
+                    await LancarAsync(provisao, proximoMes.Year, proximoMes.Month);
+
+                provisao.UltimoMesLancado = proximoMes.Month;
+                provisao.UltimoAnoLancado = proximoMes.Year;
+            }
+            else
+            {
+                var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
+                var atual = provisao.MesInicial ?? mesCorrente;
+                while (atual < mesCorrente) atual = atual.AddMonths(intervalo);
+
+                if (!await EstaFechadoAsync(provisao.ContaId, atual.Year, atual.Month)
+                    && await LancarAsync(provisao, atual.Year, atual.Month) > 0)
+                {
+                    provisao.UltimoMesLancado = atual.Month;
+                    provisao.UltimoAnoLancado = atual.Year;
+                }
+            }
             await _db.SaveChangesAsync();
         }
 
@@ -66,6 +84,7 @@ public class ProvisaoService
         alvo.ValorVariante = dados.ValorVariante;
         alvo.CategoriaId = dados.CategoriaId;
         alvo.SubcategoriaId = dados.SubcategoriaId;
+        alvo.MesInicial = dados.MesInicial;
         await _db.SaveChangesAsync();
     }
 
@@ -122,36 +141,98 @@ public class ProvisaoService
 
             if (provisao.UltimoAnoLancado is null || provisao.UltimoMesLancado is null)
             {
-                if (!await EstaFechadoAsync(provisao.ContaId, hoje.Year, hoje.Month))
-                    criados += await LancarAsync(provisao, hoje.Year, hoje.Month);
+                var mesCorrente = new DateOnly(hoje.Year, hoje.Month, 1);
+                var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
+                var atual = provisao.MesInicial ?? mesCorrente;
+                while (atual < mesCorrente) atual = atual.AddMonths(intervalo);
+                var limite = mesCorrente.AddMonths(1);
 
-                var proximoMes = hoje.AddMonths(1);
-                if (!await EstaFechadoAsync(provisao.ContaId, proximoMes.Year, proximoMes.Month))
-                    criados += await LancarAsync(provisao, proximoMes.Year, proximoMes.Month);
+                while (atual <= limite)
+                {
+                    if (!await EstaFechadoAsync(provisao.ContaId, atual.Year, atual.Month))
+                        criados += await LancarAsync(provisao, atual.Year, atual.Month);
 
-                provisao.UltimoMesLancado = proximoMes.Month;
-                provisao.UltimoAnoLancado = proximoMes.Year;
+                    provisao.UltimoMesLancado = atual.Month;
+                    provisao.UltimoAnoLancado = atual.Year;
+                    atual = atual.AddMonths(intervalo);
+                }
                 continue;
             }
 
-            var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
-            var atual = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)
-                .AddMonths(intervalo);
-            var limite = new DateOnly(hoje.Year, hoje.Month, 1).AddMonths(1);
-
-            while (atual <= limite)
             {
-                if (!await EstaFechadoAsync(provisao.ContaId, atual.Year, atual.Month))
-                    criados += await LancarAsync(provisao, atual.Year, atual.Month);
+                var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
+                var mesCorrente = new DateOnly(hoje.Year, hoje.Month, 1);
+                var atual = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)
+                    .AddMonths(intervalo);
+                while (atual < mesCorrente) atual = atual.AddMonths(intervalo);
+                var limite = mesCorrente.AddMonths(1);
 
-                provisao.UltimoMesLancado = atual.Month;
-                provisao.UltimoAnoLancado = atual.Year;
-                atual = atual.AddMonths(intervalo);
+                while (atual <= limite)
+                {
+                    if (!await EstaFechadoAsync(provisao.ContaId, atual.Year, atual.Month))
+                        criados += await LancarAsync(provisao, atual.Year, atual.Month);
+
+                    provisao.UltimoMesLancado = atual.Month;
+                    provisao.UltimoAnoLancado = atual.Year;
+                    atual = atual.AddMonths(intervalo);
+                }
             }
         }
 
         await _db.SaveChangesAsync();
         return criados;
+    }
+
+    /// <summary>Lança manualmente o próximo período da régua. Erro não avança o cursor.</summary>
+    public async Task LancarProximoAsync(Guid id)
+    {
+        var provisao = await _db.Provisoes.FindAsync(id)
+            ?? throw new InvalidOperationException("Provisão não encontrada.");
+
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        var mesCorrente = new DateOnly(hoje.Year, hoje.Month, 1);
+        var intervalo = ProvisaoAgenda.IntervaloEmMeses(provisao.Frequencia);
+
+        DateOnly periodo;
+        if (provisao.UltimoMesLancado is null || provisao.UltimoAnoLancado is null)
+        {
+            periodo = provisao.MesInicial ?? mesCorrente;
+        }
+        else
+        {
+            periodo = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)
+                .AddMonths(intervalo);
+        }
+
+        while (periodo < mesCorrente) periodo = periodo.AddMonths(intervalo);
+
+        var ano = periodo.Year;
+        var mes = periodo.Month;
+
+        if (await EstaFechadoAsync(provisao.ContaId, ano, mes))
+            throw new InvalidOperationException("Este mês está fechado para esta conta e não pode mais ser alterado.");
+
+        if (provisao.Onde == ProvisaoOnde.DebitoCartao && provisao.CartaoCreditoId.HasValue)
+        {
+            var faturaFechada = await _db.Faturas.AnyAsync(f =>
+                f.CartaoCreditoId == provisao.CartaoCreditoId.Value &&
+                f.AnoReferencia == ano &&
+                f.MesReferencia == mes &&
+                f.Fechada);
+            if (faturaFechada)
+                throw new InvalidOperationException($"A fatura de {mes:D2}/{ano} está fechada; não é possível lançar.");
+        }
+
+        if (await _db.Lancamentos.AnyAsync(l => l.ProvisaoId == provisao.Id
+                && l.Data.Year == ano && l.Data.Month == mes))
+            throw new InvalidOperationException($"Já existe um lançamento desta provisão em {mes:D2}/{ano}.");
+
+        if (await LancarAsync(provisao, ano, mes) == 0)
+            throw new InvalidOperationException($"Não foi possível lançar o período {mes:D2}/{ano}.");
+
+        provisao.UltimoMesLancado = mes;
+        provisao.UltimoAnoLancado = ano;
+        await _db.SaveChangesAsync();
     }
 
     private async Task<int> LancarAsync(Provisao provisao, int ano, int mes)

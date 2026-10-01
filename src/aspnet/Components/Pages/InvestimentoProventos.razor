@@ -33,9 +33,13 @@
     <MudStack Row Spacing="1" Class="mb-2 flex-wrap">
         @foreach (var st in _subtotais)
         {
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">@RotuloTipo(st.Tipo) @st.Total.ToString("N2")</MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">@RotuloTipo(st.Tipo) @st.Total.ToString("N2")@(st.Tipo == TipoInvestimento.Dolar ? " USD" : "")</MudChip>
         }
-        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Style="font-weight:bold">Total @_subtotais.Sum(s => s.Total).ToString("N2")</MudChip>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Style="font-weight:bold">Total R$ @_subtotais.Where(s => s.Tipo != TipoInvestimento.Dolar).Sum(s => s.Total).ToString("N2")</MudChip>
+        @if (_subtotais.Any(s => s.Tipo == TipoInvestimento.Dolar))
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Style="font-weight:bold">Total USD @_subtotais.Where(s => s.Tipo == TipoInvestimento.Dolar).Sum(s => s.Total).ToString("N2")</MudChip>
+        }
     </MudStack>
 }
 
@@ -55,7 +59,7 @@
             <MudTd>@context.NomeInvestimento</MudTd>
             <MudTd>@RotuloTipo(context.TipoInvestimento)</MudTd>
             <MudTd>@(context.TipoProvento == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
-            <MudTd Align="Align.Right"><span class="extrato-valor pos">@context.Valor.ToString("N2")</span></MudTd>
+            <MudTd Align="Align.Right"><span class="extrato-valor pos">@context.Valor.ToString("N2")@(context.TipoInvestimento == TipoInvestimento.Dolar ? " USD" : "")</span></MudTd>
             <MudTd Align="Align.Right">@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
         </RowTemplate>
     </MudTable>

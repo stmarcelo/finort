@@ -35,6 +35,13 @@
                 <MudSelectItem Value="ProvisaoFrequencia.Anual">Anual</MudSelectItem>
             </MudSelect>
 
+            @if (_frequencia != ProvisaoFrequencia.Mensal)
+            {
+                <MudDatePicker @bind-Date="_mesInicial" Label="Mês inicial"
+                               Variant="@gVariant" PickerVariant="PickerVariant.Inline"
+                               OpenTo="OpenTo.Month" FixDay="1" />
+            }
+
             <MudNumericField T="int" @bind-Value="_dia" Label="Dia do mês" Variant="@gVariant" Min="1" Max="31"
                              Required="true" />
             <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
@@ -48,7 +55,7 @@
 
             @if (Provisao is null)
             {
-                <MudCheckBox @bind-Value="_lancarAgora" Label="Lançar no mês corrente agora" />
+                <MudCheckBox @bind-Value="_lancarAgora" Label="@(_frequencia != ProvisaoFrequencia.Mensal ? "Lançar primeiro lançamento agora" : "Lançar no mês corrente agora")" />
             }
         </MudForm>
     </DialogContent>
@@ -77,6 +84,7 @@
     private Guid? _subcategoriaId;
     private Guid? _pessoaId;
     private bool _lancarAgora;
+    private DateTime? _mesInicial;
 
     protected override void OnInitialized()
     {
@@ -92,6 +100,7 @@
             _categoriaId = Provisao.CategoriaId;
             _subcategoriaId = Provisao.SubcategoriaId;
             _pessoaId = Provisao.PessoaId;
+            _mesInicial = Provisao.MesInicial?.ToDateTime(TimeOnly.MinValue);
         }
     }
 
@@ -129,6 +138,11 @@
             Snackbar.Add("Selecione a categoria.", Severity.Error);
             return;
         }
+        if (_frequencia != ProvisaoFrequencia.Mensal && _mesInicial is null)
+        {
+            Snackbar.Add("Informe o mês inicial da provisão.", Severity.Error);
+            return;
+        }
 
         try
         {
@@ -145,7 +159,10 @@
                     Valor = _valor.Value,
                     ValorVariante = _valorVariante,
                     CategoriaId = _categoriaId.Value,
-                    SubcategoriaId = _subcategoriaId
+                    SubcategoriaId = _subcategoriaId,
+                    MesInicial = _frequencia == ProvisaoFrequencia.Mensal
+                        ? null
+                        : new DateOnly(_mesInicial!.Value.Year, _mesInicial.Value.Month, 1),
                 };
                 await ProvisaoService.CriarAsync(nova, lancarMesCorrente: _lancarAgora);
             }
@@ -162,7 +179,10 @@
                     Valor = _valor.Value,
                     ValorVariante = _valorVariante,
                     CategoriaId = _categoriaId.Value,
-                    SubcategoriaId = _subcategoriaId
+                    SubcategoriaId = _subcategoriaId,
+                    MesInicial = _frequencia == ProvisaoFrequencia.Mensal
+                        ? null
+                        : new DateOnly(_mesInicial!.Value.Year, _mesInicial.Value.Month, 1),
                 };
                 await ProvisaoService.AtualizarAsync(Provisao, dados);
             }

@@ -145,7 +145,9 @@
             "Depois de salvar, você vai direto para o extrato da conta no mês do lançamento. Se não informou uma conta, vai para a lista de lançamentos.",
             "Lançamentos sem conta não podem ser confirmados: confirme primeiro vinculando uma conta ou cartão. Enquanto houver lançamento sem conta não confirmado, o mês não pode ser fechado.",
             "O campo 'Projeto' está sempre habilitado e lista todos os projetos não concluídos, mesmo sem selecionar uma pessoa. Se houver apenas um projeto, ele é selecionado automaticamente.",
-            "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
+            "Receitas podem se repetir, marque a opção de repetição (recorrência) e defina quantas vezes deve se repetir e a frequência (mensal, trimestral, semestral, anual).",
+            "O campo 'Observação' (até 500 caracteres) guarda detalhes do recebimento; na lista de lançamentos, o ícone de nota ao lado da categoria mostra o texto ao passar o mouse.",
+            "Ao editar uma receita repetida e optar por alterar os futuros, as datas seguintes são reancoradas na nova data mantendo o mesmo intervalo (ex.: 30/09 vira 24/09 ⇒ os próximos passam a 24/10 e 24/11)."
         }, new()),
 
         new("despesa", "Despesa", Icons.Material.Filled.TrendingDown, new()
@@ -154,7 +156,9 @@
             "O processo é igual ao da receita: data, valor, conta (opcional), categoria, subcategoria (opcional), pessoa (opcional) e projeto (opcional).",
             "Depois de salvar, você vai direto para o extrato da conta no mês do lançamento. Se não informou uma conta, vai para a lista de lançamentos.",
             "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'.",
-            "Despesas podem ser marcadas para se repetir (recorrência). Defina quantas vezes a despesa deve se repetir e a frequência (mensal, trimestral, semestral, anual)."
+            "Despesas podem ser marcadas para se repetir (recorrência). Defina quantas vezes a despesa deve se repetir e a frequência (mensal, trimestral, semestral, anual).",
+            "O campo 'Observação' (até 500 caracteres) guarda detalhes do gasto; na lista de lançamentos, o ícone de nota ao lado da categoria mostra o texto ao passar o mouse.",
+            "Ao editar uma despesa repetida e optar por alterar os futuros, as datas seguintes são reancoradas na nova data mantendo o mesmo intervalo."
         }, new()),
 
         new("cartaoentrada", "Despesa no Cartão", Icons.Material.Filled.CreditCard, new()
@@ -163,7 +167,8 @@
             "Selecione o cartão, a data da compra, a categoria e o valor. Configure quantas parcelas será dividido.",
             "Opção 'Entrada na fatura': se marcada, o valor é descontado do total da fatura. Isso é útil quando o estorno é feito pelo próprio operador do cartão.",
             "Opção 'Reembolso': se uma pessoa vai reembolsar essa despesa (ou entrada), marque como reembolsável e selecione a pessoa. O sistema cria um item no cadastro de reembolsos (pessoa, cartão, parcela, valor, vencimento = vencimento da fatura menos 1 dia). A receita agregada por pessoa é gerada só no fechamento da fatura, quando você escolhe a conta e a categoria. Entrada com reembolso gera valor negativo.",
-            "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra. Depois de salvar, você vai direto para essa fatura."
+            "O lançamento aparecerá na fatura do cartão no mês correspondente à data da compra. Depois de salvar, você vai direto para essa fatura.",
+            "O campo 'Observação' (até 500 caracteres) anota detalhes da compra e fica disponível na edição."
         }, new()),
 
         new("transferencia", "Transferência", Icons.Material.Filled.SwapHoriz, new()
@@ -288,7 +293,10 @@
             "Provisões são compromissos recorrentes que você já sabe que vão acontecer, mas ainda não foram registrados como lançamento. Ex: aluguel todo dia 5, academia todo mês, parcela do seguro semestral.",
             "Ao criar uma provisão, você define: tipo (débito em conta, débito em cartão, débito sem conta ou receita), frequência (mensal, trimestral, semestral, anual), dia do mês, valor e categoria.",
             "O sistema projeta as provisões no calendário e no fluxo, mostrando o que você espera gastar/receber no futuro, sem criar lançamentos reais.",
-            "Quando chega o mês, você pode clicar em 'Sincronizar' para que o sistema crie os lançamentos reais das provisões daquele mês. Isso evita ter que lançar manualmente coisas recorrentes."
+            "Quando chega o mês, você pode clicar em 'Sincronizar' para que o sistema crie os lançamentos reais das provisões daquele mês. Isso evita ter que lançar manualmente coisas recorrentes.",
+            "Provisões com frequência diferente de mensal pedem um 'Mês inicial' (primeiro mês em que a provisão vale); a régua passa a contar a partir dele e nunca cria lançamento de mês anterior ao atual.",
+            "No menu da linha (⋮), 'Lançar próximo' cria manualmente a ocorrência seguinte pelo intervalo da frequência, sem duplicar e sem avançar quando o mês ou a fatura está fechado.",
+            "Provisões antigas começam a ser lançadas a partir do mês corrente: meses passados não são materializados retroativamente."
         }, new()),
 
         new("investimentos", "Investimentos", Icons.Material.Filled.Savings, new()
@@ -306,7 +314,7 @@
             new("Proventos", new()
             {
                 "Dividendos: rendimentos pagos por ações ou fundos. Cria um lançamento de receita.",
-                "Rendimento: juros de CDB / Fundo ou rendimentos da reserva. Cria um lançamento de receita."
+                "Rendimento: juros de CDB / Fundo ou rendimentos da reserva e do dólar. No dólar, o valor é em USD e soma à quantidade."
             }),
             new("Cotação e Desfazer", new()
             {

@@ -110,7 +110,13 @@
                         }
                     </MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Projeto?.Descricao</MudTd>
-                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Categoria.Nome@(context.Lancamento.Subcategoria is null ? "" : " › " + context.Lancamento.Subcategoria.Nome)</MudTd>
+                    <MudTd Style="@EstiloCelula(context.Lancamento)">@context.Lancamento.Categoria.Nome@(context.Lancamento.Subcategoria is null ? "" : " › " + context.Lancamento.Subcategoria.Nome)@if (!string.IsNullOrEmpty(context.Lancamento.Observacao))
+                    {
+                        <MudTooltip Text="@context.Lancamento.Observacao">
+                            <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Style="font-size:14px;" Class="ml-1" />
+                        </MudTooltip>
+                    }
+                    </MudTd>
                     <MudTd Style="@EstiloCelula(context.Lancamento)">
                         <span style="color:@CorValor(context.Lancamento);font-weight:600;">@context.Lancamento.Valor.ToString("N2")</span>
                         @RotuloParcela(context.Lancamento)

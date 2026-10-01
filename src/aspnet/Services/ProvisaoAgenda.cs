@@ -54,6 +54,10 @@ public static class ProvisaoAgenda
             var intervalo = IntervaloEmMeses(provisao.Frequencia);
             var periodo = new DateOnly(provisao.UltimoAnoLancado.Value, provisao.UltimoMesLancado.Value, 1)
                 .AddMonths(intervalo);
+
+            var mesCorrente = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+            while (periodo < mesCorrente) periodo = periodo.AddMonths(intervalo);
+
             var limite = new DateOnly(fim.Year, fim.Month, 1);
 
             while (periodo <= limite)

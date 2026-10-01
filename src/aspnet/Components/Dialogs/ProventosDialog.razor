@@ -24,7 +24,7 @@
                 <RowTemplate>
                     <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
                     <MudTd>@(context.Tipo == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
-                    <MudTd>@context.Valor.ToString("N2")</MudTd>
+                    <MudTd>@context.Valor.ToString("N2")@SufixoValor</MudTd>
                     <MudTd>@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -34,7 +34,7 @@
             </MudTable>
             <div class="fluxo-linha mt-2">
                 <span class="fluxo-label">Total</span>
-                <span class="fluxo-valor pos">@_proventos.Sum(p => p.Valor).ToString("N2")</span>
+                <span class="fluxo-valor pos">@_proventos.Sum(p => p.Valor).ToString("N2")@SufixoValor</span>
             </div>
         }
     </DialogContent>
@@ -46,6 +46,7 @@
 @code {
     [Parameter] public Guid InvestimentoId { get; set; }
     [Parameter] public string Nome { get; set; } = string.Empty;
+    [Parameter] public string SufixoValor { get; set; } = string.Empty;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -58,7 +59,7 @@
     private async Task ExcluirProvento(InvestimentoProvento provento)
     {
         var confirm = await DialogService.ShowMessageBox("Excluir provento",
-            $"Excluir este provento de {provento.Valor:N2}?", "Excluir", null, "Cancelar");
+            $"Excluir este provento de {provento.Valor:N2}{SufixoValor}?", "Excluir", null, "Cancelar");
         if (confirm != true) return;
 
         try

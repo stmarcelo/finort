@@ -60,6 +60,13 @@ else
                     </div>
                     <MudProgressLinear Value="@((double)pctUtilizado)" Color="@Color.Primary" Size="Size.Small" Class="mb-2" />
 
+                    @if (c.UltimaFaturaFechada is { } uf)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-1" Style="color:var(--finort-muted);">
+                            Fatura fechada @uf.MesReferencia.ToString("00")/@uf.AnoReferencia  R$ @Math.Abs(uf.ValorTotal).ToString("N2")  @(uf.Paga ? "Paga" : uf.Parcial ? "Parcial" : "Aberta")
+                        </MudText>
+                    }
+
                     <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
                         <MudText Typo="Typo.body2" Style="opacity:0.7">Disponível</MudText>
                         <MudText Typo="Typo.body2" Style="@($"font-weight:600;color:{(c.LimiteDisponivel > 0 ? "var(--mud-palette-success)" : "var(--mud-palette-error)")}")">

@@ -26,7 +26,7 @@ public class LancamentoService
 
     public async Task<Lancamento> CriarReceitaAsync(
         Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null, bool confirmado = false)
+        Guid? projetoId = null, bool confirmado = false, string? observacao = null)
     {
         Validar(valor, data);
         await GarantirMesAbertoAsync(data, contaId);
@@ -40,7 +40,8 @@ public class LancamentoService
             SubcategoriaId = subcategoriaId,
             PessoaId = pessoaId,
             ProjetoId = projetoId,
-            Confirmado = confirmado
+            Confirmado = confirmado,
+            Observacao = observacao
         };
         _db.Lancamentos.Add(lancamento);
         await _db.SaveChangesAsync();
@@ -49,7 +50,7 @@ public class LancamentoService
 
     public async Task<Lancamento> CriarDespesaAsync(
         Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null, bool confirmado = false)
+        Guid? projetoId = null, bool confirmado = false, string? observacao = null)
     {
         Validar(valor, data);
         await GarantirMesAbertoAsync(data, contaId);
@@ -63,7 +64,8 @@ public class LancamentoService
             SubcategoriaId = subcategoriaId,
             PessoaId = pessoaId,
             ProjetoId = projetoId,
-            Confirmado = confirmado
+            Confirmado = confirmado,
+            Observacao = observacao
         };
         _db.Lancamentos.Add(lancamento);
         await _db.SaveChangesAsync();
@@ -141,7 +143,7 @@ public class LancamentoService
 
     public async Task AtualizarReceitaDespesaAsync(
         Guid id, Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null, bool atualizarFuturos = false)
+        Guid? projetoId = null, bool atualizarFuturos = false, string? observacao = null)
     {
         Validar(valor, data);
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -151,6 +153,50 @@ public class LancamentoService
         await GarantirMesAbertoAsync(lancamento.Data, lancamento.ContaId);
         await GarantirMesAbertoAsync(data, contaId);
 
+        var dataOriginal = lancamento.Data;
+        var futuros = new List<Lancamento>();
+        var intervalo = 1;
+
+        if (atualizarFuturos)
+        {
+            Guid? grupoId = lancamento.ParcelamentoId ?? lancamento.RecorrenciaId;
+            if (grupoId.HasValue)
+            {
+                futuros = await _db.Lancamentos
+                    .Where(l => l.Id != lancamento.Id
+                        && ((l.ParcelamentoId == grupoId) || (l.RecorrenciaId == grupoId))
+                        && !l.Confirmado
+                        && l.Data > dataOriginal)
+                    .OrderBy(l => l.Data)
+                    .ToListAsync();
+
+                if (lancamento.RecorrenciaId.HasValue)
+                {
+                    var datasGrupo = (await _db.Lancamentos
+                            .Where(l => l.Id != lancamento.Id
+                                && (l.RecorrenciaId == grupoId || l.ParcelamentoId == grupoId))
+                            .Select(l => l.Data)
+                            .ToListAsync())
+                        .Append(dataOriginal)
+                        .OrderBy(d => d)
+                        .ToList();
+
+                    var deltas = new List<int>();
+                    for (var i = 1; i < datasGrupo.Count; i++)
+                        deltas.Add((datasGrupo[i].Year - datasGrupo[i - 1].Year) * 12
+                            + datasGrupo[i].Month - datasGrupo[i - 1].Month);
+
+                    deltas.Sort();
+                    if (deltas.Count > 0)
+                        intervalo = Math.Max(1, deltas[deltas.Count / 2]);
+                }
+            }
+        }
+
+        // Valida todas as datas novas ANTES de alterar qualquer entidade (mês checado na conta de destino).
+        for (var i = 0; i < futuros.Count; i++)
+            await GarantirMesAbertoAsync(data.AddMonths(intervalo * (i + 1)), contaId);
+
         lancamento.Data = data;
         lancamento.Valor = lancamento.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
         lancamento.ContaId = contaId;
@@ -158,29 +204,20 @@ public class LancamentoService
         lancamento.SubcategoriaId = subcategoriaId;
         lancamento.PessoaId = pessoaId;
         lancamento.ProjetoId = projetoId;
+        lancamento.Observacao = observacao;
         await GarantirFaturaAbertaAsync(lancamento);
 
-        if (atualizarFuturos)
+        for (var i = 0; i < futuros.Count; i++)
         {
-            Guid? grupoId = lancamento.ParcelamentoId ?? lancamento.RecorrenciaId;
-            if (grupoId.HasValue)
-            {
-                var futuros = await _db.Lancamentos
-                    .Where(l => l.Id != lancamento.Id
-                        && ((l.ParcelamentoId == grupoId) || (l.RecorrenciaId == grupoId))
-                        && !l.Confirmado
-                        && l.Data > lancamento.Data)
-                    .ToListAsync();
-
-                foreach (var f in futuros)
-                {
-                    f.Valor = f.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
-                    f.CategoriaId = categoriaId;
-                    f.SubcategoriaId = subcategoriaId;
-                    f.PessoaId = pessoaId;
-                    f.ProjetoId = projetoId;
-                }
-            }
+            var f = futuros[i];
+            f.Data = data.AddMonths(intervalo * (i + 1));
+            f.Valor = f.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
+            f.ContaId = contaId;
+            f.CategoriaId = categoriaId;
+            f.SubcategoriaId = subcategoriaId;
+            f.PessoaId = pessoaId;
+            f.ProjetoId = projetoId;
+            f.Observacao = observacao;
         }
 
         await _db.SaveChangesAsync();
@@ -282,7 +319,8 @@ public class LancamentoService
         Guid cartaoId, DateOnly dataCompra, decimal valorTotal, Guid categoriaId, Guid? subcategoriaId,
         Guid? pessoaId, int? parcelas, Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento = null,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
-        Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null)
+        Guid? projetoId = null, Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null,
+        string? observacao = null)
     {
         Validar(valorTotal, dataCompra);
         if (ehEntrada && parcelas is not null)
@@ -333,7 +371,8 @@ public class LancamentoService
                 ParcelamentoId = grupoId,
                 ParcelaAtual = quantidade > 1 ? i + 1 : null,
                 TotalParcelas = quantidade > 1 ? quantidade : null,
-                ProjetoId = projetoId
+                ProjetoId = projetoId,
+                Observacao = observacao
             };
 
             _db.Lancamentos.Add(despesa);
@@ -366,7 +405,7 @@ public class LancamentoService
         Guid? reembolsoPessoaId, DateOnly? reembolsoVencimento = null,
         DateOnly? vencimentoExato = null, Guid? reembolsoContaId = null, bool ehEntrada = false,
         Guid? projetoId = null,         Guid? reembolsoCategoriaId = null, Guid? reembolsoSubcategoriaId = null,
-        bool atualizarFuturos = false)
+        bool atualizarFuturos = false, string? observacao = null)
     {
         var antigo = await _db.Lancamentos.FindAsync(lancamentoId)
             ?? throw new InvalidOperationException("Lançamento não encontrado.");
@@ -396,6 +435,7 @@ public class LancamentoService
             antigo.DataCompra = dataCompra;
             antigo.DataVencimentoCartao = vencimentoExato
                 ?? CartaoCreditoService.CalcularVencimento(cartao, dataCompra);
+            antigo.Observacao = observacao ?? antigo.Observacao;
 
             await GarantirFaturaAbertaAsync(antigo);
             await SincronizarReembolsoAsync(antigo);
@@ -442,7 +482,7 @@ public class LancamentoService
             cartaoId, dataCompra, valorTotal, categoriaId, subcategoriaId,
             pessoaId, parcelas, reembolsoPessoaId, reembolsoVencimento,
             vencimentoExato, reembolsoContaId, ehEntrada, projetoId,
-            reembolsoCategoriaId, reembolsoSubcategoriaId);
+            reembolsoCategoriaId, reembolsoSubcategoriaId, observacao: observacao);
     }
 
     public async Task<List<Lancamento>> CriarParceladoAsync(
@@ -486,7 +526,7 @@ public class LancamentoService
     public async Task<List<Lancamento>> CriarRecorrenteAsync(
         LancamentoTipo tipo, Guid? contaId, DateOnly primeiraData, decimal valor,
         RecorrenciaFrequencia frequencia, int repeticoes, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null, bool confirmado = false)
+        Guid? projetoId = null, bool confirmado = false, string? observacao = null)
     {
         Validar(valor, primeiraData);
         if (repeticoes < 1 || repeticoes > 120)
@@ -519,7 +559,8 @@ public class LancamentoService
                 ParcelaAtual = repeticoes > 1 ? i + 1 : null,
                 TotalParcelas = repeticoes > 1 ? repeticoes : null,
                 ProjetoId = projetoId,
-                Confirmado = confirmado
+                Confirmado = confirmado,
+                Observacao = observacao
             };
             _db.Lancamentos.Add(lancamento);
             criados.Add(lancamento);

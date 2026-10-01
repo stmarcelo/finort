@@ -62,4 +62,7 @@ public class Provisao
     /// <summary>Último mês/ano lançado pelo sincronismo.</summary>
     public int? UltimoMesLancado { get; set; }
     public int? UltimoAnoLancado { get; set; }
+
+    /// <summary>Primeiro mês (dia 1) de vigência para frequências não mensais; null = régua atual.</summary>
+    public DateOnly? MesInicial { get; set; }
 }

@@ -9,7 +9,7 @@
         <MudForm @ref="_form">
             <DataPicker @bind-Date="_data" Label="Data" Variant="@gVariant" Required="true" />
             <MudMoneyInput @bind-Value="_valor" CasasDecimais="@CasasDecimais"
-                           Label="Valor" Variant="@gVariant" Required="true" />
+                           Label="@RotuloValor" Variant="@gVariant" Required="true" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -20,6 +20,7 @@
 
 @code {
     [Parameter] public ProventoTipo Tipo { get; set; }
+    [Parameter] public string RotuloValor { get; set; } = "Valor";
     [Parameter] public int CasasDecimais { get; set; } = 2;
 
     [CascadingParameter]

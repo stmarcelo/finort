@@ -30,7 +30,7 @@ public class CartaoCreditoService
         // Faturas fechadas: um mês é "pago" quando o total pago >= |ValorTotal| da fatura.
         var faturas = await _db.Faturas
             .Where(f => f.Fechada)
-            .Select(f => new { f.CartaoCreditoId, f.AnoReferencia, f.MesReferencia, f.ValorTotal })
+            .Select(f => new { f.Id, f.CartaoCreditoId, f.AnoReferencia, f.MesReferencia, f.ValorTotal, f.DataFechamento })
             .ToListAsync();
         var mesesPagos = new HashSet<(Guid, int, int)>();
         foreach (var f in faturas)
@@ -40,6 +40,13 @@ public class CartaoCreditoService
             if (pago is not null && pago.Total >= Math.Abs(f.ValorTotal))
                 mesesPagos.Add((f.CartaoCreditoId, f.AnoReferencia, f.MesReferencia));
         }
+
+        var ultimasFechadas = faturas
+            .GroupBy(f => f.CartaoCreditoId)
+            .ToDictionary(g => g.Key, g => g
+                .OrderByDescending(f => f.AnoReferencia)
+                .ThenByDescending(f => f.MesReferencia)
+                .First());
 
         // Lançamentos ainda não pagos: todos do cartão, sem provisão, excluindo o pagamento
         // (perna destino positiva) e os meses de fatura já pagos.
@@ -68,7 +75,13 @@ public class CartaoCreditoService
             Limite = c.Limite,
             TotalNaoPago = mapa.GetValueOrDefault(c.Id),
             Ativo = c.Ativo,
-            ContaId = c.ContaId
+            ContaId = c.ContaId,
+            UltimaFaturaFechada = ultimasFechadas.TryGetValue(c.Id, out var uf)
+                ? new FaturaSituacao(uf.Id, uf.AnoReferencia, uf.MesReferencia, uf.ValorTotal,
+                    pagamentos.FirstOrDefault(p => p.CartaoCreditoId == c.Id &&
+                        p.Year == uf.AnoReferencia && p.Month == uf.MesReferencia)?.Total ?? 0m,
+                    uf.DataFechamento)
+                : null
         }).ToList();
     }
 

@@ -75,6 +75,11 @@ else
                                                  OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Compra))">Comprar</MudMenuItem>
                                     <MudMenuItem Icon="@Icons.Material.Filled.Sell"
                                                  OnClick="@(async () => await AbrirMovimento(investimento, MovimentoTipo.Venda))">Vender</MudMenuItem>
+                                    @if (investimento.Tipo == TipoInvestimento.Dolar)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.TrendingUp"
+                                                     OnClick="@(async () => await AbrirProvento(investimento))">Rendimento</MudMenuItem>
+                                    }
                                     @if (investimento.Tipo != TipoInvestimento.Dolar && investimento.Tipo != TipoInvestimento.Criptomoeda)
                                     {
                                         <MudMenuItem Icon="@Icons.Material.Filled.Paid"
@@ -363,9 +368,10 @@ else
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var parameters = new DialogParameters<ProventoDialog>
         {
-            { x => x.Tipo, investimento.Tipo == TipoInvestimento.Reserva ? ProventoTipo.Rendimento : ProventoTipo.Dividendo }
+            { x => x.Tipo, investimento.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Dolar ? ProventoTipo.Rendimento : ProventoTipo.Dividendo },
+            { x => x.RotuloValor, investimento.Tipo == TipoInvestimento.Dolar ? "Valor (USD)" : "Valor" }
         };
-        var titulo = investimento.Tipo == TipoInvestimento.Reserva ? "Rendimento" : "Dividendos";
+        var titulo = investimento.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Dolar ? "Rendimento" : "Dividendos";
         var dialog = await DialogService.ShowAsync<ProventoDialog>(titulo, parameters, options);
         var result = await dialog.Result;
         if (result is null || result.Canceled || result.Data is null) return;
@@ -375,7 +381,7 @@ else
         {
             await InvestimentoService.RegistrarProventoAsync(
                 investimento.Id, dados.Data, dados.Valor,
-                investimento.Tipo == TipoInvestimento.Reserva ? ProventoTipo.Rendimento : ProventoTipo.Dividendo);
+                investimento.Tipo is TipoInvestimento.Reserva or TipoInvestimento.Dolar ? ProventoTipo.Rendimento : ProventoTipo.Dividendo);
             Snackbar.Add("Provento registrado.", Severity.Success);
             await CarregarAsync();
         }
@@ -391,7 +397,8 @@ else
         var parameters = new DialogParameters<ProventosDialog>
         {
             { x => x.InvestimentoId, investimento.Id },
-            { x => x.Nome, investimento.Nome }
+            { x => x.Nome, investimento.Nome },
+            { x => x.SufixoValor, investimento.Tipo == TipoInvestimento.Dolar ? " USD" : "" }
         };
         await DialogService.ShowAsync<ProventosDialog>("Proventos", parameters, options);
     }
