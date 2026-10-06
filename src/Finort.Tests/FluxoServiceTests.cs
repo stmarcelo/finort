@@ -185,8 +185,12 @@ public class FluxoServiceTests
     }
 
     [Fact]
-    public async Task ObterCardAsync_SaldoAnterior_ConsideraFechamentosPorConta()
+    public async Task ObterCardAsync_SaldoAnterior_IgnoraFechamentosPorConta()
     {
+        // Invariante do fluxo: SaldoAnterior(M) == SaldoAcumulado(M-1).
+        // Fechamentos de conta (MesFechado) são contabilidade por conta e NÃO
+        // entram no fluxo gerencial — só lançamentos/provisões contam.
+        // Fluxo puro aqui: junho +200, julho +300-120=+180 → anterior de agosto = 380.
         var (db, file, _) = await SetupAsync();
         try
         {
@@ -207,9 +211,11 @@ public class FluxoServiceTests
             await db.SaveChangesAsync();
             var service = new FluxoService(db);
 
+            var julho = await service.ObterCardAsync(2026, 7);
             var card = await service.ObterCardAsync(2026, 8);
 
-            Assert.Equal(1880m, card.SaldoAnterior);
+            Assert.Equal(julho.SaldoAcumulado, card.SaldoAnterior);
+            Assert.Equal(380m, card.SaldoAnterior);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -318,6 +324,76 @@ public class FluxoServiceTests
             Assert.Equal(500m, card.SaldoAnterior);
             Assert.Equal(120m, card.SaldoMes);
             Assert.Equal(620m, card.SaldoAcumulado);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterCardAsync_ComFechamentoNoMesAnterior_RespeitaJanelaDeAntecipacao()
+    {
+        // Regressão: com diasAntecipacao, o corte do saldo anterior é o início da
+        // janela (D+1), não o fim do mês calendário. Receita de 03/09 pertence à
+        // janela de agosto (06/08-05/09) e deve compor o saldo anterior de setembro
+        // mesmo quando agosto está fechado (caixa calendário até 31/08 = 0).
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var cat = CategoriaId(db);
+            db.Lancamentos.Add(
+                Novo(new DateOnly(2026, 9, 3), 100m, LancamentoTipo.Receita, cat, conta.Id));
+            db.MesesFechados.Add(new MesFechado
+                { ContaId = conta.Id, Ano = 2026, Mes = 8, SaldoAcumulado = 0m, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+            var service = new FluxoService(db);
+
+            var agosto = await service.ObterCardAsync(2026, 8, diasAntecipacao: 5);
+            var setembro = await service.ObterCardAsync(2026, 9, diasAntecipacao: 5);
+
+            Assert.Equal(100m, agosto.SaldoMes);
+            Assert.Equal(100m, agosto.SaldoAcumulado);
+            Assert.Equal(agosto.SaldoAcumulado, setembro.SaldoAnterior);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterCardAsync_ComFechamentoNoMesAnterior_SubtraiFaturaDoCartaoEIgonoraPagamento()
+    {
+        // Regressão: fatura de cartão com vencimento anterior ao corte reduz o saldo
+        // anterior (competência), enquanto o pagamento (transferência) é ignorado
+        // para não contar duas vezes. Antes do fix, o branch de fechamento somava o
+        // pagamento (-300) e não subtraía a fatura, quebrando o transporte.
+        var (db, file, conta) = await SetupAsync();
+        try
+        {
+            var cat = CategoriaId(db);
+            var cartao = NovoCartao("Nubank", "4321");
+            db.CartoesCredito.Add(cartao);
+            await db.SaveChangesAsync();
+
+            var despesaCartao = Novo(new DateOnly(2026, 7, 5), -300m, LancamentoTipo.Despesa, cat, cartao: cartao.Id);
+            despesaCartao.DataVencimentoCartao = new DateOnly(2026, 7, 10);
+            var pagamentoOrigem = new Lancamento
+            {
+                Data = new DateOnly(2026, 7, 15),
+                Tipo = LancamentoTipo.Transferencia,
+                Valor = -300m,
+                ContaId = conta.Id,
+                CategoriaId = cat,
+                Confirmado = true
+            };
+            db.Lancamentos.AddRange(despesaCartao, pagamentoOrigem);
+            db.MesesFechados.Add(new MesFechado
+                { ContaId = conta.Id, Ano = 2026, Mes = 7, SaldoAcumulado = 0m, DataFechamento = DateTime.Now });
+            await db.SaveChangesAsync();
+            var service = new FluxoService(db);
+
+            var julho = await service.ObterCardAsync(2026, 7);
+            var agosto = await service.ObterCardAsync(2026, 8);
+
+            Assert.Equal(-300m, julho.SaldoMes);
+            Assert.Equal(julho.SaldoAcumulado, agosto.SaldoAnterior);
+            Assert.Equal(-300m, agosto.SaldoAnterior);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

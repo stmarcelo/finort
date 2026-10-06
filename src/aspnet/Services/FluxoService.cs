@@ -66,7 +66,6 @@ public class FluxoService
             .ToListAsync();
 
         var projecoesMes = await ProvisaoAgenda.ProjetarAsync(_db, inicioJanela, fimJanela);
-        var projecoesAnteriores = await ProvisaoAgenda.ProjetarAsync(_db, PisoHistorico, inicioMes.AddDays(-1));
 
         // Despesas de conta: janela (da+1/m até da/m+1), SEM despesas de cartão
         // (faturas de cartão são exibidas separadamente e subtraídas do saldo do mês)
@@ -156,21 +155,14 @@ public class FluxoService
         var mesAnterior = mes == 1 ? 12 : mes - 1;
         var anoAnterior = mes == 1 ? ano - 1 : ano;
 
-        // Saldo anterior: por conta. Fechada → SaldoAcumulado do último fechamento;
-        // aberta → lançamentos do último fechamento (ou início) até o fim do mês -1.
-        var chave = ano * 12 + mes;
-        var fimMesAnterior = new DateOnly(anoAnterior, mesAnterior, DateTime.DaysInMonth(anoAnterior, mesAnterior));
-        var contas = await _db.Contas.Select(c => c.Id).ToListAsync();
-        var fechamentosMesAnterior = await _db.MesesFechados
-            .Where(f => f.Ano == anoAnterior && f.Mes == mesAnterior)
-            .ToListAsync();
-        var fechamentos = await _db.MesesFechados
-            .Where(m => m.Ano * 12 + m.Mes < chave)
-            .OrderBy(m => m.Ano).ThenBy(m => m.Mes)
-            .ToListAsync();
-
+        // Invariante do fluxo: SaldoAnterior(M) == SaldoAcumulado(M-1).
+        // O saldo anterior é SEMPRE o acumulado do mês anterior (mesma janela de
+        // antecipação). Fechamentos de conta (MesFechado) NÃO entram aqui: são
+        // contabilidade por conta (FechamentoService/Extrato) enquanto o fluxo é
+        // visão gerencial (janela D, cartões por vencimento, inclui pendentes e
+        // projeções). Misturar os dois conceitos quebrava o transporte entre meses.
         decimal saldoAnterior;
-        if (fechamentosMesAnterior.Count == 0 && profundidade < 120)
+        if (profundidade < 120)
         {
             var cardAnterior = await ObterCardInternoAsync(anoAnterior, mesAnterior, diasAntecipacao, profundidade + 1);
             saldoAnterior = cardAnterior.SaldoAcumulado;
@@ -178,33 +170,6 @@ public class FluxoService
         else
         {
             saldoAnterior = 0m;
-            foreach (var contaId in contas)
-            {
-                var ultimoFechamento = fechamentos.LastOrDefault(f => f.ContaId == contaId);
-                if (ultimoFechamento is not null)
-                {
-                    saldoAnterior += ultimoFechamento.SaldoAcumulado;
-                    var dataUltimoFechamento = new DateOnly(ultimoFechamento.Ano, ultimoFechamento.Mes, 1)
-                        .AddMonths(1);
-                    saldoAnterior += lancamentos
-                        .Where(l => l.ContaId == contaId && l.Data >= dataUltimoFechamento && l.Data <= fimMesAnterior)
-                        .Sum(l => l.Valor);
-                }
-                else
-                {
-                    saldoAnterior += lancamentos
-                        .Where(l => l.ContaId == contaId && l.Data < inicioMes)
-                        .Sum(l => l.Valor);
-                }
-            }
-
-            // Lançamentos sem conta (ex.: DebitoSemConta) contam no saldo anterior;
-            // compras de cartão não (impacto aparece na fatura do mês de vencimento)
-            saldoAnterior += lancamentos
-                .Where(l => l.ContaId == null && l.CartaoCreditoId == null && l.Data < inicioMes)
-                .Sum(l => l.Valor);
-
-            saldoAnterior += projecoesAnteriores.Sum(SinalProjecao);
         }
 
         // Saldo do mês = receitas - despesas - faturas dos cartões
