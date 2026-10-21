@@ -109,6 +109,14 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Pizza de despesas e receitas por categoria, top-10 maiores lançamentos e patrimônio de investimentos.
 - Meses futuros exibidos como projeção.
 
+### Radar Financeiro (`/radar`)
+- Compara o mês atual com o **próprio histórico** (média dos 3 meses fechados anteriores) e aponta o que mudou: score de saúde financeira **0-100 com a composição explicável**, achados priorizados por impacto financeiro (🔴 crítico · 🟡 atenção · 🟢 melhorando) e as categorias com maior variação.
+- Cards de resumo: receitas, **consumo**, saldo do mês, comprometimento (consumo sobre as receitas) e o valor **investido** no mês.
+- Janela de histórico de 3, 6 ou 12 meses e filtro por pessoa. Mês em andamento é comparado com o **mesmo número de dias** dos meses anteriores (despesas de cartão entram pelo vencimento da fatura).
+- **Aporte e compra de investimento não são tratados como gasto**: saem do consumo, não geram alerta e viram destaque positivo — o saldo do mês continua sendo o real (o investido vira patrimônio, visível no Dashboard).
+- Lançamentos com **reembolso** (despesa de cartão reembolsada e a receita do reembolso) ficam fora de todas as análises, assim como transferências entre contas.
+- Clique em uma categoria para ver o histórico mensal e as subcategorias que explicam a variação, com destaque da responsável.
+
 ### Investimentos
 - Tipos: Reserva de emergência, Ações, Criptomoedas, FIIs, CDB / Fundo (CDBs e fundos de investimento), Dólar etc.
 - Compra/venda: informe quantidade, valor por cota e valor total (campos interligados — ao informar o total, a cota é calculada). Na compra e na venda de criptomoeda há campo opcional de taxa, somado ao valor total.
@@ -382,7 +390,7 @@ O banco de **origem permanece intacto** — a troca é uma cópia, não uma muda
 dotnet test src/Finort.Tests
 ```
 
-Suíte xUnit cobrindo autenticação, serviços financeiros, cartões/faturas, provisões, investimentos, dashboard, fluxo, calendário, criptografia de backup, restore, troca de banco, migrações e guardas de meses fechados.
+Suíte xUnit cobrindo autenticação, serviços financeiros, cartões/faturas, provisões, investimentos, dashboard, fluxo, calendário, radar financeiro, criptografia de backup, restore, troca de banco, migrações e guardas de meses fechados.
 
 ## Estrutura do projeto
 

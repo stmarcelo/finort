@@ -100,6 +100,42 @@
             "Use as setas ao lado do nome do mês para navegar entre meses. Meses futuros são baseados em projeções (provisões), por isso aparece o aviso 'Projeção'."
         }, new()),
 
+        new("radar", "Radar Financeiro", Icons.Material.Filled.Radar, new()
+        {
+            "O Radar Financeiro é a tela que compara o mês atual com o seu próprio histórico e responde: o que mudou nas minhas finanças e o que merece minha atenção?",
+            "O Radar nunca compara você com uma média genérica: todas as comparações são feitas contra os seus últimos meses.",
+            "No topo há cards de resumo: receitas do mês, consumo do mês, saldo do mês, comprometimento (consumo sobre as receitas) e quanto foi investido no mês.",
+            "Abaixo aparecem os achados em três níveis — crítico, atenção e melhorando — ordenados por impacto financeiro, e a lista de categorias com maior variação."
+        }, new()
+        {
+            new("Como comparar", new()
+            {
+                "No topo você escolhe o histórico de 3, 6 ou 12 meses e pode filtrar por pessoa. A comparação do mês atual é sempre feita com a média dos 3 meses fechados anteriores.",
+                "Se o mês ainda não acabou, o Radar compara o mesmo número de dias: do dia 1 até hoje contra o dia 1 até o mesmo dia dos meses anteriores. Um aviso na tela lembra disso."
+            }),
+            new("Saúde financeira", new()
+            {
+                "O score de 0 a 100 resume a situação do mês. Clique em 'Como foi calculado' para ver a composição linha a linha (consumo, receitas, poupança, categorias fora do padrão e estabilidade dos gastos).",
+                "Com menos de 3 meses de histórico o score não é exibido — o Radar informa que ainda não há dados suficientes."
+            }),
+            new("Achados", new()
+            {
+                "Cada achado traz o número que o originou, por exemplo: 'Seu consumo está 17,6% acima da sua média dos últimos 3 meses'.",
+                "Quando a causa está numa subcategoria, ela é citada: 'Delivery representa 35,0% do aumento dos seus gastos com Alimentação neste mês'.",
+                "Pequenas oscilações não geram aviso: só entra no Radar o que passou do limite de 10% e de um valor mínimo relevante para o seu orçamento."
+            }),
+            new("Investir não é gastar", new()
+            {
+                "Aporte e compra de investimento não contam como despesa: saem do consumo, não geram alerta e aparecem como destaque positivo, no card 'Investido no mês'.",
+                "O saldo do mês continua sendo o saldo real — o dinheiro investido sai da conta, mas vira patrimônio, que aparece no Dashboard.",
+                "Reembolsos também ficam fora de todas as análises: nem a despesa de cartão reembolsada nem a receita do reembolso entram no Radar."
+            }),
+            new("Detalhar uma categoria", new()
+            {
+                "Clique em uma categoria na tabela de principais mudanças para abrir o histórico mensal e as subcategorias que explicam a variação, com destaque da principal."
+            })
+        }),
+
         new("calendario", "Calendário", Icons.Material.Filled.CalendarMonth, new()
         {
             "O calendário é a tela principal do sistema. Ele mostra um mês completo, dia por dia, com todos os compromissos financeiros.",
