@@ -149,7 +149,8 @@ public class ReceitaRelatorioServiceTests : IDisposable
         Assert.Equal(0m, antes.TotalConfirmado + antes.TotalNaoConfirmado);
 
         await faturas.FecharComReembolsosAsync(
-            cartao.Id, 2026, 8, new(2026, 8, 1), new(2026, 8, 31), conta.Id, renda.Id, null);
+            cartao.Id, 2026, 8, new(2026, 8, 1), new(2026, 8, 31), conta.Id, renda.Id, null,
+            new DateOnly(2026, 8, 9));
 
         var r = await _svc.GerarAsync(new(2026, 1, 1), new(2027, 12, 31), ana.Id);
 

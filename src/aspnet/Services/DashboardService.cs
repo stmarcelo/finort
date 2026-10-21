@@ -22,9 +22,8 @@ public class DashboardService
     {
         var lancamentos = await _db.Lancamentos
             .Where(l => l.Data >= inicio && l.Data <= fim &&
-                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita) &&
-                        !_db.Reembolsos.Any(r => r.LancamentoId == l.Id) &&
-                        !_db.Reembolsos.Any(r => r.ReceitaId == l.Id))
+                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita))
+            .SemReembolso(_db)
             .Select(l => new
             {
                 l.Data,
@@ -157,9 +156,8 @@ public class DashboardService
         var inicio = fim.AddMonths(-5);
         var lancamentos = await _db.Lancamentos
             .Where(l => l.Data >= new DateOnly(inicio.Year, inicio.Month, 1) && l.Data <= fim &&
-                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita) &&
-                        !_db.Reembolsos.Any(r => r.LancamentoId == l.Id) &&
-                        !_db.Reembolsos.Any(r => r.ReceitaId == l.Id))
+                        (l.Tipo == LancamentoTipo.Despesa || l.Tipo == LancamentoTipo.Receita))
+            .SemReembolso(_db)
             .Select(l => new { l.Data, l.Tipo, l.Valor })
             .ToListAsync();
 

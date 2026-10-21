@@ -51,16 +51,16 @@
             <MudTh>Investimento</MudTh>
             <MudTh>Tipo investimento</MudTh>
             <MudTh>Provento</MudTh>
-            <MudTh Align="Align.Right">Valor</MudTh>
-            <MudTh Align="Align.Right">Percentual</MudTh>
+            <MudTh Style="text-align:right">Valor</MudTh>
+            <MudTh Style="text-align:right">Percentual</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd>@context.Data.ToString("dd/MM/yyyy")</MudTd>
             <MudTd>@context.NomeInvestimento</MudTd>
             <MudTd>@RotuloTipo(context.TipoInvestimento)</MudTd>
             <MudTd>@(context.TipoProvento == ProventoTipo.Dividendo ? "Dividendo" : "Rendimento")</MudTd>
-            <MudTd Align="Align.Right"><span class="extrato-valor pos">@context.Valor.ToString("N2")@(context.TipoInvestimento == TipoInvestimento.Dolar ? " USD" : "")</span></MudTd>
-            <MudTd Align="Align.Right">@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
+            <MudTd Style="text-align:right"><span class="extrato-valor pos">@context.Valor.ToString("N2")@(context.TipoInvestimento == TipoInvestimento.Dolar ? " USD" : "")</span></MudTd>
+            <MudTd Style="text-align:right">@(context.Percentual > 0m ? context.Percentual.ToString("P2") : "")</MudTd>
         </RowTemplate>
     </MudTable>
 }

@@ -78,6 +78,7 @@ builder.Services.AddScoped<FechamentoService>();
 builder.Services.AddScoped<ExtratoContaService>();
 builder.Services.AddScoped<InvestimentoService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<RadarService>();
 builder.Services.AddScoped<ProjetoService>();
 builder.Services.AddScoped<ProjetoRelatorioService>();
 builder.Services.AddScoped<ReceitaRelatorioService>();

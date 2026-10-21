@@ -1,0 +1,481 @@
+@page "/radar"
+@attribute [Authorize]
+@inherits AppComponentBase
+@using System.Globalization
+@using Finort.Components.Dialogs
+@inject RadarService RadarService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Radar Financeiro</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-2 mt-4">
+    <MudText Typo="Typo.h5" Class="d-inline-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Radar" Class="mr-2" /> Radar Financeiro
+    </MudText>
+    <span class="flex-grow-1"></span>
+    <div class="d-flex gap-1">
+        @foreach (var m in Janelas)
+        {
+            <MudButton Size="Size.Small"
+                       Variant="@(_meses == m ? Variant.Filled : Variant.Outlined)"
+                       Color="@(_meses == m ? Color.Primary : Color.Default)"
+                       OnClick="@(() => TrocarMeses(m))">@m meses</MudButton>
+        }
+    </div>
+    <div style="min-width: 220px;">
+        <PessoaSelect Label="Pessoa" Value="@_pessoaId" ValueChanged="OnPessoaChanged" Placeholder="Todas as pessoas" />
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_dados is null)
+{
+    <MudAlert Severity="Severity.Info">Nenhum dado carregado.</MudAlert>
+}
+else
+{
+    @if (_dados.MesParcial)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+            O mês atual está em andamento: os números consideram apenas os lançamentos de 1 a @_dados.DiaCorte.
+            A comparação usa o mesmo número de dias dos meses anteriores (limitado pelos dias de cada mês).
+        </MudAlert>
+    }
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Receitas no mês</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="color: var(--mud-palette-success)">
+                    R$ @_dados.TotalReceitas.ToString("N2", CulturaPtBr)
+                </MudText>
+                <MudText Typo="Typo.caption" Style="opacity:0.7">@LegendaReceitasTexto(_dados.MediaReceitas, _dados.VariacaoPercentualReceitas, _dados.MesesBase)</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Consumo no mês</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="color: var(--mud-palette-error)">
+                    R$ @_dados.TotalConsumo.ToString("N2", CulturaPtBr)
+                </MudText>
+                <MudText Typo="Typo.caption" Style="opacity:0.7">@LegendaConsumoTexto(_dados.MediaConsumo, _dados.VariacaoPercentualConsumo, _dados.MesesBase)</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Saldo do mês</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="@EstiloSaldo(_dados.Saldo)">
+                    R$ @_dados.Saldo.ToString("N2", CulturaPtBr)
+                </MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Comprometimento</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1">@TextoComprometimento(_dados.TotalReceitas, _dados.TaxaComprometimento)</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:0.7">consumo sobre as receitas</MudText>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <div class="surface-card pa-4" style="min-height: 80px;">
+                <MudText Typo="Typo.caption" Style="opacity:0.7">Investido no mês</MudText>
+                <MudText Typo="Typo.h5" Class="mt-1" Style="color: var(--mud-palette-success)">
+                    R$ @_dados.TotalInvestido.ToString("N2", CulturaPtBr)
+                </MudText>
+                <MudText Typo="Typo.caption" Style="opacity:0.7">
+                    @LegendaInvestidoTexto(_dados.MediaInvestido, _dados.VariacaoPercentualInvestido, _dados.MesesBase, _dados.TotalInvestido)
+                </MudText>
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <div class="surface-card pa-4 mb-4">
+        <div class="d-flex align-center flex-wrap gap-2">
+            <MudText Typo="Typo.subtitle1">Saúde financeira</MudText>
+            <span class="flex-grow-1"></span>
+            @if (_dados.Score is not null)
+            {
+                <MudText Typo="Typo.h5">@_dados.Score.Valor / 100</MudText>
+                <MudChip T="string" Size="Size.Small" Color="@CorChip(_dados.Score.Valor)">@_dados.Score.Faixa</MudChip>
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _scoreAberto = !_scoreAberto)">
+                    @(_scoreAberto ? "Ocultar" : "Como foi calculado")
+                </MudButton>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Style="opacity:0.7">
+                    Ainda não há dados suficientes para calcular sua saúde financeira.
+                </MudText>
+            }
+        </div>
+        @if (_scoreAberto && _dados.Score is not null)
+        {
+            <div class="mt-3">
+                @if (_dados.Score.Componentes.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Style="opacity:0.8">
+                        Nenhuma mudança relevante em relação à sua base — score neutro (@_dados.Score.Valor).
+                    </MudText>
+                }
+                else
+                {
+                    @foreach (var c in _dados.Score.Componentes)
+                    {
+                        <div class="d-flex justify-space-between" style="max-width: 420px;">
+                            <MudText Typo="Typo.body2">@c.Rotulo</MudText>
+                            <MudText Typo="Typo.body2" Style="@EstiloPontos(c.Pontos)">
+                                @(c.Pontos > 0 ? "+" : "")@c.Pontos
+                            </MudText>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+
+    @if (_dados.Insights.Count == 0)
+    {
+        <div class="surface-card pa-4 mb-4">
+            <MudText Typo="Typo.body2">Nenhuma mudança relevante em relação à sua base.</MudText>
+        </div>
+    }
+    else
+    {
+        @foreach (var grupo in GruposNivel)
+        {
+            var insights = InsightsDoNivel(grupo.Nivel);
+            if (insights.Count == 0) continue;
+            <MudText Typo="Typo.subtitle1" Class="mb-2">@grupo.Rotulo</MudText>
+            <div class="surface-card pa-4 mb-3">
+                @foreach (var i in insights)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@IconNivel(i.Nivel)" Color="@CorIcon(i.Nivel)" Size="Size.Small" />
+                            <MudText Typo="Typo.body1">@i.Titulo</MudText>
+                        </div>
+                        <MudText Typo="Typo.body2" Style="opacity:0.8">@i.Descricao</MudText>
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    <div class="surface-card pa-4 mb-4">
+        <div class="d-flex align-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.subtitle1">Principais mudanças</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:0.7">Clique em uma linha para ver o detalhamento da categoria.</MudText>
+        </div>
+        @if (_dados.Categorias.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Sem consumo no período analisado.</MudText>
+        }
+        else
+        {
+            <MudTable T="RadarVariacaoCategoria" Items="@_dados.Categorias" Dense="true" Hover="true"
+                      Breakpoint="Breakpoint.Sm" OnRowClick="AbrirCategoria">
+                <HeaderContent>
+                    <MudTh>Categoria</MudTh>
+                    <MudTh Style="text-align:right">Mês atual</MudTh>
+                    <MudTh Style="text-align:right">@RotuloMedia</MudTh>
+                    <MudTh Style="text-align:right">Variação</MudTh>
+                    <MudTh Style="text-align:right">Participação</MudTh>
+                    <MudTh>Tendência</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Nome</MudTd>
+                    <MudTd Style="text-align:right">R$ @context.ValorAtual.ToString("N2", CulturaPtBr)</MudTd>
+                    <MudTd Style="text-align:right">R$ @context.MediaHistorica.ToString("N2", CulturaPtBr)</MudTd>
+                    <MudTd Style="text-align:right">
+                        <span style="@EstiloVariacaoCategoria(context)">
+                            @TextoVariacaoCategoria(context)
+                        </span>
+                    </MudTd>
+                    <MudTd Style="text-align:right">@TextoParticipacao(_dados.TotalConsumo, context.Participacao)</MudTd>
+                    <MudTd>@RotuloTendencia(context.Tendencia)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </div>
+
+    <div class="surface-card pa-4">
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Evolução mensal</MudText>
+        @if (_dados.SerieMensal.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Sem dados de evolução.</MudText>
+        }
+        else
+        {
+            <MudChart ChartType="ChartType.Line"
+                      InputData="@(_dados.SerieMensal.Select(m => (double)m.Consumo).ToArray())"
+                      XAxisLabels="@(_dados.SerieMensal.Select(m => RotuloSerie(m)).ToArray())"
+                      ChartSeries="@_serieGrafico"
+                      ChartOptions="@_opcoesGrafico"
+                      Width="100%" Height="260px" />
+        }
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+    private static readonly int[] Janelas = { 3, 6, 12 };
+
+    /// <summary>Seções de severidade, na ordem em que aparecem na tela (spec §19).</summary>
+    private static readonly (RadarNivel Nivel, string Rotulo)[] GruposNivel =
+    {
+        (RadarNivel.Critico, "🔴 Crítico"),
+        (RadarNivel.Atencao, "🟡 Atenção"),
+        (RadarNivel.Positivo, "🟢 Melhorando")
+    };
+
+    private bool _carregando = true;
+    private bool _scoreAberto = false;
+    private int _meses = 3;
+    private Guid? _pessoaId;
+    private RadarResultado? _dados;
+
+    private ChartOptions _opcoesGrafico = new()
+    {
+        YAxisFormat = "N0",
+        MaxNumYAxisTicks = 6,
+        LineStrokeWidth = 3,
+        ShowToolTips = true
+    };
+
+    private List<ChartSeries> _serieGrafico = new();
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task TrocarMeses(int meses)
+    {
+        if (_meses == meses) return;
+        _meses = meses;
+        await CarregarAsync();
+    }
+
+    private async Task OnPessoaChanged(Guid? pessoaId)
+    {
+        _pessoaId = pessoaId;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            _dados = await RadarService.ObterAsync(_meses, _pessoaId);
+            _serieGrafico = new List<ChartSeries>
+            {
+                new ChartSeries
+                {
+                    Name = "Receitas",
+                    Data = _dados.SerieMensal.Select(m => (double)m.Receitas).ToArray()
+                },
+                new ChartSeries
+                {
+                    Name = "Consumo",
+                    Data = _dados.SerieMensal.Select(m => (double)m.Consumo).ToArray()
+                },
+                new ChartSeries
+                {
+                    Name = "Investido",
+                    Data = _dados.SerieMensal.Select(m => (double)m.Investido).ToArray()
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task AbrirCategoria(TableRowClickEventArgs<RadarVariacaoCategoria> args)
+    {
+        if (args.Item is null) return;
+        var categoria = args.Item;
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<RadarCategoriaDialog>
+        {
+            { x => x.CategoriaId, categoria.Id },
+            { x => x.MesesHistorico, _meses },
+            { x => x.PessoaId, _pessoaId }
+        };
+        await DialogService.ShowAsync<RadarCategoriaDialog>(categoria.Nome, parameters, options);
+    }
+
+    private IReadOnlyList<RadarInsight> InsightsDoNivel(RadarNivel nivel)
+        => _dados is null
+            ? Array.Empty<RadarInsight>()
+            : _dados.Insights.Where(i => i.Nivel == nivel).ToList();
+
+    /// <summary>
+    /// Rótulo da coluna da média. A base de comparação são os meses fechados que têm
+    /// lançamentos (a base efetiva): o serviço devolve esse número no resultado, então o
+    /// rótulo diz quantos meses formaram a média — 3, 2, 1 ou nenhum.
+    /// </summary>
+    private string RotuloMedia => RotuloMediaTexto(_dados?.MesesBase ?? 0);
+
+    /// <summary>
+    /// Rótulo da coluna da média, dado o tamanho da base de comparação. Sem base nenhuma
+    /// o rótulo é só "Média": "Média 0m" não é uma informação que o usuário consiga ler.
+    /// </summary>
+    public static string RotuloMediaTexto(int mesesBase) => mesesBase > 0 ? $"Média {mesesBase}m" : "Média";
+
+    /// <summary>Texto da base de comparação ("1 mês" / "3 meses").</summary>
+    private static string MesesTexto(int meses) => meses == 1 ? "1 mês" : $"{meses} meses";
+
+    private static string TextoVariacao(decimal variacao, int mesesBase)
+    {
+        if (variacao == 0m) return "sem variação";
+        return variacao > 0m
+            ? $"↑ {variacao.ToString("P1", CulturaPtBr)} vs. média de {MesesTexto(mesesBase)}"
+            : $"↓ {Math.Abs(variacao).ToString("P1", CulturaPtBr)} vs. média de {MesesTexto(mesesBase)}";
+    }
+
+    /// <summary>
+    /// Legenda do card "Investido no mês". Sem média de aportes na base não existe
+    /// percentual a medir: o 100% de VariacaoPercentual é o sentinela da média zero,
+    /// não uma medição. Aí a legenda diz só quanto foi investido neste mês.
+    /// </summary>
+    public static string LegendaInvestidoTexto(
+        decimal mediaInvestido, decimal variacao, int mesesBase, decimal totalInvestido)
+        => mediaInvestido > 0m
+            ? TextoVariacao(variacao, mesesBase)
+            : $"R$ {totalInvestido.ToString("N2", CulturaPtBr)} investidos no mês";
+
+    /// <summary>
+    /// Legenda do card "Receitas no mês". Sem média de receitas na base não existe
+    /// percentual a medir: o 100% de VariacaoPercentual é o sentinela da média zero,
+    /// não uma medição. Aí a legenda diz o que a base mostra, sem inventar número —
+    /// a mesma forma do card de consumo e do card de investimento.
+    /// </summary>
+    public static string LegendaReceitasTexto(decimal mediaReceitas, decimal variacao, int mesesBase)
+    {
+        // Com média de receitas na base a variação é uma medição e aparece como sempre.
+        if (mediaReceitas > 0m) return TextoVariacao(variacao, mesesBase);
+        // A base tem meses com lançamentos, mas nenhum deles teve receita: não há
+        // percentual a mostrar, e a legenda diz isso.
+        if (mesesBase > 0m) return "sem receitas nos meses anteriores";
+        // Sem base nenhuma não há comparação: a legenda não fala de variação.
+        return "sem variação";
+    }
+
+    /// <summary>
+    /// Taxa de comprometimento do card. Sem receita no mês a taxa é indefinida — não há
+    /// denominador — então o card mostra "—" em vez de "0,0 %", que diria que o usuário
+    /// não comprometeu nada quando o número não existe.
+    /// </summary>
+    public static string TextoComprometimento(decimal totalReceitas, decimal taxa)
+        => totalReceitas > 0m ? taxa.ToString("P1", CulturaPtBr) : "—";
+
+    /// <summary>
+    /// Legenda do card "Consumo no mês". Sem média de consumo na base não existe
+    /// percentual a medir: o 100% de VariacaoPercentual é o sentinela da média zero,
+    /// não uma medição. Aí a legenda diz o que a base mostra, sem inventar número —
+    /// a mesma forma do card de investimento e da categoria sem registro na base.
+    /// </summary>
+    public static string LegendaConsumoTexto(decimal mediaConsumo, decimal variacao, int mesesBase)
+    {
+        // Com média de consumo na base a variação é uma medição e aparece como sempre.
+        if (mediaConsumo > 0m) return TextoVariacao(variacao, mesesBase);
+        // A base tem meses com lançamentos, mas nenhum deles consumiu: não há
+        // percentual a mostrar, e a legenda diz isso.
+        if (mesesBase > 0m) return "sem consumo nos meses anteriores";
+        // Sem base nenhuma não há comparação: a legenda não fala de variação.
+        return "sem variação";
+    }
+
+    /// <summary>
+    /// Estilo inline do saldo: verde quando positivo, vermelho quando negativo.
+    /// Montado em C# porque, dentro de um atributo, a aspa de fechamento da string interpolada
+    /// precisa vir antes do `)` do `@(` — na outra ordem o parser do Razor aborta a expressão.
+    /// </summary>
+    private static string EstiloSaldo(decimal valor)
+        => valor > 0m ? "color:var(--mud-palette-success)"
+           : valor < 0m ? "color:var(--mud-palette-error)"
+           : "color:inherit";
+
+    /// <summary>Estilo inline da variação: erro (aumento) em vermelho, sucesso (queda) em verde.</summary>
+    private static string EstiloVariacao(decimal variacao)
+        => variacao > 0m ? "color:var(--mud-palette-error)"
+           : variacao < 0m ? "color:var(--mud-palette-success)"
+           : "color:inherit";
+
+    /// <summary>
+    /// Participação da categoria no consumo do mês. Sem consumo no mês o denominador é
+    /// zero e a participação é indefinida: a célula mostra "—" em vez de "0,0 %", que
+    /// diria que a categoria pesou no consumo quando não houve consumo nenhum.
+    /// </summary>
+    public static string TextoParticipacao(decimal totalConsumo, decimal participacao)
+        => totalConsumo > 0m ? participacao.ToString("P1", CulturaPtBr) : "—";
+
+    /// <summary>
+    /// Variação da categoria contra a base. Sem média não existe percentual a medir: o serviço
+    /// satura a variação em 100% quando a base é zero (RadarCalculos.cs:61-66) e esse número
+    /// não é uma medição. Mesmo guard do drill-down (RadarCategoriaDialog.razor:170-178).
+    /// </summary>
+    private static string TextoVariacaoCategoria(RadarVariacaoCategoria categoria)
+    {
+        if (categoria.MediaHistorica <= 0m) return "sem gastos anteriores";
+        var sinal = categoria.VariacaoAbsoluta >= 0m ? "+" : "−";
+        return $"{sinal}{Math.Abs(categoria.VariacaoPercentual).ToString("P1", CulturaPtBr)}";
+    }
+
+    /// <summary>Cor da variação da categoria; neutra quando não há base de comparação.</summary>
+    private static string EstiloVariacaoCategoria(RadarVariacaoCategoria categoria)
+        => categoria.MediaHistorica <= 0m ? "color:inherit" : EstiloVariacao(categoria.VariacaoPercentual);
+
+    /// <summary>Estilo inline dos pontos do score: positivo em verde, negativo em vermelho.</summary>
+    private static string EstiloPontos(int pontos)
+        => pontos > 0 ? "color:var(--mud-palette-success)"
+           : pontos < 0 ? "color:var(--mud-palette-error)"
+           : "color:inherit";
+
+    private static Color CorChip(int score)
+        => score >= 60 ? Color.Success : score >= 40 ? Color.Warning : Color.Error;
+
+    private static Color CorIcon(RadarNivel nivel)
+        => nivel == RadarNivel.Critico ? Color.Error : nivel == RadarNivel.Atencao ? Color.Warning : Color.Success;
+
+    /// <summary>
+    /// Ícone do nível do insight. O nível positivo usa um ícone neutro em relação à direção
+    /// ("melhorando" pode ser receita subindo ou despesa caindo) — uma seta de tendência
+    /// contradiria metade desses casos.
+    /// </summary>
+    private static string IconNivel(RadarNivel nivel)
+        => nivel == RadarNivel.Critico ? Icons.Material.Filled.ErrorOutline
+            : nivel == RadarNivel.Atencao ? Icons.Material.Filled.WarningAmber
+            : Icons.Material.Filled.CheckCircle;
+
+    private static string RotuloTendencia(RadarTendencia tendencia) => tendencia switch
+    {
+        RadarTendencia.Alta => "↑ subindo",
+        RadarTendencia.Baixa => "↓ caindo",
+        RadarTendencia.Estavel => "→ estável",
+        _ => "— indefinida"
+    };
+
+    private static string MesAbrev(int mes) => mes switch
+    {
+        1 => "Jan", 2 => "Fev", 3 => "Mar", 4 => "Abr",
+        5 => "Mai", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+        9 => "Set", 10 => "Out", 11 => "Nov", 12 => "Dez",
+        _ => ""
+    };
+
+    /// <summary>
+    /// Rótulo do ponto na série mensal. O mês em andamento é truncado no dia de corte e
+    /// aparece marcado como parcial, como no drill-down (RadarCategoriaDialog.razor:47).
+    /// </summary>
+    private static string RotuloSerie(RadarSerieMensal mes)
+        => $"{MesAbrev(mes.Mes)}/{mes.Ano}{(mes.Parcial ? " (parcial)" : "")}";
+}

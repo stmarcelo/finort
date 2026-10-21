@@ -179,7 +179,7 @@ else
                     <MudText Typo="Typo.subtitle1" Class="mb-1">Progressão — últimos 6 meses</MudText>
                     <MudChart ChartType="ChartType.Line"
                               InputData="@_dadosSerieTotal"
-                              InputLabels="@_rotulosTendencia.ToArray()"
+                              XAxisLabels="@_rotulosTendencia.ToArray()"
                               ChartSeries="@_seriesTendencia"
                               Width="100%" Height="190px" />
                 </MudPaper>

@@ -79,7 +79,7 @@ else
                 {
                     <MudChart ChartType="ChartType.Line"
                               InputData="@(_dados.TendenciaMensal.Select(m => (double)m.Receitas).ToArray())"
-                              InputLabels="@(_dados.TendenciaMensal.Select(m => $"{MesAbrev(m.Mes)}/{m.Ano}").ToArray())"
+                              XAxisLabels="@(_dados.TendenciaMensal.Select(m => $"{MesAbrev(m.Mes)}/{m.Ano}").ToArray())"
                               ChartSeries="@_tendenciaSeries"
                               ChartOptions="@_tendenciaOptions"
                               Width="100%" Height="260px" />

@@ -89,7 +89,7 @@ public class ReembolsoLeiturasTests
             var antes = await receitaService.GerarAsync(inicio, fim, null);
             Assert.Equal(0m, antes.TotalConfirmado + antes.TotalNaoConfirmado);
 
-            await faturas.FecharComReembolsosAsync(cartao.Id, 2026, 9, inicio, fim, conta.Id, catReceita.Id, null);
+            await faturas.FecharComReembolsosAsync(cartao.Id, 2026, 9, inicio, fim, conta.Id, catReceita.Id, null, new DateOnly(2026, 9, 9));
 
             var depois = await receitaService.GerarAsync(inicio, fim, null);
             Assert.Equal(0m, depois.TotalConfirmado);

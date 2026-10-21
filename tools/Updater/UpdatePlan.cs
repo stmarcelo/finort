@@ -121,4 +121,66 @@ public static class UpdatePlan
 
     public static string MontarArgumentosSetup() =>
         "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS";
+
+    /// <summary>Número de tentativas de relançamento (a primeira + um retry).</summary>
+    public const int MaximoTentativasRelancamento = 2;
+
+    /// <summary>
+    /// Tempo que o app precisa permanecer de pé para contar como relançado
+    /// com sucesso (se morrer antes, ele não subiu).
+    /// </summary>
+    public const int TimeoutRelancamentoMs = 15_000;
+
+    /// <summary>
+    /// Decide se vale tentar relançar o app de novo: só quando a tentativa
+    /// anterior morreu no startup e ainda restam tentativas.
+    /// </summary>
+    public static bool DeveTentarNovamente(int tentativa, bool appPermaneceuRodando) =>
+        !appPermaneceuRodando && tentativa < MaximoTentativasRelancamento;
+
+    /// <summary>
+    /// Decide se o tratamento de erro deve relançar o app: só quando ele foi fechado
+    /// e ainda não voltou. Relançar de novo sobre um app que já subiu derruba a segunda
+    /// instância na porta 5298 — e o usuário receberia "não foi reaberto" enquanto o
+    /// app está rodando.
+    /// </summary>
+    public static bool DeveRelancarNoCatch(bool appEncerrado, bool relancadoComSucesso) =>
+        appEncerrado && !relancadoComSucesso;
+
+    /// <summary>
+    /// Mensagem de erro honesta: distingue os três desfechos reais —
+    /// o app reaberto, o relançamento que falhou e o app que nunca foi fechado.
+    /// </summary>
+    public static string MensagemFalha(bool appEncerrado, bool relancadoComSucesso, string caminhoLog)
+    {
+        var texto = (appEncerrado, relancadoComSucesso) switch
+        {
+            (true, true) =>
+                "A atualização não foi concluída.\n" +
+                "Seus dados estão intactos e o Finort foi reaberto.",
+            (true, false) =>
+                "A atualização não foi concluída por completo.\n" +
+                "O Finort não foi reaberto.\n" +
+                "Seus dados estão intactos.\n" +
+                "Abra o Finort manualmente (Finort.exe na pasta de instalação).",
+            _ =>
+                "A atualização não foi concluída.\n" +
+                "O Finort não foi fechado — nada foi instalado.\n" +
+                "Seus dados estão intactos.",
+        };
+
+        return $"{texto}\n\nLog: {caminhoLog}";
+    }
+
+    /// <summary>Log de erro quando o executável do app não está na pasta informada.</summary>
+    public static string MensagemExeNaoEncontrado(string appDir) =>
+        $"ERRO: Finort.exe não encontrado em {appDir} — o aplicativo não foi reaberto.";
+
+    /// <summary>Log de sucesso do relançamento.</summary>
+    public static string MensagemRelancado(int pid) =>
+        $"Finort relançado (pid {pid}).";
+
+    /// <summary>Log de erro quando o app não se manteve em execução após o relançamento.</summary>
+    public static string MensagemNaoManteveEmExecucao(int exitCode) =>
+        $"ERRO: o Finort não se manteve em execução após a atualização (exit code {exitCode}).";
 }

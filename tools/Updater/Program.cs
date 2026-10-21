@@ -11,6 +11,9 @@ using Updater;
 var log = new List<string>();
 var tempDir = Path.Combine(Path.GetTempPath(), "finort-updater");
 var appEncerrado = false;
+// Fica fora do try: o catch precisa saber se o app já voltou para não relançar uma
+// segunda vez (a segunda instância morre na porta 5298).
+var relancado = false;
 
 try
 {
@@ -57,6 +60,7 @@ try
             else
             {
                 Log("O Finort não encerrou em 60 s — nada foi instalado.");
+                MostrarErro(appEncerrado: false, relancadoComSucesso: false);
                 return 1;
             }
         }
@@ -119,7 +123,16 @@ try
     Log("Instalação concluída.");
 
     // 5. Relança o Finort e limpa o temp.
-    RelancarFinort(appDir);
+    relancado = RelancarFinort(appDir);
+    if (!relancado)
+    {
+        // O temp (e o log que a mensagem de erro aponta) só é limpo quando
+        // o app voltou — assim o log do diagnóstico sobrevive à falha.
+        Log("ERRO: o aplicativo foi atualizado, mas não foi reaberto.");
+        MostrarErro(appEncerrado: true, relancadoComSucesso: false);
+        return 1;
+    }
+
     try
     {
         Directory.Delete(tempDir, recursive: true);
@@ -129,6 +142,7 @@ try
         // O exe em execução não pode apagar a si mesmo; o Windows limpa %TEMP% depois.
         Log($"Limpeza do diretório temporário pendente ({ex.GetType().Name}): {tempDir}");
     }
+
     Log("Atualização concluída com sucesso.");
     return 0;
 }
@@ -136,8 +150,21 @@ catch (Exception ex)
 {
     Log($"ERRO: {ex.Message}");
     var appDirFalha = LerArgumento(args, "--app-dir") ?? AppContext.BaseDirectory!;
-    if (appEncerrado) RelancarFinort(appDirFalha);
-    MostrarErro();
+    // Só relança se o app foi fechado e ainda não voltou: relançar de novo sobre um app
+    // que já subiu derruba a segunda instância na porta 5298, e o usuário receberia
+    // "não foi reaberto" enquanto o app está rodando.
+    if (UpdatePlan.DeveRelancarNoCatch(appEncerrado, relancado))
+    {
+        try
+        {
+            relancado = RelancarFinort(appDirFalha);
+        }
+        catch (Exception exRelancamento)
+        {
+            Log($"ERRO ao relançar o Finort: {exRelancamento.Message}");
+        }
+    }
+    MostrarErro(appEncerrado, relancado);
     return 1;
 }
 
@@ -160,21 +187,87 @@ void Log(string mensagem)
     catch (IOException) { }
 }
 
-void RelancarFinort(string appDir)
+/// <summary>
+/// Relança o app e confirma que ele ficou de pé. Devolve true só quando o
+/// processo continua em execução depois do timeout — assim o updater nunca
+/// declara sucesso sobre um app que não voltou.
+/// </summary>
+bool RelancarFinort(string appDir)
 {
-    var exe = Path.Combine(appDir, "Finort.exe");
-    if (!File.Exists(exe)) return;
-    Process.Start(new ProcessStartInfo { FileName = exe, UseShellExecute = true });
-    Log("Finort relançado.");
+    try
+    {
+        var exe = Path.Combine(appDir, "Finort.exe");
+        if (!File.Exists(exe))
+        {
+            Log(UpdatePlan.MensagemExeNaoEncontrado(appDir));
+            return false;
+        }
+
+        var exitCode = 0;
+        for (var tentativa = 1; tentativa <= UpdatePlan.MaximoTentativasRelancamento; tentativa++)
+        {
+            var processo = IniciarFinort(exe, appDir);
+            if (processo is null) return false;
+
+            var pid = processo.Id;
+            if (!processo.WaitForExit(UpdatePlan.TimeoutRelancamentoMs))
+            {
+                // Continua rodando depois do timeout: o app subiu de verdade.
+                Log(UpdatePlan.MensagemRelancado(pid));
+                return true;
+            }
+
+            exitCode = processo.ExitCode;
+            processo.Dispose();
+            Log($"ERRO: o Finort saiu logo após o relançamento (pid {pid}, exit code {exitCode}).");
+
+            if (!UpdatePlan.DeveTentarNovamente(tentativa, appPermaneceuRodando: false))
+                break;
+
+            Log("O Finort não se manteve de pé — tentando relançar de novo...");
+            Thread.Sleep(2_000);
+        }
+
+        Log(UpdatePlan.MensagemNaoManteveEmExecucao(exitCode));
+        return false;
+    }
+    catch (Exception ex)
+    {
+        Log($"ERRO: falha ao relançar o Finort ({ex.Message}).");
+        return false;
+    }
 }
 
-void MostrarErro()
+/// <summary>Inicia o app na pasta de instalação; null se nem isso foi possível.</summary>
+Process? IniciarFinort(string exe, string appDir)
+{
+    try
+    {
+        return Process.Start(new ProcessStartInfo
+        {
+            FileName = exe,
+            UseShellExecute = true,
+            WorkingDirectory = appDir
+        });
+    }
+    catch (Exception ex)
+    {
+        Log($"ERRO: não foi possível iniciar {exe} ({ex.Message}).");
+        return null;
+    }
+}
+
+/// <summary>
+/// Mostra a caixa de erro com o desfecho real: app reaberto, relançamento
+/// falhado ou app que nunca foi fechado.
+/// </summary>
+void MostrarErro(bool appEncerrado, bool relancadoComSucesso)
 {
     try
     {
         var caminhoLog = Path.Combine(tempDir, "updater.log");
         Nativo.MessageBox(IntPtr.Zero,
-            $"A atualização não foi concluída.\nSeus dados estão intactos e o Finort foi reaberto.\n\nLog: {caminhoLog}",
+            UpdatePlan.MensagemFalha(appEncerrado, relancadoComSucesso, caminhoLog),
             "Finort — Atualização", 0x10);
     }
     catch (DllNotFoundException) { }

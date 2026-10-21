@@ -1,0 +1,246 @@
+@namespace Finort.Components.Dialogs
+@inherits AppComponentBase
+@using System.Globalization
+@inject RadarService RadarService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_detalhe?.Nome ?? "Categoria")</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_carregando)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_erro)
+        {
+            <MudAlert Severity="Severity.Error">Não foi possível carregar os dados desta categoria.</MudAlert>
+        }
+        else if (_detalhe is null)
+        {
+            <MudAlert Severity="Severity.Info">Sem lançamentos para esta categoria no período.</MudAlert>
+        }
+        else
+        {
+            <div class="d-flex flex-wrap gap-4 align-center mb-4">
+                <div>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">Mês atual</MudText>
+                    <MudText Typo="Typo.h6">R$ @(_detalhe.ValorAtual.ToString("N2", CulturaPtBr))</MudText>
+                </div>
+                <div>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">@(RotuloVariacao)</MudText>
+                    <MudText Typo="Typo.h6" Style="@EstiloVariacaoCategoria">@(TextoVariacaoCategoria)</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">Média: R$ @(_detalhe.MediaHistorica.ToString("N2", CulturaPtBr))</MudText>
+                </div>
+                <div>
+                    <MudText Typo="Typo.caption" Style="opacity:0.7">Tendência</MudText>
+                    <MudText Typo="Typo.h6">@(RotuloTendencia(_detalhe.Tendencia))</MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Histórico</MudText>
+            @foreach (var p in _detalhe.Historico)
+            {
+                <div class="mb-2">
+                    <div class="d-flex justify-space-between">
+                        <MudText Typo="Typo.body2">@(MesAbrev(p.Mes))/@(p.Ano)@(p.Parcial ? " (parcial)" : "")</MudText>
+                        <MudText Typo="Typo.body2">R$ @(p.Valor.ToString("N2", CulturaPtBr))</MudText>
+                    </div>
+                    <MudProgressLinear Value="@(PctHistorico(p))" Rounded="true" Color="Color.Primary" Style="height:12px" Class="mt-1" />
+                </div>
+            }
+            @if (_detalhe.Historico.Any(p => p.Parcial))
+            {
+                <MudText Typo="Typo.caption" Style="opacity:0.7">
+                    O mês atual está em andamento: o valor e a barra do último mês contam apenas os lançamentos até hoje. A comparação usa o mesmo número de dias dos meses anteriores (limitado pelos dias de cada mês).
+                </MudText>
+            }
+
+            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Principais mudanças</MudText>
+            @if (_detalhe.Subcategorias.Count == 0)
+            {
+                <MudText Typo="Typo.body2">Esta categoria não tem subcategorias lançadas.</MudText>
+            }
+            else
+            {
+                @if (_responsavel is not null)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2">@(FraseResponsavel(_responsavel))</MudText>
+                }
+                <MudTable Items="@_detalhe.Subcategorias" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Subcategoria</MudTh>
+                        <MudTh>Mês atual</MudTh>
+                        <MudTh>@RotuloMediaSubcategoria</MudTh>
+                        <MudTh Style="text-align:right">Variação</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            @(context.Nome)
+                            @if (EhResponsavel(context))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">principal</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd>R$ @(context.ValorAtual.ToString("N2", CulturaPtBr))</MudTd>
+                        <MudTd>R$ @(context.MediaHistorica.ToString("N2", CulturaPtBr))</MudTd>
+                        <MudTd Style="text-align:right">
+                            <span style="@EstiloVariacao(context.VariacaoPercentual)">
+                                @(context.VariacaoAbsoluta >= 0m ? "+" : "−")R$ @(Math.Abs(context.VariacaoAbsoluta).ToString("N2", CulturaPtBr))
+                                @(TextoVariacaoSubcategoria(context))
+                            </span>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Fechar">Fechar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly CultureInfo CulturaPtBr = new("pt-BR");
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid CategoriaId { get; set; }
+    [Parameter] public int MesesHistorico { get; set; } = 3;
+    [Parameter] public Guid? PessoaId { get; set; }
+
+    private bool _carregando = true;
+    private bool _erro;
+    private RadarDetalheCategoria? _detalhe;
+    private RadarVariacaoSubcategoria? _responsavel;
+    private decimal _maxHistorico;
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task CarregarAsync()
+    {
+        _carregando = true;
+        try
+        {
+            _detalhe = await RadarService.ObterDetalheCategoriaAsync(CategoriaId, MesesHistorico, PessoaId);
+            _maxHistorico = _detalhe is null ? 0m : _detalhe.Historico.Max(p => p.Valor);
+            // A responsável é escolhida pelo serviço (única fonte da regra): o drill-down
+            // não recalcula quem explica a variação da categoria.
+            _responsavel = ResponsavelExibido(_detalhe);
+        }
+        catch (Exception ex)
+        {
+            _erro = true;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private void Fechar() => MudDialog.Cancel();
+
+    private bool EhResponsavel(RadarVariacaoSubcategoria subcategoria)
+        => _responsavel is not null && subcategoria.Id == _responsavel.Id;
+
+    /// <summary>
+    /// Subcategoria responsável a exibir no drill-down. Sem base de comparação não existe
+    /// movimento a explicar: a página também não fala em média (spec §25), então o
+    /// drill-down não afirma quem responde pela variação nem destaca ninguém como
+    /// "principal" — a base contra a qual a variação seria medida não existe.
+    /// </summary>
+    public static RadarVariacaoSubcategoria? ResponsavelExibido(RadarDetalheCategoria? detalhe)
+        => detalhe is null || detalhe.MesesBase == 0 ? null : detalhe.SubcategoriaResponsavel;
+
+    /// <summary>Barra do mês em relação ao maior valor do histórico (0 a 100).</summary>
+    private double PctHistorico(RadarPontoMensal ponto)
+        => _maxHistorico <= 0m ? 0d : (double)(ponto.Valor / _maxHistorico * 100m);
+
+    /// <summary>
+    /// Rótulo da variação com o período de comparação (spec §22: "vs média de 3 meses").
+    /// A base é a base efetiva do serviço: os meses fechados que têm lançamentos.
+    /// </summary>
+    private string RotuloVariacao => RotuloVariacaoTexto(_detalhe?.MesesBase ?? 0);
+
+    /// <summary>
+    /// Rótulo da variação, dado o tamanho da base de comparação. Sem base não existe
+    /// "média de 0 meses": a variação aparece sem base de comparação (o valor já diz
+    /// "sem gastos anteriores").
+    /// </summary>
+    public static string RotuloVariacaoTexto(int mesesBase)
+        => mesesBase == 0
+            ? "Variação (sem base de comparação)"
+            : $"Variação vs. média de {MesesTexto(mesesBase)}";
+
+    /// <summary>Quantidade de meses que formam a base de comparação.</summary>
+    private static string MesesTexto(int meses) => meses == 1 ? "1 mês" : $"{meses} meses";
+
+    /// <summary>Rótulo da coluna da média da subcategoria, com a base de comparação.</summary>
+    private string RotuloMediaSubcategoria => RotuloMediaTexto(_detalhe?.MesesBase ?? 0);
+
+    /// <summary>
+    /// Rótulo da coluna da média, dado o tamanho da base de comparação. Sem base nenhuma
+    /// o rótulo é só "Média": "Média 0m" não é uma informação que o usuário consiga ler.
+    /// </summary>
+    public static string RotuloMediaTexto(int mesesBase) => mesesBase > 0 ? $"Média {mesesBase}m" : "Média";
+
+    /// <summary>
+    /// Texto da variação contra a média. Sem média não existe percentual a medir: o serviço
+    /// limita a variação a 100% quando a base é zero (RadarCalculos.cs:64), e esse número
+    /// não é uma medição.
+    /// </summary>
+    private string TextoVariacaoCategoria
+    {
+        get
+        {
+            if (_detalhe is null) return string.Empty;
+            if (_detalhe.MediaHistorica <= 0m) return "sem gastos anteriores";
+            return (_detalhe.VariacaoPercentual >= 0m ? "+" : "") + _detalhe.VariacaoPercentual.ToString("P1", CulturaPtBr);
+        }
+    }
+
+    /// <summary>Cor da variação; neutra quando não há base de comparação.</summary>
+    private string EstiloVariacaoCategoria
+        => _detalhe is null || _detalhe.MediaHistorica <= 0m ? "color:inherit" : EstiloVariacao(_detalhe.VariacaoPercentual);
+
+    /// <summary>Percentual da subcategoria; omitido quando a média dela é zero.</summary>
+    private static string TextoVariacaoSubcategoria(RadarVariacaoSubcategoria subcategoria)
+        => subcategoria.MediaHistorica > 0m
+            ? $"({(subcategoria.VariacaoPercentual * 100m).ToString("N1", CulturaPtBr)}%)"
+            : "(—)";
+
+    /// <summary>Frase curta e neutra sobre a subcategoria responsável (spec §22, §23).</summary>
+    private string FraseResponsavel(RadarVariacaoSubcategoria subcategoria)
+    {
+        var reducao = _detalhe is not null && _detalhe.ValorAtual < _detalhe.MediaHistorica;
+        return $"{subcategoria.Nome} representa {subcategoria.ParticipacaoNaVariacao.ToString("P1", CulturaPtBr)} "
+               + $"{(reducao ? "da redução" : "do aumento")} dos seus gastos com {_detalhe?.Nome} neste mês.";
+    }
+
+    /// <summary>
+    /// Estilo inline da variação: erro (aumento) em vermelho, sucesso (queda) em verde.
+    /// Montado em C# porque, dentro de um atributo, a aspa de fechamento da string interpolada
+    /// precisa vir antes do `)` do `@(` — na outra ordem o parser do Razor aborta a expressão.
+    /// </summary>
+    private static string EstiloVariacao(decimal variacao)
+        => variacao > 0m ? "color:var(--mud-palette-error)"
+           : variacao < 0m ? "color:var(--mud-palette-success)"
+           : "color:inherit";
+
+    private static string RotuloTendencia(RadarTendencia tendencia) => tendencia switch
+    {
+        RadarTendencia.Alta => "↑ subindo",
+        RadarTendencia.Baixa => "↓ caindo",
+        RadarTendencia.Estavel => "→ estável",
+        _ => "— indefinida"
+    };
+
+    private static string MesAbrev(int mes) => mes switch
+    {
+        1 => "Jan", 2 => "Fev", 3 => "Mar", 4 => "Abr",
+        5 => "Mai", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+        9 => "Set", 10 => "Out", 11 => "Nov", 12 => "Dez",
+        _ => ""
+    };
+}
