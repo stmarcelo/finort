@@ -1,5 +1,6 @@
 using Finort.App;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using MudBlazor;
 
@@ -18,10 +19,29 @@ public partial class MudMoneyInput : MudBaseInput<decimal?>, IDisposable
         ["autocomplete"] = "off"
     };
 
+    private Calculadora? _calculadora;
+    private bool _calculadoraAberta;
+    private EventCallback<MouseEventArgs> _onAdornmentClick;
+
     [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
 
     /// <summary>Casas decimais aceitas (2 padrão; 8 para cripto).</summary>
     [Parameter] public int CasasDecimais { get; set; } = 2;
+
+    /// <summary>Exibe o botão de adornment que abre a calculadora.</summary>
+    [Parameter] public bool MostrarCalculadora { get; set; } = true;
+
+    /// <summary>
+    /// Verdadeiro quando o botão da calculadora deve aparecer: precisa estar
+    /// habilitado, editável e sem adornment definido pelo chamador (o
+    /// MudTextField tem apenas um slot de adornment).
+    /// </summary>
+    private bool MostrarBotaoCalculadora =>
+        MostrarCalculadora
+        && !Disabled
+        && !ReadOnly
+        && string.IsNullOrEmpty(AdornmentIcon)
+        && string.IsNullOrEmpty(AdornmentText);
 
     protected override void OnInitialized()
     {
@@ -29,6 +49,17 @@ public partial class MudMoneyInput : MudBaseInput<decimal?>, IDisposable
         _display = Value.HasValue
             ? MoneyInputFormatter.Formatar(MoneyInputFormatter.DigitosDeValor(Value.Value, CasasDecimais), CasasDecimais)
             : string.Empty;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        // Só registra o handler quando o botão existe: com delegate, o MudBlazor
+        // renderiza o ícone do adornment como botão clicável.
+        _onAdornmentClick = MostrarBotaoCalculadora
+            ? new EventCallback<MouseEventArgs>(this, AlternarCalculadora)
+            : default;
     }
 
     protected override Task OnParametersSetAsync()
@@ -82,6 +113,70 @@ public partial class MudMoneyInput : MudBaseInput<decimal?>, IDisposable
         _display = MoneyInputFormatter.Formatar(digitos, CasasDecimais);
         await SetValueAsync(MoneyInputFormatter.ParaValor(digitos, CasasDecimais));
         StateHasChanged();
+    }
+
+    /// <summary>Abre ou fecha a calculadora (clique no adornment do campo).</summary>
+    private Task AlternarCalculadora(MouseEventArgs _)
+    {
+        if (!MostrarBotaoCalculadora) return Task.CompletedTask;
+
+        if (_calculadoraAberta)
+        {
+            return FecharCalculadora();
+        }
+
+        _calculadoraAberta = true;
+
+        // O conteúdo do MudPopover só existe enquanto o popover está aberto:
+        // ao abrir, a Calculadora é criada do zero e recebe o valor atual do
+        // campo por ValorInicial. Nada precisa ser reiniciado aqui.
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Aplica no campo o resultado confirmado pela calculadora.</summary>
+    private async Task AplicarResultado(decimal resultado)
+    {
+        if (resultado < 0) return; // o componente Calculadora já bloqueia negativos
+
+        var digitos = MoneyInputFormatter.DigitosDeValor(resultado, CasasDecimais);
+        var valor = MoneyInputFormatter.ParaValor(digitos, CasasDecimais);
+
+        _display = MoneyInputFormatter.Formatar(digitos, CasasDecimais);
+
+        await SetValueAsync(valor);
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("moneyInterop.setText", _wrapper, _display);
+        }
+        catch (Exception)
+        {
+            // Sem JS: o valor já foi aplicado no modelo pelo SetValueAsync.
+        }
+
+        _calculadora = null; // a instância é descartada junto com o popover
+        _calculadoraAberta = false;
+    }
+
+    /// <summary>
+    /// Fecha o popover sem confirmação (clique fora ou novo clique no
+    /// adornment) e dispara o cancelamento da calculadora.
+    /// </summary>
+    private async Task FecharCalculadora()
+    {
+        var calculadora = _calculadora;
+        _calculadora = null; // a instância é descartada junto com o popover
+        _calculadoraAberta = false;
+
+        // Fechou sem confirmar: o contrato da Calculadora exige o cancelamento.
+        if (calculadora is not null)
+            await calculadora.OnCancelar.InvokeAsync();
+    }
+
+    /// <summary>Cancelamento da calculadora (fechamento sem confirmação).</summary>
+    private void CancelarCalculadora()
+    {
+        _calculadoraAberta = false;
     }
 
     private Dictionary<string, object> MergeUserAttributes()

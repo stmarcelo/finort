@@ -39,7 +39,11 @@ public static class MoneyInputFormatter
     {
         var fator = (decimal)Math.Pow(10, casas);
         var escalado = Math.Abs(valor) * fator;
-        return ((long)Math.Round(escalado, MidpointRounding.AwayFromZero))
-            .ToString(CultureInfo.InvariantCulture);
+
+        // Formata o decimal arredondado em vez de convertê-lo para long: um
+        // valor acima de long.MaxValue (ex.: 16 dígitos inteiros em um campo
+        // de 8 casas) estouraria a conversão.
+        return Math.Round(escalado, 0, MidpointRounding.AwayFromZero)
+            .ToString("F0", CultureInfo.InvariantCulture);
     }
 }

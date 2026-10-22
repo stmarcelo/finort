@@ -3,7 +3,7 @@
 @implements IDisposable
 @inject IJSRuntime JS
 
-<div @ref="_wrapper" style="display:contents;">
+<div @ref="_wrapper" style="position:relative; width:100%;">
     <MudTextField
                   T="string"
               Class="@Class"
@@ -18,12 +18,30 @@
               Required="@Required"
               RequiredError="@RequiredError"
               HelperText="@HelperText"
-              Adornment="@Adornment"
-              AdornmentIcon="@AdornmentIcon"
+              Adornment="@(MostrarBotaoCalculadora ? Adornment.End : Adornment)"
+              AdornmentIcon="@(MostrarBotaoCalculadora ? Icons.Material.Filled.Calculate : AdornmentIcon)"
               AdornmentText="@AdornmentText"
+              AdornmentAriaLabel="@(MostrarBotaoCalculadora ? "Abrir calculadora" : null)"
+              OnAdornmentClick="@(MostrarBotaoCalculadora ? _onAdornmentClick : OnAdornmentClick)"
               Error="@HasErrors"
               ErrorText="@GetErrorText()"
               UserAttributes="@(MergeUserAttributes())"
               Text="@_display"
               TextChanged="OnInput" />
+
+    @if (MostrarCalculadora)
+    {
+        <MudPopover Open="_calculadoraAberta"
+                    AnchorOrigin="Origin.BottomRight"
+                    TransformOrigin="Origin.TopRight"
+                    Style="width:260px;">
+            <Calculadora @ref="_calculadora"
+                         ValorInicial="@Value"
+                         CasasDecimais="@CasasDecimais"
+                         OnConfirmar="AplicarResultado"
+                         OnCancelar="CancelarCalculadora" />
+        </MudPopover>
+
+        <MudOverlay Visible="_calculadoraAberta" AutoClose LockScroll="false" OnClosed="FecharCalculadora" />
+    }
 </div>

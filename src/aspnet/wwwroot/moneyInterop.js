@@ -36,5 +36,13 @@ window.moneyInterop = {
             }
             dotnetRef.invokeMethodAsync('OnDigitsJs', digitos).catch(() => {});
         });
-    }
+    },
+
+    // Escreve diretamente no input (o TextUpdateSuppression do Blazor Server
+    // impede a atualização via servidor quando o campo está focado).
+    setText: function (wrapper, texto) {
+        if (!wrapper) return;
+        const el = wrapper.tagName === 'INPUT' ? wrapper : wrapper.querySelector('input');
+        if (el) el.value = texto || '';
+    },
 };

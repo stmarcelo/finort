@@ -80,4 +80,18 @@ public class MoneyInputFormatterTests
     [InlineData(-12345, "12345")]
     public void DigitosDeValor_ZeroCasas_EscalaInteira(decimal valor, string expected)
         => Assert.Equal(expected, MoneyInputFormatter.DigitosDeValor(valor, 0));
+
+    [Fact]
+    public void DigitosDeValor_AcimaDoLong_RetornaTodosOsDigitos()
+        => Assert.Equal("999999999999999999999999",
+            MoneyInputFormatter.DigitosDeValor(9999999999999999.99999999m, 8));
+
+    [Fact]
+    public void DigitosDeValor_AcimaDoLong_ConversaoCompletaParaOMascara()
+    {
+        var digitos = MoneyInputFormatter.DigitosDeValor(9999999999999999.99999999m, 8);
+
+        Assert.Equal(9999999999999999.99999999m, MoneyInputFormatter.ParaValor(digitos, 8));
+        Assert.Equal("9.999.999.999.999.999,99999999", MoneyInputFormatter.Formatar(digitos, 8));
+    }
 }

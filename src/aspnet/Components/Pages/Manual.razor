@@ -214,6 +214,14 @@
             "O sistema cria dois lançamentos: um negativo na conta de origem e um positivo na conta de destino. Depois de salvar, você vai para o extrato da conta de destino."
         }, new()),
 
+        new("calculadora", "Calculadora nos valores", Icons.Material.Filled.Calculate, new()
+        {
+            "Nos campos de valor (receita, despesa, limite, fatura, investimento) há um botão de calculadora do lado direito. Clique nele para abrir uma calculadora simples ali mesmo, sem sair da tela. O botão só aparece nos campos que estão liberados para edição.",
+            "A calculadora abre com o valor que já está no campo, então você pode continuar o cálculo: por exemplo, se o campo está em 1.500,00, basta apertar as teclas + 200 e = para o campo virar 1.700,00.",
+            "As teclas disponíveis são os números, a vírgula, as quatro operações, porcentagem, limpar (C), apagar o último dígito e o igual (=). As operações são aplicadas na ordem em que você aperta as teclas, da esquerda para a direita.",
+            "Quando você aperta =, a calculadora fecha e o resultado entra no campo. Se o resultado for negativo, o sistema avisa com a mensagem 'Resultado negativo não suportado.' e não aplica o valor. Os campos recebem apenas o valor absoluto: quando um saldo pode ser negativo, como no 'Saldo real' do Fechar Mês, o sinal é escolhido em um botão separado ao lado do campo."
+        }, new()),
+
         new("fluxo", "Fluxo Mensal", Icons.Material.Filled.StackedLineChart, new()
         {
             "O fluxo mensal mostra um resumo de quanto entrou, quanto saiu e quanto sobrou em cada mês.",

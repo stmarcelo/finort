@@ -70,6 +70,10 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Filtros por conta, cartão, pessoa, tipo e mês; subtotais diários.
 - Foco automático no primeiro campo ao criar novo lançamento.
 
+### Calculadora nos valores
+- Nos campos de valor editáveis, o botão de calculadora abre uma calculadora simples, já preenchida com o valor do campo; ao apertar =, o resultado entra direto no campo. As teclas são números, vírgula, as quatro operações, porcentagem, limpar (C), apagar o último dígito e igual (=), e as operações são aplicadas na ordem em que você aperta as teclas, da esquerda para a direita.
+- Resultado negativo não é aplicado: os campos de valor recebem apenas o valor absoluto — quando um saldo pode ser negativo, como no 'Saldo real' do Fechar Mês, o sinal é escolhido em um botão separado ao lado do campo.
+
 ### Cartões de crédito
 - CRUD com banco, últimos 4 dígitos, melhor dia de compra, dia de vencimento, limite e conta vinculada.
 - Fatura: conferência de itens, fechamento (exige todos confirmados), pagamento (cria débito na conta + cobre diferença em parcela futura), histórico e estorno.

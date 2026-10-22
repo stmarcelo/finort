@@ -728,3 +728,47 @@ h1:focus {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ---- Calculadora do campo de dinheiro (MudMoneyInput) ---- */
+.calc-painel {
+    padding: 8px;
+    width: 252px;
+}
+
+.calc-visor {
+    background: var(--finort-champagne);
+    border: 1px solid var(--finort-hairline);
+    border-radius: 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    overflow: hidden;
+    padding: 6px 10px;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calc-mensagem {
+    color: var(--mud-palette-error);
+    font-size: 0.75rem;
+    min-height: 1.1rem;
+    padding: 4px 2px 0;
+}
+
+.calc-teclado {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(4, 1fr);
+    padding-top: 6px;
+}
+
+.calc-tecla {
+    border-radius: 8px;
+    font-weight: 600;
+    min-width: 0;
+    padding: 4px 0;
+}
+
+.calc-tecla-larga {
+    grid-column: span 2;
+}

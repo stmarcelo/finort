@@ -1,0 +1,146 @@
+@namespace Finort.Components
+@inherits AppComponentBase
+
+<div class="calc-painel">
+    <div class="calc-visor">@_calc.Visor</div>
+    <div class="calc-mensagem">@_mensagem</div>
+    <div class="calc-teclado">
+        @foreach (var tecla in Teclas)
+        {
+            <MudButton Class="@($"calc-tecla {tecla.CssClasse}")"
+                       Variant="@(tecla.Filled ? Variant.Filled : Variant.Text)"
+                       Color="@tecla.Cor"
+                       Disabled="@(tecla.Acao == AcaoTecla.Virgula && CasasDecimais == 0)"
+                       OnClick="@(() => Pressionar(tecla))">@tecla.Rotulo</MudButton>
+        }
+    </div>
+</div>
+
+@code {
+    private enum AcaoTecla { Digito, Virgula, Operador, Porcento, Apoiar, Limpar, Igual }
+
+    private sealed record Tecla(
+        string Rotulo,
+        AcaoTecla Acao,
+        string? Parametro = null,
+        Color Cor = Color.Default,
+        bool Filled = false,
+        bool Larga = false)
+    {
+        public string CssClasse => Larga ? "calc-tecla-larga" : string.Empty;
+    }
+
+    private static readonly Tecla[] Teclas =
+    {
+        new("C", AcaoTecla.Limpar),
+        new("⌫", AcaoTecla.Apoiar),
+        new("%", AcaoTecla.Porcento),
+        new("÷", AcaoTecla.Operador, "/", Color.Primary),
+        new("7", AcaoTecla.Digito, "7"),
+        new("8", AcaoTecla.Digito, "8"),
+        new("9", AcaoTecla.Digito, "9"),
+        new("×", AcaoTecla.Operador, "*", Color.Primary),
+        new("4", AcaoTecla.Digito, "4"),
+        new("5", AcaoTecla.Digito, "5"),
+        new("6", AcaoTecla.Digito, "6"),
+        new("−", AcaoTecla.Operador, "-", Color.Primary),
+        new("1", AcaoTecla.Digito, "1"),
+        new("2", AcaoTecla.Digito, "2"),
+        new("3", AcaoTecla.Digito, "3"),
+        new("+", AcaoTecla.Operador, "+", Color.Primary),
+        new("0", AcaoTecla.Digito, "0", Larga: true),
+        new(",", AcaoTecla.Virgula),
+        new("=", AcaoTecla.Igual, null, Color.Primary, Filled: true)
+    };
+
+    /// <summary>Valor com que a calculadora abre (o valor atual do campo).</summary>
+    [Parameter] public decimal? ValorInicial { get; set; }
+
+    /// <summary>Casas decimais do visor (as mesmas do campo).</summary>
+    [Parameter] public int CasasDecimais { get; set; } = 2;
+
+    /// <summary>Quando false, um resultado negativo não é emitido (fica bloqueado no visor).</summary>
+    [Parameter] public bool PermitirNegativo { get; set; }
+
+    /// <summary>Disparado no '=' com o resultado válido.</summary>
+    [Parameter] public EventCallback<decimal> OnConfirmar { get; set; }
+
+    /// <summary>Disparado ao fechar sem confirmar.</summary>
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private CalculadoraMatematica _calc = new();
+    private string? _mensagem;
+    private bool _editado;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _calc = new CalculadoraMatematica(CasasDecimais);
+        if (ValorInicial.HasValue) _calc.DefinirValorInicial(ValorInicial.Value);
+    }
+
+    private async Task Pressionar(Tecla tecla)
+    {
+        switch (tecla.Acao)
+        {
+            case AcaoTecla.Digito:
+                _calc.Digito(tecla.Parametro![0]);
+                _editado = true;
+                break;
+            case AcaoTecla.Virgula:
+                _calc.Virgula();
+                _editado = true;
+                break;
+            case AcaoTecla.Operador:
+                _calc.Operador(tecla.Parametro![0]);
+                _editado = true;
+                break;
+            case AcaoTecla.Porcento:
+                _calc.Porcento();
+                _editado = true;
+                break;
+            case AcaoTecla.Apoiar:
+                _calc.Apoiar();
+                _editado = true;
+                break;
+            case AcaoTecla.Limpar:
+                _calc.Limpar();
+                _editado = false;
+                break;
+            case AcaoTecla.Igual:
+                await Confirmar();
+                break;
+        }
+
+        if (tecla.Acao != AcaoTecla.Igual)
+            _mensagem = _calc.Erro;
+    }
+
+    private async Task Confirmar()
+    {
+        // Só confirma um valor que o usuário produziu: sem edição (nem o valor
+        // inicial do campo), o "=" não pode sobrescrever o campo com zero.
+        if (!_editado)
+        {
+            _mensagem = "Nada para confirmar.";
+            return;
+        }
+
+        var resultado = _calc.Igual();
+
+        if (resultado is null)
+        {
+            _mensagem = _calc.Erro ?? "Cálculo inválido.";
+            return;
+        }
+
+        if (resultado < 0 && !PermitirNegativo)
+        {
+            _mensagem = "Resultado negativo não suportado.";
+            return;
+        }
+
+        _mensagem = null;
+        await OnConfirmar.InvokeAsync(resultado.Value);
+    }
+}
