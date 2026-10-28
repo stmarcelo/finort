@@ -30,6 +30,9 @@ public partial class LancamentoForm : AppComponentBase
     private bool _temGrupo;
     private bool _confirmado;
     private string? _observacao;
+    private bool _reembolso;
+    private Guid? _reembolsoPessoaId;
+    private DateTime? _reembolsoData;
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,12 +60,31 @@ public partial class LancamentoForm : AppComponentBase
             _subcategoriaId = principal.SubcategoriaId;
             _observacao = principal.Observacao;
         }
+
+        if (principal.Tipo == LancamentoTipo.Despesa && principal.ReferenciaId is not null)
+        {
+            var espelho = pernas.FirstOrDefault(p => p.Id != principal.Id
+                && p.Tipo == LancamentoTipo.Receita);
+            if (espelho is not null)
+            {
+                _reembolso = true;
+                _reembolsoPessoaId = espelho.PessoaId;
+                _reembolsoData = espelho.Data.ToDateTime(TimeOnly.MinValue);
+            }
+        }
     }
 
     private async Task OnCategoriaChanged(Guid? categoriaId)
     {
         _categoriaId = categoriaId;
         await SubcategoriaSelectNotificar(categoriaId);
+    }
+
+    private Task OnContaChanged(Guid? contaId)
+    {
+        _contaId = contaId;
+        if (contaId is null) _confirmado = false;
+        return Task.CompletedTask;
     }
 
     private Task SubcategoriaSelectNotificar(Guid? categoriaId)
@@ -91,8 +113,25 @@ public partial class LancamentoForm : AppComponentBase
             Snackbar.Add("Observação deve ter no máximo 500 caracteres.", Severity.Error);
             return;
         }
+        if (_confirmado && _contaId is null)
+        {
+            Snackbar.Add("Selecione uma conta para usar \"Já confirmado\".", Severity.Error);
+            return;
+        }
+        if (Tipo == LancamentoTipo.Despesa && _reembolso && _reembolsoPessoaId is null)
+        {
+            Snackbar.Add("Informe a pessoa do reembolso.", Severity.Error);
+            return;
+        }
 
         var data = DateOnly.FromDateTime(_data.Value);
+        if (Tipo == LancamentoTipo.Despesa && _reembolso
+            && _reembolsoData is not null
+            && DateOnly.FromDateTime(_reembolsoData.Value) < data)
+        {
+            Snackbar.Add("A data do reembolso não pode ser anterior à data da despesa.", Severity.Error);
+            return;
+        }
         _salvando = true;
         try
         {
@@ -116,7 +155,16 @@ public partial class LancamentoForm : AppComponentBase
                         Snackbar.Add("Informe a categoria.", Severity.Error);
                         return;
                     }
-                    if (_repetir)
+                    if (Tipo == LancamentoTipo.Despesa && _reembolso)
+                    {
+                        var dataReembolso = DateOnly.FromDateTime(_reembolsoData ?? _data!.Value);
+                        criado = (await LancamentoService.CriarDespesaComReembolsoAsync(
+                            _contaId, data, _valor.Value, _categoriaId.Value, _subcategoriaId, _pessoaId,
+                            _projetoId, _confirmado, _observacao,
+                            _repetir ? _quantidadeRepeticoes : 1,
+                            _reembolsoPessoaId!.Value, dataReembolso))[0];
+                    }
+                    else if (_repetir)
                         criado = (await LancamentoService.CriarRecorrenteAsync(Tipo, _contaId, data, _valor.Value,
                             RecorrenciaFrequencia.Mensal, _quantidadeRepeticoes, _categoriaId.Value, _subcategoriaId, _pessoaId, _projetoId, _confirmado, _observacao))[0];
                     else if (Tipo == LancamentoTipo.Receita)
@@ -139,7 +187,13 @@ public partial class LancamentoForm : AppComponentBase
                 else
                 {
                     var atualizarFuturos = await PerguntarAtualizarFuturosAsync();
-                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId, data, _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId, atualizarFuturos: atualizarFuturos, observacao: _observacao);
+                    await LancamentoService.AtualizarReceitaDespesaAsync(LancamentoId.Value, _contaId, data,
+                        _valor.Value, _categoriaId!.Value, _subcategoriaId, _pessoaId, _projetoId,
+                        atualizarFuturos: atualizarFuturos, observacao: _observacao,
+                        reembolsoPessoaId: Tipo == LancamentoTipo.Despesa && _reembolso ? _reembolsoPessoaId : null,
+                        reembolsoData: Tipo == LancamentoTipo.Despesa && _reembolso
+                            ? DateOnly.FromDateTime(_reembolsoData ?? _data!.Value)
+                            : null);
                 }
             }
 

@@ -84,7 +84,7 @@
     private decimal? _taxa;
     private bool _atualizando;
     private bool MostrarTaxa => Tipo is MovimentoTipo.Compra or MovimentoTipo.Venda
-        && TipoInvestimento == TipoInvestimento.Criptomoeda;
+        && TipoInvestimento is TipoInvestimento.Criptomoeda or TipoInvestimento.Dolar;
     private string RotuloTaxa => Tipo == MovimentoTipo.Venda
         ? "Taxa de venda (opcional)" : "Taxa de compra (opcional)";
     private decimal TaxaEfetiva => MostrarTaxa ? (_taxa ?? 0m) : 0m;

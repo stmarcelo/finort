@@ -60,11 +60,17 @@ else
                     </div>
                     <MudProgressLinear Value="@((double)pctUtilizado)" Color="@Color.Primary" Size="Size.Small" Class="mb-2" />
 
-                    @if (c.UltimaFaturaFechada is { } uf)
+                    @if (c.UltimaFaturaPaga is { } fp)
                     {
-                        <MudText Typo="Typo.caption" Class="mt-1" Style="color:var(--finort-muted);">
-                            Fatura fechada @uf.MesReferencia.ToString("00")/@uf.AnoReferencia  R$ @Math.Abs(uf.ValorTotal).ToString("N2")  @(uf.Paga ? "Paga" : uf.Parcial ? "Parcial" : "Aberta")
+                        <MudText Typo="Typo.caption" Class="mt-1 d-block" Style="color:var(--finort-muted);">
+                            Fatura paga @fp.MesReferencia.ToString("00")/@fp.AnoReferencia  R$ @Math.Abs(fp.ValorTotal).ToString("N2")
                         </MudText>
+                        @if (c.ProximaFatura is { } pf)
+                        {
+                            <MudText Typo="Typo.caption" Class="d-block" Style="color:var(--finort-muted);">
+                                Fatura @(pf.Fechada ? "fechada" : "aberta") @pf.MesReferencia.ToString("00")/@pf.AnoReferencia  R$ @pf.Valor.ToString("N2")
+                            </MudText>
+                        }
                     }
 
                     <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
@@ -74,12 +80,14 @@ else
                         </MudText>
                     </MudStack>
                     <MudStack Row Justify="Justify.SpaceBetween" Class="mb-1">
-                        <MudText Typo="Typo.body2" Style="opacity:0.7">Melhor dia</MudText>
-                        <MudText Typo="Typo.body2">@c.MelhorDiaCompra</MudText>
-                    </MudStack>
-                    <MudStack Row Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.body2" Style="opacity:0.7">Vencimento</MudText>
-                        <MudText Typo="Typo.body2">@c.DiaVencimento</MudText>
+                        <MudStack Row Spacing="1">
+                            <MudText Typo="Typo.body2" Style="opacity:0.7">Melhor dia</MudText>
+                            <MudText Typo="Typo.body2">@c.MelhorDiaCompra</MudText>
+                        </MudStack>
+                        <MudStack Row Spacing="1">
+                            <MudText Typo="Typo.body2" Style="opacity:0.7">Vencimento</MudText>
+                            <MudText Typo="Typo.body2">@c.DiaVencimento</MudText>
+                        </MudStack>
                     </MudStack>
                 </div>
             </MudItem>

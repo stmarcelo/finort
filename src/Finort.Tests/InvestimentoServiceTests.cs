@@ -874,4 +874,73 @@ public class InvestimentoServiceTests
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
+
+    [Fact]
+    public async Task RegistrarMovimento_CompraDolarComTaxa_SomaNoTotal()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var usd = await service.CriarAsync("Dólar", TipoInvestimento.Dolar, conta.Id, null, null, null, null);
+
+            var mov = await service.RegistrarMovimentoAsync(usd.Id,
+                new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 100m, 5.4m, null,
+                lancarNaConta: true, taxa: 12.5m);
+
+            Assert.Equal(12.5m, mov.Taxa);
+            Assert.Equal(5.4m, mov.ValorPorCota);
+            Assert.Equal(552.5m, mov.Valor);
+            var despesa = Assert.Single(db.Lancamentos.ToList());
+            Assert.Equal(-552.5m, despesa.Valor);
+            var salvo = await db.Investimentos.AsNoTracking().SingleAsync(i => i.Id == usd.Id);
+            Assert.Equal(5.4m, salvo.ValorCotaAtual);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_VendaDolarComTaxa_SomaNoTotal()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var usd = await service.CriarAsync("Dólar", TipoInvestimento.Dolar, conta.Id, null, null, null, null);
+            await service.RegistrarMovimentoAsync(usd.Id,
+                new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 100m, 5.4m, null);
+
+            var mov = await service.RegistrarMovimentoAsync(usd.Id,
+                new DateOnly(2026, 9, 12), MovimentoTipo.Venda, 50m, 5.5m, null,
+                lancarNaConta: true, taxa: 3m);
+
+            Assert.Equal(3m, mov.Taxa);
+            Assert.Equal(278m, mov.Valor);
+            var receita = db.Lancamentos.OrderBy(l => l.Data).ToList()[1];
+            Assert.Equal(LancamentoTipo.Receita, receita.Tipo);
+            Assert.Equal(278m, receita.Valor);
+            var salvo = await db.Investimentos.AsNoTracking().SingleAsync(i => i.Id == usd.Id);
+            Assert.Equal(5.5m, salvo.ValorCotaAtual);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task RegistrarMovimento_CriaLancamentoConfirmado()
+    {
+        var (db, file, conta, service) = await SetupAsync();
+        try
+        {
+            var usd = await service.CriarAsync("Dólar", TipoInvestimento.Dolar, conta.Id, null, null, null, null);
+            await service.RegistrarMovimentoAsync(usd.Id, new DateOnly(2026, 9, 11), MovimentoTipo.Compra, 100m, 5.4m, null);
+            await service.RegistrarMovimentoAsync(usd.Id, new DateOnly(2026, 9, 12), MovimentoTipo.Venda, 50m, 5.5m, null);
+
+            var res = await service.CriarAsync("Reserva", TipoInvestimento.Reserva, conta.Id, null, null, null, null);
+            await service.RegistrarMovimentoAsync(res.Id, new DateOnly(2026, 9, 11), MovimentoTipo.Aporte, null, null, 500m);
+            await service.RegistrarMovimentoAsync(res.Id, new DateOnly(2026, 9, 12), MovimentoTipo.Resgate, null, null, 200m);
+
+            var lancamentos = db.Lancamentos.ToList();
+            Assert.Equal(4, lancamentos.Count);
+            Assert.All(lancamentos, l => Assert.True(l.Confirmado));
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
 }

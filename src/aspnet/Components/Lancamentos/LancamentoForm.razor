@@ -23,7 +23,7 @@
     else
     {
         <ContaSelect Label="Conta" Placeholder="Opcional"
-                     @bind-Value="_contaId" />
+                     Value="@_contaId" ValueChanged="OnContaChanged" />
         <DataPicker Label="Data" Variant="@gVariant" @bind-Date="_data" Required="true" />
         <MudMoneyInput Label="Valor" Variant="@gVariant" @bind-Value="_valor" Required="true" />
         <CategoriaSelect Required="true" RequiredError="Selecione a categoria."
@@ -35,7 +35,25 @@
                       Variant="@gVariant" Lines="2" MaxLength="500" />
         @if (LancamentoId is null)
         {
-            <MudCheckBox @bind-Value="_confirmado" Label="Já confirmado" Class="mt-2" />
+            <MudCheckBox @bind-Value="_confirmado" Label="Já confirmado" Class="mt-2"
+                         Disabled="@(_contaId is null)" />
+            @if (_contaId is null)
+            {
+                <MudText Typo="Typo.caption" Style="opacity:0.7;" Class="mb-2">
+                    Selecione uma conta para marcar "Já confirmado".
+                </MudText>
+            }
+        }
+        @if (Tipo == LancamentoTipo.Despesa)
+        {
+            <MudCheckBox @bind-Value="_reembolso" Label="Terá reembolso" Class="mt-2" />
+            @if (_reembolso)
+            {
+                <PessoaSelect Label="Pessoa do reembolso" Required="true"
+                              RequiredError="Selecione a pessoa do reembolso."
+                              @bind-Value="_reembolsoPessoaId" />
+                <DataPicker Label="Data do reembolso" Variant="@gVariant" @bind-Date="_reembolsoData" Required="true" />
+            }
         }
         <div class="d-flex align-center flex-wrap mt-2">
             @if (!_temGrupo)

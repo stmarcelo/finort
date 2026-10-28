@@ -143,7 +143,8 @@ public class LancamentoService
 
     public async Task AtualizarReceitaDespesaAsync(
         Guid id, Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId, Guid? pessoaId,
-        Guid? projetoId = null, bool atualizarFuturos = false, string? observacao = null)
+        Guid? projetoId = null, bool atualizarFuturos = false, string? observacao = null,
+        Guid? reembolsoPessoaId = null, DateOnly? reembolsoData = null)
     {
         Validar(valor, data);
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -197,6 +198,57 @@ public class LancamentoService
         for (var i = 0; i < futuros.Count; i++)
             await GarantirMesAbertoAsync(data.AddMonths(intervalo * (i + 1)), contaId);
 
+        // ---------- Reembolso: espelho de receita pareado via ReferenciaId ----------
+        var ehDespesaComEspelho = lancamento.Tipo == LancamentoTipo.Despesa;
+        var baseReembolso = reembolsoData ?? data;
+
+        if (ehDespesaComEspelho && reembolsoPessoaId.HasValue && reembolsoData.HasValue
+            && reembolsoData.Value < data)
+            throw new ArgumentException("A data do reembolso não pode ser anterior à data da despesa.");
+
+        var alvosEspelho = new List<(Lancamento Despesa, int Indice)>
+        {
+            (lancamento, 0)
+        };
+        for (var i = 0; i < futuros.Count; i++)
+            alvosEspelho.Add((futuros[i], i + 1));
+
+        // Pré-carrega TODOS os espelhos existentes e valida de uma vez, ANTES de qualquer mutação,
+        // para que uma recusa (espelho confirmado) não deixe alterações rastreadas no ChangeTracker.
+        var espelhosPorAlvo = new Dictionary<Guid, Lancamento?>();
+        if (ehDespesaComEspelho)
+        {
+            foreach (var (alvo, _) in alvosEspelho)
+            {
+                espelhosPorAlvo[alvo.Id] = alvo.ReferenciaId is null
+                    ? null
+                    : await _db.Lancamentos
+                        .FirstOrDefaultAsync(l => l.ReferenciaId == alvo.ReferenciaId && l.Id != alvo.Id
+                            && l.Tipo == LancamentoTipo.Receita);
+            }
+            await GarantirNaoConfirmadoAsync(espelhosPorAlvo.Values.Where(e => e is not null).Select(e => e!));
+        }
+
+        if (ehDespesaComEspelho && reembolsoPessoaId is null)
+        {
+            foreach (var (alvo, _) in alvosEspelho)
+            {
+                var espelhoRemover = espelhosPorAlvo[alvo.Id];
+                if (espelhoRemover is null) { alvo.ReferenciaId = null; continue; }
+                _db.Lancamentos.Remove(espelhoRemover);
+                alvo.ReferenciaId = null;
+            }
+        }
+        else if (ehDespesaComEspelho && reembolsoPessoaId.HasValue)
+        {
+            // Valida os meses das datas de espelho ANTES de qualquer mutação.
+            foreach (var (_, indice) in alvosEspelho)
+            {
+                var dataEspelho = baseReembolso.AddMonths(intervalo * indice);
+                await GarantirMesAbertoAsync(dataEspelho, contaId);
+            }
+        }
+
         lancamento.Data = data;
         lancamento.Valor = lancamento.Tipo == LancamentoTipo.Despesa ? -Math.Abs(valor) : Math.Abs(valor);
         lancamento.ContaId = contaId;
@@ -218,6 +270,48 @@ public class LancamentoService
             f.PessoaId = pessoaId;
             f.ProjetoId = projetoId;
             f.Observacao = observacao;
+        }
+
+        // Cria/sincroniza o espelho após as mutações para refletir os novos valores; persiste no SaveChanges final.
+        if (ehDespesaComEspelho && reembolsoPessoaId.HasValue)
+        {
+            foreach (var (alvo, indice) in alvosEspelho)
+            {
+                var dataEspelho = baseReembolso.AddMonths(intervalo * indice);
+                var espelho = espelhosPorAlvo[alvo.Id];
+
+                if (espelho is null)
+                {
+                    espelho = new Lancamento
+                    {
+                        Data = dataEspelho,
+                        Tipo = LancamentoTipo.Receita,
+                        Valor = Math.Abs(alvo.Valor),
+                        ContaId = alvo.ContaId,
+                        CategoriaId = alvo.CategoriaId,
+                        SubcategoriaId = alvo.SubcategoriaId,
+                        PessoaId = reembolsoPessoaId,
+                        ProjetoId = alvo.ProjetoId,
+                        Observacao = alvo.Observacao,
+                        Confirmado = false
+                    };
+                    var referencia = Guid.NewGuid();
+                    espelho.ReferenciaId = referencia;
+                    alvo.ReferenciaId = referencia;
+                    _db.Lancamentos.Add(espelho);
+                }
+                else
+                {
+                    espelho.Data = dataEspelho;
+                    espelho.Valor = Math.Abs(alvo.Valor);
+                    espelho.ContaId = alvo.ContaId;
+                    espelho.CategoriaId = alvo.CategoriaId;
+                    espelho.SubcategoriaId = alvo.SubcategoriaId;
+                    espelho.PessoaId = reembolsoPessoaId;
+                    espelho.ProjetoId = alvo.ProjetoId;
+                    espelho.Observacao = alvo.Observacao;
+                }
+            }
         }
 
         await _db.SaveChangesAsync();
@@ -570,6 +664,31 @@ public class LancamentoService
         return criados;
     }
 
+    public async Task<List<Lancamento>> CriarDespesaComReembolsoAsync(
+        Guid? contaId, DateOnly data, decimal valor, Guid categoriaId, Guid? subcategoriaId,
+        Guid? pessoaId, Guid? projetoId, bool confirmado, string? observacao,
+        int repeticoes, Guid reembolsoPessoaId, DateOnly reembolsoData)
+    {
+        if (reembolsoData < data)
+            throw new ArgumentException("A data do reembolso não pode ser anterior à data da despesa.");
+
+        var despesas = await CriarRecorrenteAsync(LancamentoTipo.Despesa, contaId, data, valor,
+            RecorrenciaFrequencia.Mensal, repeticoes, categoriaId, subcategoriaId, pessoaId,
+            projetoId, confirmado, observacao);
+        var espelhos = await CriarRecorrenteAsync(LancamentoTipo.Receita, contaId, reembolsoData, valor,
+            RecorrenciaFrequencia.Mensal, repeticoes, categoriaId, subcategoriaId, reembolsoPessoaId,
+            projetoId, confirmado: false, observacao);
+
+        for (var i = 0; i < despesas.Count; i++)
+        {
+            var referencia = Guid.NewGuid();
+            despesas[i].ReferenciaId = referencia;
+            espelhos[i].ReferenciaId = referencia;
+        }
+        await _db.SaveChangesAsync();
+        return despesas;
+    }
+
     public async Task AtualizarValorAsync(Guid id, decimal valorPositivo)
     {
         var lancamento = await _db.Lancamentos.FindAsync(id)
@@ -603,6 +722,22 @@ public class LancamentoService
         var removiveis = grupo.Where(g => !g.Confirmado).ToList();
         if (removiveis.Count == 0)
             throw new LancamentoConfirmadoException(grupo);
+
+        // Pares de reembolso (despesa <-> receita espelho compartilham ReferenciaId).
+        var refs = removiveis.Where(g => g.ReferenciaId.HasValue)
+            .Select(g => g.ReferenciaId!.Value).Distinct().ToList();
+        if (refs.Count > 0)
+        {
+            var idsAtuais = removiveis.Select(g => g.Id).ToList();
+            var pares = await _db.Lancamentos
+                .Where(l => l.ReferenciaId != null && refs.Contains(l.ReferenciaId.Value)
+                            && !idsAtuais.Contains(l.Id))
+                .ToListAsync();
+            var paresConfirmados = pares.Where(p => p.Confirmado).ToList();
+            if (paresConfirmados.Count > 0)
+                throw new LancamentoConfirmadoException(paresConfirmados);
+            removiveis.AddRange(pares);
+        }
 
         var removiveisIds = removiveis.Select(g => g.Id).ToList();
         var reembolsos = await _db.Reembolsos

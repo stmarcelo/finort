@@ -41,7 +41,8 @@ public class CartaoCreditoService
                 mesesPagos.Add((f.CartaoCreditoId, f.AnoReferencia, f.MesReferencia));
         }
 
-        var ultimasFechadas = faturas
+        var ultimasPagas = faturas
+            .Where(f => mesesPagos.Contains((f.CartaoCreditoId, f.AnoReferencia, f.MesReferencia)))
             .GroupBy(f => f.CartaoCreditoId)
             .ToDictionary(g => g.Key, g => g
                 .OrderByDescending(f => f.AnoReferencia)
@@ -54,7 +55,7 @@ public class CartaoCreditoService
             .Where(l => l.CartaoCreditoId != null)
             .Select(l => new { l.CartaoCreditoId, l.Valor, l.Tipo, l.ProvisaoId, l.Data, l.DataVencimentoCartao })
             .ToListAsync();
-        var mapa = naoPagos
+        var filtrados = naoPagos
             .Where(l =>
             {
                 var vcto = l.DataVencimentoCartao ?? l.Data;
@@ -62,26 +63,54 @@ public class CartaoCreditoService
                        !(l.Tipo == LancamentoTipo.Transferencia && l.Valor > 0m) &&
                        !mesesPagos.Contains((l.CartaoCreditoId!.Value, vcto.Year, vcto.Month));
             })
+            .ToList();
+        var mapa = filtrados
             .GroupBy(l => l.CartaoCreditoId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(l => l.Valor));
+        var somaPorMes = filtrados
+            .GroupBy(l => (CartaoId: l.CartaoCreditoId!.Value,
+                Ano: (l.DataVencimentoCartao ?? l.Data).Year,
+                Mes: (l.DataVencimentoCartao ?? l.Data).Month))
+            .ToDictionary(g => g.Key, g => g.Sum(l => l.Valor));
 
-        return cartoes.Select(c => new CartaoResumo
+        FaturaCardLinha MontarProxima(Guid cartaoId, int anoPago, int mesPago)
         {
-            Id = c.Id,
-            Banco = c.Banco,
-            Ultimos4Digitos = c.Ultimos4Digitos,
-            MelhorDiaCompra = c.MelhorDiaCompra,
-            DiaVencimento = c.DiaVencimento,
-            Limite = c.Limite,
-            TotalNaoPago = mapa.GetValueOrDefault(c.Id),
-            Ativo = c.Ativo,
-            ContaId = c.ContaId,
-            UltimaFaturaFechada = ultimasFechadas.TryGetValue(c.Id, out var uf)
-                ? new FaturaSituacao(uf.Id, uf.AnoReferencia, uf.MesReferencia, uf.ValorTotal,
+            var ano = mesPago == 12 ? anoPago + 1 : anoPago;
+            var mes = mesPago == 12 ? 1 : mesPago + 1;
+            var fechada = faturas.FirstOrDefault(f =>
+                f.CartaoCreditoId == cartaoId && f.AnoReferencia == ano && f.MesReferencia == mes);
+            return fechada is not null
+                ? new FaturaCardLinha(ano, mes, Math.Abs(fechada.ValorTotal), Fechada: true)
+                : new FaturaCardLinha(ano, mes,
+                    Math.Abs(somaPorMes.GetValueOrDefault((cartaoId, ano, mes))), Fechada: false);
+        }
+
+        return cartoes.Select(c =>
+        {
+            FaturaSituacao? ultima = null;
+            FaturaCardLinha? proxima = null;
+            if (ultimasPagas.TryGetValue(c.Id, out var fp))
+            {
+                ultima = new FaturaSituacao(fp.Id, fp.AnoReferencia, fp.MesReferencia, fp.ValorTotal,
                     pagamentos.FirstOrDefault(p => p.CartaoCreditoId == c.Id &&
-                        p.Year == uf.AnoReferencia && p.Month == uf.MesReferencia)?.Total ?? 0m,
-                    uf.DataFechamento)
-                : null
+                        p.Year == fp.AnoReferencia && p.Month == fp.MesReferencia)?.Total ?? 0m,
+                    fp.DataFechamento);
+                proxima = MontarProxima(c.Id, fp.AnoReferencia, fp.MesReferencia);
+            }
+            return new CartaoResumo
+            {
+                Id = c.Id,
+                Banco = c.Banco,
+                Ultimos4Digitos = c.Ultimos4Digitos,
+                MelhorDiaCompra = c.MelhorDiaCompra,
+                DiaVencimento = c.DiaVencimento,
+                Limite = c.Limite,
+                TotalNaoPago = mapa.GetValueOrDefault(c.Id),
+                Ativo = c.Ativo,
+                ContaId = c.ContaId,
+                UltimaFaturaPaga = ultima,
+                ProximaFatura = proxima
+            };
         }).ToList();
     }
 

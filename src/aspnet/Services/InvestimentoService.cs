@@ -313,7 +313,7 @@ public class InvestimentoService
     /// guarda de mês fechado); para compras/aportes o lançamento de despesa só é gerado quando
     /// <paramref name="lancarNaConta"/> for verdadeiro (investimentos pré-existentes dispensam).
     /// Aplica os limites de posição/saldo e atualiza a cotação em compras/vendas.
-    /// Taxa soma ao total somente em compra/venda de Criptomoeda.
+    /// Taxa soma ao total somente em compra/venda de Criptomoeda ou Dólar.
     /// </summary>
     public async Task<InvestimentoMovimento> RegistrarMovimentoAsync(
         Guid investimentoId, DateOnly data, MovimentoTipo tipo,
@@ -339,10 +339,10 @@ public class InvestimentoService
             {
                 if (taxa.Value < 0m)
                     throw new ArgumentException("A taxa não pode ser negativa.");
-                var ehNegociacaoCripto = tipo is MovimentoTipo.Compra or MovimentoTipo.Venda
-                    && investimento.Tipo == TipoInvestimento.Criptomoeda;
-                if (!ehNegociacaoCripto)
-                    throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda.");
+                var ehNegociacaoComTaxa = investimento.Tipo is TipoInvestimento.Criptomoeda
+                    or TipoInvestimento.Dolar;
+                if (!ehNegociacaoComTaxa)
+                    throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda ou dólar.");
                 taxaEfetiva = taxa.Value;
             }
             valorTotal = quantidade.Value * valorPorCota.Value + taxaEfetiva;
@@ -355,7 +355,7 @@ public class InvestimentoService
             {
                 if (taxa.Value < 0m)
                     throw new ArgumentException("A taxa não pode ser negativa.");
-                throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda.");
+                throw new ArgumentException("Taxa permitida apenas em compra ou venda de criptomoeda ou dólar.");
             }
             qtdFinal = null;
             cotaFinal = null;
@@ -386,9 +386,11 @@ public class InvestimentoService
         {
             lancamento = ehSaida
                 ? await _lancamentoService.CriarDespesaAsync(
-                    investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null)
+                    investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null,
+                    confirmado: true)
                 : await _lancamentoService.CriarReceitaAsync(
-                    investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null);
+                    investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null,
+                    confirmado: true);
         }
 
         var movimento = new InvestimentoMovimento

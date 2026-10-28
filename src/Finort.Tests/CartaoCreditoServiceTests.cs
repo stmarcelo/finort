@@ -217,30 +217,49 @@ public class CartaoCreditoServiceTests
     }
 
     [Fact]
-    public async Task ListarComSaldoAsync_UltimaFaturaFechada_MaisRecenteComSituacaoParcial()
+    public async Task ListarComSaldoAsync_UltimaFaturaPaga_MaisRecentePagaEProximaFechada()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
         {
             var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
             await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 50m, pagoEm: 50m);
-            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 9, 80m, pagoEm: 40m);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 9, 80m, pagoEm: 40m); // parcial
 
             var resumo = (await service.ListarComSaldoAsync()).Single();
 
-            var uf = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaFechada);
-            Assert.Equal(2026, uf.AnoReferencia);
-            Assert.Equal(9, uf.MesReferencia);
-            Assert.Equal(-80m, uf.ValorTotal);
-            Assert.Equal(40m, uf.Pago);
-            Assert.False(uf.Paga);
-            Assert.True(uf.Parcial);
+            var fp = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaPaga);
+            Assert.Equal(2026, fp.AnoReferencia);
+            Assert.Equal(8, fp.MesReferencia);
+            Assert.True(fp.Paga);
+            var pf = Assert.IsType<FaturaCardLinha>(resumo.ProximaFatura);
+            Assert.Equal((2026, 9), (pf.AnoReferencia, pf.MesReferencia));
+            Assert.Equal(80m, pf.Valor);
+            Assert.True(pf.Fechada);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
 
     [Fact]
-    public async Task ListarComSaldoAsync_SemFaturaFechada_RetornaNulo()
+    public async Task ListarComSaldoAsync_SemFaturaPaga_AmbosNulos()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            // fechada e NÃO paga: não é linha 1 e não gera linha 2
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 60m, pagoEm: null);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            Assert.Null(resumo.UltimaFaturaPaga);
+            Assert.Null(resumo.ProximaFatura);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_SemFaturaFechada_AmbosNulos()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
@@ -249,27 +268,99 @@ public class CartaoCreditoServiceTests
 
             var resumo = (await service.ListarComSaldoAsync()).Single();
 
-            Assert.Null(resumo.UltimaFaturaFechada);
+            Assert.Null(resumo.UltimaFaturaPaga);
+            Assert.Null(resumo.ProximaFatura);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
 
     [Fact]
-    public async Task ListarComSaldoAsync_FaturaFechadaSemPagamento_EhAberta()
+    public async Task ListarComSaldoAsync_ProximaFatura_AbertaCalculadaDoMes()
     {
         var (db, file, service, conta) = await SetupAsync();
         try
         {
             var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
-            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 60m, pagoEm: null);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 50m, pagoEm: 50m);
+            // parcela com vencimento em 09/2026 SEM fatura fechada
+            db.Lancamentos.Add(new Lancamento
+            {
+                Data = new DateOnly(2026, 9, 5),
+                Tipo = LancamentoTipo.Despesa,
+                Valor = -70m,
+                CartaoCreditoId = cartao.Id,
+                DataVencimentoCartao = new DateOnly(2026, 9, 15),
+                CategoriaId = db.Categorias.First(c => c.Nome == "Receita").Id,
+                Confirmado = true
+            });
+            await db.SaveChangesAsync();
 
             var resumo = (await service.ListarComSaldoAsync()).Single();
 
-            var uf = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaFechada);
-            Assert.Equal(8, uf.MesReferencia);
-            Assert.Equal(0m, uf.Pago);
-            Assert.False(uf.Paga);
-            Assert.False(uf.Parcial);
+            var pf = Assert.IsType<FaturaCardLinha>(resumo.ProximaFatura);
+            Assert.Equal((2026, 9), (pf.AnoReferencia, pf.MesReferencia));
+            Assert.Equal(70m, pf.Valor);
+            Assert.False(pf.Fechada);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_ProximaFatura_SemLancamento_ValorZero()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 50m, pagoEm: 50m);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            var pf = Assert.IsType<FaturaCardLinha>(resumo.ProximaFatura);
+            Assert.Equal((2026, 9), (pf.AnoReferencia, pf.MesReferencia));
+            Assert.Equal(0m, pf.Valor);
+            Assert.False(pf.Fechada);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_ProximaFatura_ViradaDeAno()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2025, 12, 90m, pagoEm: 90m);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            var pf = Assert.IsType<FaturaCardLinha>(resumo.ProximaFatura);
+            Assert.Equal((2026, 1), (pf.AnoReferencia, pf.MesReferencia));
+            Assert.Equal(0m, pf.Valor);
+            Assert.False(pf.Fechada);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ListarComSaldoAsync_DuasFaturasPagas_Linha1EAMaisRecenteEProximaAvanca()
+    {
+        var (db, file, service, conta) = await SetupAsync();
+        try
+        {
+            var cartao = await service.CriarAsync("Nubank", "1234", 5, 10, 5000m, conta.Id);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 8, 50m, pagoEm: 50m);
+            await CriarFaturaFechadaAsync(db, conta.Id, cartao, 2026, 9, 80m, pagoEm: 80m);
+
+            var resumo = (await service.ListarComSaldoAsync()).Single();
+
+            var fp = Assert.IsType<FaturaSituacao>(resumo.UltimaFaturaPaga);
+            Assert.Equal((2026, 9), (fp.AnoReferencia, fp.MesReferencia));
+            Assert.True(fp.Paga);
+            var pf = Assert.IsType<FaturaCardLinha>(resumo.ProximaFatura);
+            Assert.Equal((2026, 10), (pf.AnoReferencia, pf.MesReferencia));
+            Assert.False(pf.Fechada);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }

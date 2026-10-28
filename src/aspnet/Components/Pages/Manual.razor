@@ -194,7 +194,8 @@
             "Valores de despesa são sempre positivos no formulário. O sistema entende que é uma saída pelo tipo 'Despesa'.",
             "Despesas podem ser marcadas para se repetir (recorrência). Defina quantas vezes a despesa deve se repetir e a frequência (mensal, trimestral, semestral, anual).",
             "O campo 'Observação' (até 500 caracteres) guarda detalhes do gasto; na lista de lançamentos, o ícone de nota ao lado da categoria mostra o texto ao passar o mouse.",
-            "Ao editar uma despesa repetida e optar por alterar os futuros, as datas seguintes são reancoradas na nova data mantendo o mesmo intervalo."
+            "Ao editar uma despesa repetida e optar por alterar os futuros, as datas seguintes são reancoradas na nova data mantendo o mesmo intervalo.",
+            "Opção 'Terá reembolso': marque quando alguém vai te devolver esta despesa e informe a pessoa e a data. O sistema cria automaticamente uma receita espelho — mesma conta, categoria, subcategoria e observação, valor positivo, contra a pessoa informada — já na data do reembolso. Com 'Repetir', cada ocorrência gera sua própria receita com a indicação de parcela (1/10, 2/10, ...). A receita nasce sem confirmação: confirme em Lançamentos quando o dinheiro cair. Ao excluir a despesa, a receita espelho sai junto; se ela estiver confirmada, a exclusão é bloqueada até você desfazer a confirmação."
         }, new()),
 
         new("cartaoentrada", "Despesa no Cartão", Icons.Material.Filled.CreditCard, new()
@@ -350,10 +351,11 @@
         {
             new("Movimentações", new()
             {
-                "Compra: informe quantidade, valor por cota e valor total — os três campos são interligados: ao informar o valor total, o sistema calcula a cota (total ÷ quantidade). Na compra e na venda de criptomoeda há ainda o campo opcional de taxa, somado ao total (total = quantidade × cota + taxa). O sistema cria um lançamento de despesa na conta vinculada com o valor total.",
-                "Venda: informe quantidade, valor por cota e valor total (interligados da mesma forma; na venda de criptomoeda também há taxa opcional). O sistema cria um lançamento de receita na conta vinculada com o valor total.",
+                "Compra: informe quantidade, valor por cota e valor total — os três campos são interligados: ao informar o valor total, o sistema calcula a cota (total ÷ quantidade). Na compra e na venda de criptomoeda ou dólar há ainda o campo opcional de taxa, somado ao total (total = quantidade × cota + taxa). O sistema cria um lançamento de despesa na conta vinculada com o valor total.",
+                "Venda: informe quantidade, valor por cota e valor total (interligados da mesma forma; na venda de criptomoeda ou dólar também há taxa opcional). O sistema cria um lançamento de receita na conta vinculada com o valor total.",
                 "Aporte: aplicação na reserva ou no CDB / Fundo (ex: depositar na poupança). Cria lançamento de despesa.",
-                "Resgate: retirada da reserva ou do CDB / Fundo (ex: sacar da poupança). Cria lançamento de receita."
+                "Resgate: retirada da reserva ou do CDB / Fundo (ex: sacar da poupança). Cria lançamento de receita.",
+                "Aporte, Compra, Venda e Resgate geram o lançamento na conta vinculada já confirmado (não é preciso confirmar manualmente); o botão 'Desfazer' remove o movimento e o lançamento juntos."
             }),
             new("Proventos", new()
             {
@@ -418,7 +420,8 @@
             {
                 "O relatório de reembolsos (menu Relatórios > Reembolsos) lista o cadastro de reembolsos por vencimento, com filtros de período, cartão de crédito e pessoa.",
                 "O topo mostra os cards de total pendente e total fechado. A tabela traz data, cartão, pessoa, parcela, valor e status.",
-                "O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba, com o mesmo conteúdo exibido na tela."
+                "O botão 'Gerar PDF' abre o relatório em PDF em uma nova aba, com o mesmo conteúdo exibido na tela.",
+                "Este relatório lista apenas reembolsos de despesas de cartão. O reembolso de uma despesa de conta (opção 'Terá reembolso') não é um item aqui: a receita espelho criada automaticamente aparece como receita normal em Lançamentos e no Relatório de Receitas."
             })
         }),
 

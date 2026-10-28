@@ -23,7 +23,7 @@ public class InvestimentoMovimento
     /// <summary>Nulo em aporte/resgate de reserva.</summary>
     public decimal? ValorPorCota { get; set; }
 
-    /// <summary>Taxa de compra (ex. corretora cripto). Nulo/zero = sem taxa. Somada ao total apenas em Compra de Criptomoeda.</summary>
+    /// <summary>Taxa de compra/venda (ex. corretora cripto ou IOF em dólar). Nulo/zero = sem taxa. Somada ao total apenas em Compra/Venda de Criptomoeda ou Dólar.</summary>
     public decimal? Taxa { get; set; }
 
     /// <summary>Valor total do movimento (qtd × cota + taxa, ou valor único na reserva).</summary>

@@ -66,6 +66,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Tipos: **Receita**, **Despesa**, **Transferência** e **Despesa no Cartão**.
 - Parcelamento (despesas) e recorrência (mensal, trimestral, semestral, anual) para receitas e despesas — receitas não possuem parcelamento.
 - Vínculo com pessoa, categoria/subcategoria, conta, projeto e flag de reembolso.
+- Reembolso em despesa de conta: opção "Terá reembolso" (pessoa + data) cria automaticamente a receita espelho (mesma conta/categoria/observação, valor positivo, sem confirmação) — em repetições, uma receita por ocorrência com indicação de parcela (1/10...); a exclusão da despesa remove a receita espelho junto (bloqueada se ela estiver confirmada).
 - Confirmação item a item (conciliação com extrato) com guarda: lançamentos confirmados de meses fechados não podem ser editados/excluídos.
 - Filtros por conta, cartão, pessoa, tipo e mês; subtotais diários.
 - Foco automático no primeiro campo ao criar novo lançamento.
@@ -96,6 +97,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 
 ### Categorias e subcategorias
 - Seeds com categorias e subcategorias pré-cadastradas e protegidas.
+- Seleção com busca (sem acento/caixa) e lista completa visível no dropdown (sem limite de 10 itens).
 - Bloqueio de exclusão quando há lançamentos vinculados.
 
 ### Provisões
@@ -123,7 +125,8 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 
 ### Investimentos
 - Tipos: Reserva de emergência, Ações, Criptomoedas, FIIs, CDB / Fundo (CDBs e fundos de investimento), Dólar etc.
-- Compra/venda: informe quantidade, valor por cota e valor total (campos interligados — ao informar o total, a cota é calculada). Na compra e na venda de criptomoeda há campo opcional de taxa, somado ao valor total.
+- Compra/venda: informe quantidade, valor por cota e valor total (campos interligados — ao informar o total, a cota é calculada). Na compra e na venda de criptomoeda e dólar há campo opcional de taxa, somado ao valor total.
+- Aporte/compra/venda/resgate geram o lançamento vinculado já confirmado; proventos (dividendo/rendimento) também.
 - Aporte/resgate para Reserva e CDB / Fundo; movimentações e proventos (dividendo, rendimento) geram lançamento vinculado.
 - Atualização inline de cotação, desfazer em cascata e registro de auditoria na exclusão.
 
