@@ -21,7 +21,7 @@ public class RadarInsightsTests
         IReadOnlyList<RadarVariacaoCategoria>? categorias = null,
         int mesesBase = 3)
         => new(
-            new DateOnly(2026, 10, 1), 20, true,
+            new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 6), new DateOnly(2026, 11, 5), true,
             mesesBase, mesesBase,
             receitasAtual, consumoAtual,
             investidoAtual, investidoAtual,

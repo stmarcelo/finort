@@ -190,6 +190,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<InvestimentoMovimento>()
             .HasIndex(m => m.LancamentoId);
 
+        modelBuilder.Entity<InvestimentoMovimento>()
+            .HasOne(m => m.LancamentoImposto)
+            .WithMany()
+            .HasForeignKey(m => m.LancamentoImpostoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InvestimentoMovimento>()
+            .HasIndex(m => m.LancamentoImpostoId);
+
         modelBuilder.Entity<Projeto>()
             .HasOne(p => p.Pessoa)
             .WithMany()
@@ -301,6 +310,7 @@ public class AppDbContext : DbContext
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000056"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000013"), Nome = "Acerto", IsProtected = true },
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000057"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000009"), Nome = "Cartão de crédito", IsProtected = true },
             new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000058"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Nome = "Manutenção" },
-            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000059"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000015"), Nome = "Assinaturas" });
+            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000059"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000015"), Nome = "Assinaturas" },
+            new Subcategoria { Id = Guid.Parse("20000000-0000-0000-0000-000000000060"), CategoriaId = Guid.Parse("10000000-0000-0000-0000-000000000011"), Nome = "Imposto de resgate", IsProtected = true });
     }
 }

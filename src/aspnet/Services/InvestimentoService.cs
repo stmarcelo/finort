@@ -144,8 +144,10 @@ public class InvestimentoService
             .Where(m => m.InvestimentoId == id)
             .ToListAsync();
         var lancamentoIds = movimentos
-            .Where(m => m.LancamentoId != null)
-            .Select(m => m.LancamentoId!.Value)
+            .SelectMany(m => new[] { m.LancamentoId, m.LancamentoImpostoId })
+            .Where(id => id != null)
+            .Select(id => id!.Value)
+            .Distinct()
             .ToList();
         var lancamentosDosMovimentos = await _db.Lancamentos
             .Where(l => lancamentoIds.Contains(l.Id))
@@ -318,7 +320,7 @@ public class InvestimentoService
     public async Task<InvestimentoMovimento> RegistrarMovimentoAsync(
         Guid investimentoId, DateOnly data, MovimentoTipo tipo,
         decimal? quantidade, decimal? valorPorCota, decimal? valorReserva,
-        bool lancarNaConta = true, decimal? taxa = null)
+        bool lancarNaConta = true, decimal? taxa = null, decimal? imposto = null)
     {
         var investimento = await ObterAsync(investimentoId);
 
@@ -381,16 +383,50 @@ public class InvestimentoService
         var subcategoria = await _db.Subcategorias.AsNoTracking()
             .SingleAsync(s => s.Nome == nomeSubcategoria);
 
+        decimal impostoEfetivo = 0m;
+        if (imposto is not null && imposto.Value != 0m)
+        {
+            if (imposto.Value < 0m)
+                throw new ArgumentException("O imposto não pode ser negativo.");
+            if (tipo != MovimentoTipo.Resgate)
+                throw new ArgumentException("Imposto permitido apenas no resgate de CDB ou reserva.");
+            impostoEfetivo = imposto.Value;
+        }
+
+        Categoria? categoriaImposto = null;
+        Subcategoria? subImposto = null;
+        if (impostoEfetivo > 0m)
+        {
+            categoriaImposto = await _db.Categorias.AsNoTracking().SingleAsync(c => c.Nome == "Impostos");
+            subImposto = await _db.Subcategorias.AsNoTracking()
+                .SingleAsync(s => s.Nome == "Imposto de resgate");
+        }
+
         Lancamento? lancamento = null;
+        Lancamento? lancamentoImposto = null;
         if (!ehSaida || lancarNaConta)
         {
-            lancamento = ehSaida
-                ? await _lancamentoService.CriarDespesaAsync(
-                    investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null,
-                    confirmado: true)
-                : await _lancamentoService.CriarReceitaAsync(
+            if (ehSaida)
+            {
+                lancamento = await _lancamentoService.CriarDespesaAsync(
                     investimento.ContaVinculadaId, data, valorTotal, categoria.Id, subcategoria.Id, null,
                     confirmado: true);
+            }
+            else
+            {
+                // No resgate com imposto a receita é o resgate + o imposto; a despesa
+                // do imposto sai na mesma conta e na subcategoria protegida.
+                var receita = await _lancamentoService.CriarReceitaAsync(
+                    investimento.ContaVinculadaId, data, valorTotal + impostoEfetivo,
+                    categoria.Id, subcategoria.Id, null, confirmado: true);
+                lancamento = receita;
+                if (impostoEfetivo > 0m)
+                {
+                    lancamentoImposto = await _lancamentoService.CriarDespesaAsync(
+                        investimento.ContaVinculadaId, data, impostoEfetivo,
+                        categoriaImposto!.Id, subImposto!.Id, null, confirmado: true);
+                }
+            }
         }
 
         var movimento = new InvestimentoMovimento
@@ -402,7 +438,9 @@ public class InvestimentoService
             ValorPorCota = cotaFinal,
             Valor = valorTotal,
             Taxa = taxaEfetiva > 0m ? taxaEfetiva : null,
-            LancamentoId = lancamento?.Id
+            Imposto = impostoEfetivo > 0m ? impostoEfetivo : null,
+            LancamentoId = lancamento?.Id,
+            LancamentoImpostoId = lancamentoImposto?.Id
         };
         _db.InvestimentosMovimentos.Add(movimento);
 
@@ -480,6 +518,14 @@ public class InvestimentoService
         {
             var lancamento = await _db.Lancamentos.FirstAsync(l => l.Id == movimento.LancamentoId);
             _db.Lancamentos.Remove(lancamento);
+        }
+
+        if (movimento.LancamentoImpostoId is not null)
+        {
+            var lancamentoImposto = await _db.Lancamentos
+                .FirstOrDefaultAsync(l => l.Id == movimento.LancamentoImpostoId);
+            if (lancamentoImposto is not null)
+                _db.Lancamentos.Remove(lancamentoImposto);
         }
 
         var piso = new DateOnly(movimento.Data.Year, movimento.Data.Month, 1);

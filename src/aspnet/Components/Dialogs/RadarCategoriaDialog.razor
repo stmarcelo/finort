@@ -53,7 +53,7 @@
             @if (_detalhe.Historico.Any(p => p.Parcial))
             {
                 <MudText Typo="Typo.caption" Style="opacity:0.7">
-                    O mês atual está em andamento: o valor e a barra do último mês contam apenas os lançamentos até hoje. A comparação usa o mesmo número de dias dos meses anteriores (limitado pelos dias de cada mês).
+                    O período em andamento vai de @_detalhe.InicioPeriodo.ToString("dd/MM/yyyy", CulturaPtBr) a @_detalhe.FimPeriodo.ToString("dd/MM/yyyy", CulturaPtBr) — a mesma janela do fluxo mensal.
                 </MudText>
             }
 

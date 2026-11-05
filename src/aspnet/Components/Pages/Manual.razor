@@ -111,7 +111,7 @@
             new("Como comparar", new()
             {
                 "No topo você escolhe o histórico de 3, 6 ou 12 meses e pode filtrar por pessoa. A comparação do mês atual é sempre feita com a média dos 3 meses fechados anteriores.",
-                "Se o mês ainda não acabou, o Radar compara o mesmo número de dias: do dia 1 até hoje contra o dia 1 até o mesmo dia dos meses anteriores. Um aviso na tela lembra disso."
+                "O Radar usa a mesma janela do fluxo mensal: se você configurou dias de antecipação, o mês considerado vai do dia seguinte à antecipação até o dia D do mês seguinte. Um aviso na tela mostra o período exato."
             }),
             new("Saúde financeira", new()
             {
@@ -153,7 +153,7 @@
         {
             new("Filtros", new()
             {
-                "No topo da lista, você pode filtrar por: conta bancária, cartão de crédito, pessoa, tipo (receita/despesa/transferência) e mês.",
+                "No topo da lista, você pode filtrar por: conta bancária, cartão de crédito, pessoa, categoria, tipo (receita/despesa/transferência) e mês. O filtro de categoria traz também os lançamentos das subcategorias.",
                 "Use as setas ao lado do mês para navegar rapidamente entre meses."
             }),
             new("Confirmação", new()
@@ -266,7 +266,8 @@
             {
                 "Acesse a fatura clicando no ícone de fatura ao lado do cartão. Lá você vê todos os lançamentos daquele mês.",
                 "Confira cada item da fatura com o valor que aparece no seu aplicativo do banco. Se bateu, marque o item como confirmado.",
-                "Quando todos os itens estiverem confirmados, o botão 'Fechar fatura' fica disponível. Fechar a fatura significa que você revisou tudo e está tudo certo."
+                "Quando todos os itens estiverem confirmados, o botão 'Fechar fatura' fica disponível. Fechar a fatura significa que você revisou tudo e está tudo certo.",
+                "Se a fatura do mês já estiver fechada, ao entrar na tela o sistema abre o mês seguinte."
             }),
             new("Fatura – Reembolso", new()
             {
@@ -346,7 +347,8 @@
 
         new("investimentos", "Investimentos", Icons.Material.Filled.Savings, new()
         {
-            "Cadastre aqui seus investimentos: ações, fundos imobiliários (FII), criptomoedas, CDB / Fundo (CDBs e fundos de investimento), reserva de emergência, dólar, etc."
+            "Cadastre aqui seus investimentos: ações, fundos imobiliários (FII), criptomoedas, CDB / Fundo (CDBs e fundos de investimento), reserva de emergência, dólar, etc.",
+            "No resgate de CDB ou Reserva você pode informar o imposto: o resgate entra como receita pelo valor total e o imposto sai como despesa na categoria Impostos, subcategoria Imposto de resgate."
         }, new()
         {
             new("Movimentações", new()

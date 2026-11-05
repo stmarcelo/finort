@@ -23,28 +23,10 @@ public class FluxoService
     private async Task<FluxoMensal> ObterCardInternoAsync(int ano, int mes, int diasAntecipacao, int profundidade)
     {
         var inicioMes = new DateOnly(ano, mes, 1);
-        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
 
-        var proximoMes = mes == 12 ? 1 : mes + 1;
-        var proximoAno = mes == 12 ? ano + 1 : ano;
-
-        // Janela de despesas/reembolsos: mês atual a partir de D+1 + mês seguinte até D
-        // Mês M mostra de M/(D+1) até (M+1)/D
-        // M-1 mostra de M/1 até M/D (antecipados)
-        DateOnly inicioJanela;
-        DateOnly fimJanela;
-        if (diasAntecipacao > 0)
-        {
-            inicioJanela = new DateOnly(ano, mes, Math.Min(diasAntecipacao + 1, DateTime.DaysInMonth(ano, mes)));
-            var ultimoDiaProximo = DateTime.DaysInMonth(proximoAno, proximoMes);
-            fimJanela = new DateOnly(proximoAno, proximoMes,
-                Math.Min(diasAntecipacao, ultimoDiaProximo));
-        }
-        else
-        {
-            inicioJanela = inicioMes;
-            fimJanela = fimMes;
-        }
+        // A janela do mês é a mesma do Radar (JanelaFluxo): com antecipação, o mês M
+        // vai de M/(D+1) até (M+1)/D.
+        var (inicioJanela, fimJanela) = JanelaFluxo.DeMes(inicioMes, diasAntecipacao);
 
         var lancamentos = await _db.Lancamentos
             .Where(l => l.CartaoCreditoId != null

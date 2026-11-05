@@ -32,7 +32,7 @@ public sealed record RadarPontoMensal(int Ano, int Mes, decimal Valor, bool Parc
 /// <summary>Variação de uma subcategoria dentro de uma categoria.</summary>
 /// <param name="Id">Identificador da subcategoria.</param>
 /// <param name="Nome">Nome da subcategoria.</param>
-/// <param name="ValorAtual">Gasto da subcategoria no mês atual (janela truncada).</param>
+/// <param name="ValorAtual">Gasto da subcategoria no período atual.</param>
 /// <param name="MediaHistorica">Média da subcategoria na base de comparação.</param>
 /// <param name="VariacaoAbsoluta">Diferença entre o mês atual e a média da subcategoria.</param>
 /// <param name="VariacaoPercentual">Variação percentual do mês atual contra a média.</param>
@@ -79,12 +79,15 @@ public sealed record RadarDetalheCategoria(
 
     /// <summary>Número de meses que formam a base efetiva de comparação.</summary>
     public int MesesBase { get; init; }
+
+    public DateOnly InicioPeriodo { get; init; }
+    public DateOnly FimPeriodo { get; init; }
 }
 
 /// <summary>
-/// Entradas das análises (dados já filtrados, agregados e truncados pelo mês parcial).
+/// Entradas das análises (dados já filtrados e agregados pela janela do fluxo).
 /// <para><see cref="MesesBase"/> é a base efetiva de comparação: os meses fechados da base
-/// que têm movimento dentro da janela truncada. É o número que forma as médias, o
+/// que têm movimento dentro da janela do fluxo. É o número que forma as médias, o
 /// denominador das categorias e o que aparece nas mensagens ("do último mês"). Zero
 /// significa que não há base — nenhuma comparação é feita.</para>
 /// <para><see cref="MesesBaseComDados"/> é o contador do portão do score: menos de 3 meses
@@ -102,7 +105,7 @@ public sealed record RadarDetalheCategoria(
 /// um mês fechado não pode fazer o consumo parecer instável.</para>
 /// </summary>
 public sealed record RadarContexto(
-    DateOnly MesAtual, int DiaCorte, bool MesParcial,
+    DateOnly MesAtual, DateOnly InicioPeriodo, DateOnly FimPeriodo, bool MesParcial,
     int MesesBaseComDados, int MesesBase,
     decimal TotalReceitas, decimal TotalConsumo, decimal TotalInvestido, decimal InvestidoAtual,
     decimal MediaConsumo, decimal MediaInvestido, decimal MediaReceitas, decimal TaxaComprometimento,
@@ -112,7 +115,7 @@ public sealed record RadarContexto(
 
 /// <summary>Resultado completo do Radar para a tela.</summary>
 public sealed record RadarResultado(
-    int MesesHistorico, DateOnly MesAtual, int DiaCorte, bool MesParcial,
+    int MesesHistorico, DateOnly MesAtual, DateOnly InicioPeriodo, DateOnly FimPeriodo, bool MesParcial,
     decimal TotalReceitas, decimal TotalConsumo, decimal TotalInvestido,
     decimal Saldo, decimal TaxaComprometimento,
     decimal VariacaoPercentualReceitas, decimal VariacaoPercentualConsumo,

@@ -384,7 +384,7 @@ public class LancamentoService
     public async Task<List<Lancamento>> ListarAsync(
         Guid? contaId = null, LancamentoTipo? tipo = null, int? mes = null, int? ano = null,
         bool? confirmado = null, Guid? pessoaId = null, Guid? cartaoId = null,
-        bool somenteSemConta = false)
+        bool somenteSemConta = false, Guid? categoriaId = null)
     {
         var query = _db.Lancamentos
             .Include(l => l.Conta)
@@ -403,6 +403,10 @@ public class LancamentoService
         if (pessoaId.HasValue) query = query.Where(l => l.PessoaId == pessoaId.Value);
         if (cartaoId.HasValue) query = query.Where(l => l.CartaoCreditoId == cartaoId.Value);
         if (somenteSemConta) query = query.Where(l => l.ContaId == null && l.CartaoCreditoId == null);
+        // Filtro por categoria inclui as subcategorias dela (mesma regra do relatório de despesas).
+        if (categoriaId.HasValue)
+            query = query.Where(l => l.CategoriaId == categoriaId.Value
+                || (l.SubcategoriaId.HasValue && l.Subcategoria!.CategoriaId == categoriaId.Value));
 
         return await query.OrderBy(l => l.Data).ToListAsync();
     }

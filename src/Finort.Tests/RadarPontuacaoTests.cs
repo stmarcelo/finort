@@ -55,7 +55,7 @@ public class RadarPontuacaoTests
         decimal investidoAtual = 0m,
         IReadOnlyList<decimal>? consumoMensais = null)
         => new RadarContexto(
-            new DateOnly(2026, 10, 1), 20, true,
+            new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 6), new DateOnly(2026, 11, 5), true,
             mesesHistorico, 3,
             receitasAtual, consumoAtual,
             investidoAtual, investidoAtual,

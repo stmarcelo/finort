@@ -19,17 +19,19 @@ public class RadarTelasTests
     }
 
     [Fact]
-    public void Telas_LimitaOsDiasDaComparacao()
+    public void Telas_MostraOPeriodoDoFluxo()
     {
-        // Com corte dia 29-31 e fevereiro na base, a comparação é de 31 dias contra 28:
-        // a legenda precisa dizer que o número de dias é limitado pelos dias de cada mês.
-        const string frase = "(limitado pelos dias de cada mês)";
+        // O Radar usa a janela do fluxo mensal: a tela diz qual é o período, em vez de
+        // falar em "mesmo número de dias" (a comparação não trunca mais).
+        const string frase = "a mesma janela do fluxo mensal";
 
         var pagina = FonteDoWebApp("Components", "Pages", "Radar.razor");
         var dialog = FonteDoWebApp("Components", "Dialogs", "RadarCategoriaDialog.razor");
 
         Assert.Contains(frase, pagina);
         Assert.Contains(frase, dialog);
+        Assert.DoesNotContain("(limitado pelos dias de cada mês)", pagina);
+        Assert.DoesNotContain("(limitado pelos dias de cada mês)", dialog);
     }
 
     [Fact]

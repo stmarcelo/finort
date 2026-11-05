@@ -74,7 +74,7 @@
     {
         <MudItem xs="12">
             <MudAlert Severity="Severity.Info" Dense="true">Esta fatura possui @_reembolsos.Count reembolso(s) (@_reembolsos.Count(r => !r.Fechado) pendente(s)). A receita agregada por pessoa é gerada no fechamento total ou na baixa parcial por pessoa.</MudAlert>
-            <MudTable Items="@_reembolsos.GroupBy(r => r.PessoaId).Select(g => new { Pessoa = g.First().Pessoa?.Nome ?? "-", PessoaId = g.Key, Total = g.Sum(r => r.Valor), Qtd = g.Count() })" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+            <MudTable Items="@_reembolsos.GroupBy(r => r.PessoaId).Select(g => new { Pessoa = g.First().Pessoa, PessoaId = g.Key, Total = g.Sum(r => r.Valor), Qtd = g.Count() })" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
                 <HeaderContent>
                     <MudTh>Pessoa</MudTh>
                     <MudTh>Itens</MudTh>
@@ -82,13 +82,22 @@
                     <MudTh></MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.Pessoa</MudTd>
+                    <MudTd>
+                        @if (CorHex(context.Pessoa?.CorDeExibicao) is { } corHex)
+                        {
+                            <span style="color:@corHex;font-weight:600;">@(context.Pessoa?.Nome ?? "-")</span>
+                        }
+                        else
+                        {
+                            @(context.Pessoa?.Nome ?? "-")
+                        }
+                    </MudTd>
                     <MudTd>@context.Qtd</MudTd>
                     <MudTd>@context.Total.ToString("N2")</MudTd>
                     <MudTd>
                         @if (!_fechada)
                         {
-                            <MudButton Size="Size.Small" Variant="@gVariant" OnClick="() => AbrirReembolsosGrupo(context.PessoaId, context.Pessoa)">Ver reembolsos</MudButton>
+                            <MudButton Size="Size.Small" Variant="@gVariant" OnClick="@(() => AbrirReembolsosGrupo(context.PessoaId, context.Pessoa?.Nome ?? "-"))">Ver reembolsos</MudButton>
                         }
                     </MudTd>
                 </RowTemplate>
@@ -125,7 +134,16 @@
                     </MudTooltip>
                 }
                 </MudTd>
-                <MudTd>@context.Pessoa?.Nome</MudTd>
+                <MudTd>
+                    @if (CorHex(context.Pessoa?.CorDeExibicao) is { } corHex)
+                    {
+                        <span style="color:@corHex;font-weight:600;">@context.Pessoa?.Nome</span>
+                    }
+                    else
+                    {
+                        @context.Pessoa?.Nome
+                    }
+                </MudTd>
                 <MudTd>@RotuloParcela(context)</MudTd>
                 <MudTd>
                     <span class="@(context.Valor > 0 ? "entrada-fatura" : "")">
@@ -227,21 +245,60 @@
         _ano = hoje.Year;
         _mes = hoje.Month;
 
+        var daUrl = MesInicialVemDaUrl();
+        if (daUrl is { } pedido)
+        {
+            _ano = pedido.Ano;
+            _mes = pedido.Mes;
+        }
+        else
+        {
+            // Entrada padrão: uma fatura já fechada (paga ou não) leva ao mês seguinte —
+            // o mês em curso é o que tem lançamento para conferir.
+            await AvancarParaMesEmAbertoAsync();
+        }
+
+        await CarregarAsync();
+    }
+
+    /// <summary>
+    /// O mês pedido na URL (?mes/?ano). Nulo quando a entrada é padrão — aí o mês
+    /// é escolhido pela fatura (a seguinte em aberto).
+    /// </summary>
+    private (int Ano, int Mes)? MesInicialVemDaUrl()
+    {
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(NavigationManager.Uri).Query);
+        var mes = 0;
+        var ano = 0;
         if (query.TryGetValue("mes", out var valoresMes)
             && int.TryParse(valoresMes.FirstOrDefault(), out var mesParam)
             && mesParam is >= 1 and <= 12)
         {
-            _mes = mesParam;
+            mes = mesParam;
         }
         if (query.TryGetValue("ano", out var valoresAno)
             && int.TryParse(valoresAno.FirstOrDefault(), out var anoParam)
             && anoParam >= 1)
         {
-            _ano = anoParam;
+            ano = anoParam;
         }
+        if (mes == 0 || ano == 0) return null;
+        return (ano, mes);
+    }
 
-        await CarregarAsync();
+    /// <summary>
+    /// Avança o mês exibido enquanto a fatura do mês estiver fechada. O limite de 24
+    /// meses evita laço infinito com um histórico de faturas todas fechadas.
+    /// </summary>
+    private async Task AvancarParaMesEmAbertoAsync()
+    {
+        for (var i = 0; i < 24; i++)
+        {
+            if (!await FaturaService.EhFechadaAsync(Id, _ano, _mes)) return;
+            var proximo = new DateOnly(_ano, _mes, 1).AddMonths(1);
+            _ano = proximo.Year;
+            _mes = proximo.Month;
+        }
     }
 
     private async Task NavegarMes(int delta)
@@ -476,6 +533,10 @@
         var result = await dialog.Result;
         if (result is not null && !result.Canceled) await CarregarAsync();
     }
+
+    /// <summary>Cor do cadastro de pessoas normalizada para CSS; nula quando não há cor.</summary>
+    private static string? CorHex(string? cor)
+        => string.IsNullOrEmpty(cor) ? null : cor.StartsWith('#') ? cor : "#" + cor;
 
     private static string RotuloParcela(Lancamento lancamento)
     {

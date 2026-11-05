@@ -1,5 +1,6 @@
 using System.Globalization;
 using Finort.Data;
+using Finort.Models.Auth;
 using Finort.Models.Financeiro;
 using Finort.Services;
 
@@ -52,6 +53,18 @@ public class RadarServiceTests
         return l;
     }
 
+    private static void ConfigurarAntecipacao(AppDbContext db, int dias)
+    {
+        var config = db.Configuracoes.FirstOrDefault();
+        if (config is null)
+        {
+            config = new Configuracao { Nome = "T", Email = "t@t" };
+            db.Configuracoes.Add(config);
+        }
+        config.DiasAntecipacao = dias;
+        db.SaveChanges();
+    }
+
     [Fact]
     public async Task ObterAsync_SemLancamentos_DevolveTotaisZerados()
     {
@@ -71,31 +84,134 @@ public class RadarServiceTests
     }
 
     [Fact]
-    public async Task ObterAsync_MesParcial_ComparaMesmoNumeroDeDias()
+    public async Task ObterAsync_ComAntecipacao_UsaAJanelaDoFluxo()
+    {
+        var (db, file, _, _, despesa, _, _) = Setup();
+        try
+        {
+            ConfigurarAntecipacao(db, 5);
+            var service = new RadarService(db);
+            // 20/10: a janela corrente é 06/10..05/11 (mes de outubro).
+            // Despesa de 03/10 fica na janela de SETEMBRO (06/09..05/10).
+            CriarLancamento(db, new DateOnly(2026, 10, 3), LancamentoTipo.Despesa, 700m, despesa.Id);
+            // Despesa de 25/10 entra na janela corrente.
+            CriarLancamento(db, new DateOnly(2026, 10, 25), LancamentoTipo.Despesa, 400m, despesa.Id);
+
+            var r = await service.ObterAsync(3, null, new DateOnly(2026, 10, 20));
+
+            Assert.Equal(400m, r.TotalConsumo);
+            Assert.Equal(new DateOnly(2026, 10, 1), r.MesAtual);
+            Assert.Equal(new DateOnly(2026, 10, 6), r.InicioPeriodo);
+            Assert.Equal(new DateOnly(2026, 11, 5), r.FimPeriodo);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterAsync_ComAntecipacao_ContaAFaturaQueVenceNoInicioDoMesSeguinte()
+    {
+        var (db, file, _, cartao, despesa, _, _) = Setup();
+        try
+        {
+            ConfigurarAntecipacao(db, 5);
+            var service = new RadarService(db);
+            // Compra em 02/10, fatura vencendo 03/11: 03/11 está dentro da janela
+            // de outubro (06/10..05/11) — o efeito da antecipação no Radar.
+            CriarLancamento(db, new DateOnly(2026, 10, 2), LancamentoTipo.Despesa, 900m, despesa.Id,
+                cartaoId: cartao.Id, vencimento: new DateOnly(2026, 11, 3));
+
+            var r = await service.ObterAsync(3, null, new DateOnly(2026, 10, 20));
+
+            Assert.Equal(900m, r.TotalConsumo);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterAsync_NosPrimeirosDias_UsaAJanelaDoMesAnterior()
+    {
+        var (db, file, _, _, despesa, _, _) = Setup();
+        try
+        {
+            ConfigurarAntecipacao(db, 5);
+            var service = new RadarService(db);
+            // 03/11: a janela de novembro ainda não começou — o mês corrente é outubro.
+            CriarLancamento(db, new DateOnly(2026, 11, 2), LancamentoTipo.Despesa, 500m, despesa.Id);
+            CriarLancamento(db, new DateOnly(2026, 10, 25), LancamentoTipo.Despesa, 300m, despesa.Id);
+
+            var r = await service.ObterAsync(3, null, new DateOnly(2026, 11, 3));
+
+            Assert.Equal(new DateOnly(2026, 10, 1), r.MesAtual);
+            // 02/11 está na janela de outubro (06/10..05/11); 25/10 também.
+            Assert.Equal(800m, r.TotalConsumo);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterAsync_ContaDespesaNaoConfirmada()
     {
         var (db, file, _, _, despesa, _, _) = Setup();
         try
         {
             var service = new RadarService(db);
-            // Meses base (jul/ago/set): 500 no dia 5.
-            CriarLancamento(db, new DateOnly(2026, 7, 5), LancamentoTipo.Despesa, 500m, despesa.Id);
-            CriarLancamento(db, new DateOnly(2026, 8, 5), LancamentoTipo.Despesa, 500m, despesa.Id);
-            CriarLancamento(db, new DateOnly(2026, 9, 5), LancamentoTipo.Despesa, 500m, despesa.Id);
-            // Setembro também tem 1000 no dia 25, depois do corte do mês atual (dia 20).
-            CriarLancamento(db, new DateOnly(2026, 9, 25), LancamentoTipo.Despesa, 1000m, despesa.Id);
+            var l = CriarLancamento(db, new DateOnly(2026, 10, 5), LancamentoTipo.Despesa, 600m, despesa.Id);
+            l.Confirmado = false;
+            db.SaveChanges();
+
+            var r = await service.ObterAsync(3, null, Hoje);
+
+            // O Radar não filtra por confirmação: o que não foi conferido ainda conta.
+            Assert.Equal(600m, r.TotalConsumo);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterAsync_ContaReceitaNaoConfirmada()
+    {
+        var (db, file, _, _, _, receita, _) = Setup();
+        try
+        {
+            var service = new RadarService(db);
+            var l = CriarLancamento(db, new DateOnly(2026, 10, 5), LancamentoTipo.Receita, 900m, receita.Id);
+            l.Confirmado = false;
+            db.SaveChanges();
+
+            var r = await service.ObterAsync(3, null,Hoje);
+
+            Assert.Equal(900m, r.TotalReceitas);
+        }
+        finally { TestDbContext.Cleanup(db, file); }
+    }
+
+    [Fact]
+    public async Task ObterAsync_MesEmAndamento_UsaOmesInteiro()
+    {
+        var (db, file, _, _, despesa, _, _) = Setup();
+        try
+        {
+            var service = new RadarService(db);
+            // Meses base (jul/ago/set): 600 no dia 5.
+            CriarLancamento(db, new DateOnly(2026, 7, 5), LancamentoTipo.Despesa, 600m, despesa.Id);
+            CriarLancamento(db, new DateOnly(2026, 8, 5), LancamentoTipo.Despesa, 600m, despesa.Id);
+            CriarLancamento(db, new DateOnly(2026, 9, 5), LancamentoTipo.Despesa, 600m, despesa.Id);
+            // Setembro tem mais 600 no dia 25: sem truncamento, o mês entra inteiro.
+            CriarLancamento(db, new DateOnly(2026, 9, 25), LancamentoTipo.Despesa, 600m, despesa.Id);
             // Outubro (mês atual): 600 no dia 5.
             CriarLancamento(db, new DateOnly(2026, 10, 5), LancamentoTipo.Despesa, 600m, despesa.Id);
 
             var r = await service.ObterAsync(3, null, Hoje);
 
             Assert.True(r.MesParcial);
-            Assert.Equal(20, r.DiaCorte);
-            // Só o lançamento do dia 5 entra no mês atual.
+            Assert.Equal(new DateOnly(2026, 10, 1), r.MesAtual);
+            Assert.Equal(new DateOnly(2026, 10, 1), r.InicioPeriodo);
+            Assert.Equal(new DateOnly(2026, 10, 31), r.FimPeriodo);
             Assert.Equal(600m, r.TotalConsumo);
-            // A média da base ignora o lançamento de 25/09 (truncamento pelo mesmo nº de dias).
+            // A base usa o mês inteiro: (600 + 600 + 1200) / 3 = 800.
             var categoria = Assert.Single(r.Categorias);
-            Assert.Equal(500m, categoria.MediaHistorica);
-            Assert.Equal(100m, categoria.VariacaoAbsoluta);
+            Assert.Equal(800m, categoria.MediaHistorica);
+            Assert.Equal(-200m, categoria.VariacaoAbsoluta);
         }
         finally { TestDbContext.Cleanup(db, file); }
     }
@@ -362,14 +478,13 @@ public class RadarServiceTests
     }
 
     [Fact]
-    public async Task ObterAsync_MesDe30DiasNaBase_UsaOCorteDoMes()
+    public async Task ObterAsync_MesDe30DiasNaBase_UsaOmesInteiro()
     {
         var (db, file, _, _, despesa, _, _) = Setup();
         try
         {
             var service = new RadarService(db);
-            // 31/10: o dia de corte é 31, mas setembro tem 30 dias — a janela do mês base
-            // para no dia 30, senão a data 31/09 nem existe.
+            // 31/10: sem truncamento, setembro (30 dias) e outubro entram inteiros.
             var fimDeOutubro = new DateOnly(2026, 10, 31);
             CriarLancamento(db, new DateOnly(2026, 7, 10), LancamentoTipo.Despesa, 100m, despesa.Id);
             CriarLancamento(db, new DateOnly(2026, 8, 10), LancamentoTipo.Despesa, 100m, despesa.Id);
@@ -378,9 +493,9 @@ public class RadarServiceTests
 
             var r = await service.ObterAsync(3, null, fimDeOutubro);
 
-            Assert.Equal(31, r.DiaCorte);
+            Assert.Equal(new DateOnly(2026, 10, 1), r.InicioPeriodo);
+            Assert.Equal(new DateOnly(2026, 10, 31), r.FimPeriodo);
             Assert.False(r.MesParcial);
-            // Setembro entra inteiro (30 dias): a base vale 100 por mês.
             var categoria = Assert.Single(r.Categorias);
             Assert.Equal(100m, categoria.MediaHistorica);
             Assert.Equal(100m, r.TotalConsumo);

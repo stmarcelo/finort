@@ -27,10 +27,12 @@ public class RadarService
     {
         var dataHoje = hoje ?? DateOnly.FromDateTime(DateTime.Today);
         var meses = Math.Clamp(mesesHistorico, 1, 12);
-        var inicioMesAtual = new DateOnly(dataHoje.Year, dataHoje.Month, 1);
-        var diasMesAtual = DateTime.DaysInMonth(dataHoje.Year, dataHoje.Month);
-        var diaCorte = Math.Min(dataHoje.Day, diasMesAtual);
-        var mesParcial = diaCorte < diasMesAtual;
+        var diasAntecipacao = await DiasAntecipacaoAsync();
+        // O mês corrente é o mesmo do fluxo: a janela que contém hoje.
+        var inicioMesAtual = JanelaFluxo.MesCorrente(dataHoje, diasAntecipacao);
+        var (inicioPeriodo, fimPeriodo) = JanelaFluxo.DeMes(inicioMesAtual, diasAntecipacao);
+        // O período ainda está em andamento enquanto o fim da janela não chegou.
+        var mesParcial = dataHoje < fimPeriodo;
 
         var mesesFechados = Enumerable.Range(1, meses)
             .Select(i => inicioMesAtual.AddMonths(-i))
@@ -38,14 +40,17 @@ public class RadarService
             .ToList();
         var mesesBase = mesesFechados.TakeLast(3).ToList();
 
-        var lancamentos = await CarregarAsync(mesesFechados[0], new DateOnly(dataHoje.Year, dataHoje.Month, diasMesAtual), pessoaId);
+        var janelaAntiga = JanelaFluxo.DeMes(mesesFechados[0], diasAntecipacao);
+        var inicioCarregamento = janelaAntiga.Inicio;
+        var fimCarregamento = fimPeriodo;
+        var lancamentos = await CarregarAsync(inicioCarregamento, fimCarregamento, pessoaId);
 
-        // Base efetiva: só os meses da base que têm lançamentos na janela truncada.
+        // Base efetiva: só os meses da base que têm lançamentos na janela do fluxo.
         // Um mês sem movimento não forma média — dividi-lo por 3 inventaria uma queda
         // que não existe (e diz "100% acima da média" a quem não tem histórico).
-        var mesesBaseComDados = mesesBase.Where(m => TemDados(lancamentos, m, diaCorte)).ToList();
+        var mesesBaseComDados = mesesBase.Where(m => TemDados(lancamentos, m, diasAntecipacao)).ToList();
 
-        var janelaAtual = Janela(inicioMesAtual, diaCorte);
+        var janelaAtual = Janela(inicioMesAtual, diasAntecipacao);
         var totalReceitas = Somar(lancamentos, LancamentoTipo.Receita, janelaAtual.Inicio, janelaAtual.Fim);
         // O Radar mede consumo: o consumo e o aporte são coisas diferentes — o aporte
         // sai da conta, mas não foi consumido.
@@ -57,7 +62,7 @@ public class RadarService
         var investidoBase = new List<decimal>();
         foreach (var mes in mesesBaseComDados)
         {
-            var j = Janela(mes, diaCorte);
+            var j = Janela(mes, diasAntecipacao);
             receitasBase.Add(Somar(lancamentos, LancamentoTipo.Receita, j.Inicio, j.Fim));
             consumoBase.Add(SomarConsumo(lancamentos, j.Inicio, j.Fim));
             investidoBase.Add(SomarInvestido(lancamentos, j.Inicio, j.Fim));
@@ -66,20 +71,20 @@ public class RadarService
         var mediaConsumo = RadarCalculos.Media(consumoBase);
         var mediaInvestido = RadarCalculos.Media(investidoBase);
 
-        var categorias = ConstruirCategorias(lancamentos, janelaAtual, mesesFechados, mesesBaseComDados, diaCorte, totalConsumo);
+        var categorias = ConstruirCategorias(lancamentos, janelaAtual, mesesFechados, mesesBaseComDados, diasAntecipacao, totalConsumo);
 
         // A série histórica mede o consumo do mês: o aporte não é consumo, então ele não
         // entra na série que mede a estabilidade dos gastos. Um aporte em um mês fechado
         // não pode fazer o consumo parecer instável.
         var consumoMensaisHistorico = mesesFechados
-            .Select(m => SomarConsumoMes(lancamentos, m))
+            .Select(m => SomarConsumoMes(lancamentos, m, diasAntecipacao))
             .ToList();
 
         var taxaComprometimento = totalReceitas > 0m ? totalConsumo / totalReceitas : 0m;
         var contexto = new RadarContexto(
-            inicioMesAtual, diaCorte, mesParcial,
+            inicioMesAtual, inicioPeriodo, fimPeriodo, mesParcial,
             // O score é habilitado pelos meses que alimentam a comparação: os da base, na
-            // mesma janela truncada da média. Dados fora da base não habilitam score
+            // mesma janela da média. Dados fora da base não habilitam score
             // (spec §18, §25). O tamanho da janela pedida é o MesesHistorico do resultado.
             // MesesBase é a base efetiva (os mesmos meses) e MesesBaseComDados é o contador
             // do portão do score — os dois valem o mesmo número.
@@ -99,9 +104,9 @@ public class RadarService
         foreach (var mes in mesesFechados)
         {
             serie.Add(new RadarSerieMensal(mes.Year, mes.Month,
-                SomarMes(lancamentos, LancamentoTipo.Receita, mes),
-                SomarConsumoMes(lancamentos, mes),
-                SomarInvestidoMes(lancamentos, mes),
+                SomarMes(lancamentos, LancamentoTipo.Receita, mes, diasAntecipacao),
+                SomarConsumoMes(lancamentos, mes, diasAntecipacao),
+                SomarInvestidoMes(lancamentos, mes, diasAntecipacao),
                 false));
         }
         serie.Add(new RadarSerieMensal(inicioMesAtual.Year, inicioMesAtual.Month,
@@ -112,7 +117,7 @@ public class RadarService
         var semBase = mesesBaseComDados.Count == 0;
 
         return new RadarResultado(
-            meses, inicioMesAtual, diaCorte, mesParcial,
+            meses, inicioMesAtual, inicioPeriodo, fimPeriodo, mesParcial,
             totalReceitas, totalConsumo, totalInvestido,
             // O saldo é o saldo real: receitas − consumo − aporte (o mesmo do Dashboard).
             totalReceitas - totalConsumo - totalInvestido, taxaComprometimento,
@@ -149,9 +154,10 @@ public class RadarService
     {
         var dataHoje = hoje ?? DateOnly.FromDateTime(DateTime.Today);
         var meses = Math.Clamp(mesesHistorico, 1, 12);
-        var inicioMesAtual = new DateOnly(dataHoje.Year, dataHoje.Month, 1);
-        var diasMesAtual = DateTime.DaysInMonth(dataHoje.Year, dataHoje.Month);
-        var diaCorte = Math.Min(dataHoje.Day, diasMesAtual);
+        var diasAntecipacao = await DiasAntecipacaoAsync();
+        var inicioMesAtual = JanelaFluxo.MesCorrente(dataHoje, diasAntecipacao);
+        var (inicioPeriodo, fimPeriodo) = JanelaFluxo.DeMes(inicioMesAtual, diasAntecipacao);
+        var mesParcial = dataHoje < fimPeriodo;
 
         var mesesFechados = Enumerable.Range(1, meses)
             .Select(i => inicioMesAtual.AddMonths(-i))
@@ -159,34 +165,35 @@ public class RadarService
             .ToList();
         var mesesBase = mesesFechados.TakeLast(3).ToList();
 
-        var lancamentos = await CarregarAsync(mesesFechados[0], new DateOnly(dataHoje.Year, dataHoje.Month, diasMesAtual), pessoaId);
+        var janelaAntiga = JanelaFluxo.DeMes(mesesFechados[0], diasAntecipacao);
+        var lancamentos = await CarregarAsync(janelaAntiga.Inicio, fimPeriodo, pessoaId);
         var daCategoria = lancamentos.Where(l => l.CategoriaId == categoriaId).ToList();
         if (daCategoria.Count == 0) return null;
 
         // Mesma base efetiva da página: só os meses da base com lançamentos formam a média.
-        var mesesBaseComDados = mesesBase.Where(m => TemDados(lancamentos, m, diaCorte)).ToList();
+        var mesesBaseComDados = mesesBase.Where(m => TemDados(lancamentos, m, diasAntecipacao)).ToList();
 
         var nome = daCategoria[0].CategoriaNome;
-        var janelaAtual = Janela(inicioMesAtual, diaCorte);
+        var janelaAtual = Janela(inicioMesAtual, diasAntecipacao);
         var valorAtual = Somar(daCategoria, LancamentoTipo.Despesa, janelaAtual.Inicio, janelaAtual.Fim);
         var media = RadarCalculos.Media(mesesBaseComDados.Select(m =>
         {
-            var j = Janela(m, diaCorte);
+            var j = Janela(m, diasAntecipacao);
             return Somar(daCategoria, LancamentoTipo.Despesa, j.Inicio, j.Fim);
         }));
 
         var serieFechada = mesesFechados
-            .Select(m => SomarMes(daCategoria, LancamentoTipo.Despesa, m))
+            .Select(m => SomarMes(daCategoria, LancamentoTipo.Despesa, m, diasAntecipacao))
             .ToList();
         var tendencia = RadarCalculos.DetectarTendencia(serieFechada);
 
         var historico = new List<RadarPontoMensal>();
         foreach (var mes in mesesFechados)
-            historico.Add(new RadarPontoMensal(mes.Year, mes.Month, SomarMes(daCategoria, LancamentoTipo.Despesa, mes), false));
-        // O mês atual é truncado no dia de corte; só é parcial enquanto o mês não terminou.
-        historico.Add(new RadarPontoMensal(inicioMesAtual.Year, inicioMesAtual.Month, valorAtual, diaCorte < diasMesAtual));
+            historico.Add(new RadarPontoMensal(mes.Year, mes.Month, SomarMes(daCategoria, LancamentoTipo.Despesa, mes, diasAntecipacao), false));
+        // O período atual usa a janela cheia do fluxo e só é parcial antes do seu fim.
+        historico.Add(new RadarPontoMensal(inicioMesAtual.Year, inicioMesAtual.Month, valorAtual, mesParcial));
 
-        var subcategorias = ConstruirSubcategorias(daCategoria, janelaAtual, mesesBaseComDados, diaCorte, valorAtual - media);
+        var subcategorias = ConstruirSubcategorias(daCategoria, janelaAtual, mesesBaseComDados, diasAntecipacao, valorAtual - media);
 
         return new RadarDetalheCategoria(
             categoriaId, nome, valorAtual, media,
@@ -194,9 +201,15 @@ public class RadarService
             historico, subcategorias.Subcategorias)
         {
             SubcategoriaResponsavel = subcategorias.Responsavel,
-            MesesBase = mesesBaseComDados.Count
+            MesesBase = mesesBaseComDados.Count,
+            InicioPeriodo = inicioPeriodo,
+            FimPeriodo = fimPeriodo
         };
     }
+
+    /// <summary>Dias de antecipação gravados no fluxo (0-15). Sem configuração = 0.</summary>
+    private async Task<int> DiasAntecipacaoAsync()
+        => Math.Clamp((await _db.Configuracoes.AsNoTracking().FirstOrDefaultAsync())?.DiasAntecipacao ?? 0, 0, 15);
 
     private async Task<List<RadarLinha>> CarregarAsync(DateOnly inicio, DateOnly fim, Guid? pessoaId)
     {
@@ -236,7 +249,7 @@ public class RadarService
 
     private static List<RadarVariacaoCategoria> ConstruirCategorias(
         List<RadarLinha> lancamentos, (DateOnly Inicio, DateOnly Fim) janelaAtual,
-        List<DateOnly> mesesFechados, List<DateOnly> mesesBaseComDados, int diaCorte, decimal totalConsumoMes)
+        List<DateOnly> mesesFechados, List<DateOnly> mesesBaseComDados, int diasAntecipacao, decimal totalConsumoMes)
     {
         var resultado = new List<RadarVariacaoCategoria>();
         // A categoria "Investimento" não é consumo: fica fora de "Principais mudanças".
@@ -255,15 +268,15 @@ public class RadarService
             // categoria não teve gasto entra com zero, mas não infla o denominador.
             var media = RadarCalculos.Media(mesesBaseComDados.Select(m =>
             {
-                var j = Janela(m, diaCorte);
+                var j = Janela(m, diasAntecipacao);
                 return Somar(daCategoria, LancamentoTipo.Despesa, j.Inicio, j.Fim);
             }));
 
             var serieFechada = mesesFechados
-                .Select(m => SomarMes(daCategoria, LancamentoTipo.Despesa, m))
+                .Select(m => SomarMes(daCategoria, LancamentoTipo.Despesa, m, diasAntecipacao))
                 .ToList();
             var tendencia = RadarCalculos.DetectarTendencia(serieFechada);
-            var subcategorias = ConstruirSubcategorias(daCategoria, janelaAtual, mesesBaseComDados, diaCorte, atual - media);
+            var subcategorias = ConstruirSubcategorias(daCategoria, janelaAtual, mesesBaseComDados, diasAntecipacao, atual - media);
 
             resultado.Add(new RadarVariacaoCategoria(
                 id, nome, atual, media,
@@ -289,7 +302,7 @@ public class RadarService
     private static (List<RadarVariacaoSubcategoria> Subcategorias, RadarVariacaoSubcategoria? Responsavel)
         ConstruirSubcategorias(
             List<RadarLinha> lancamentos, (DateOnly Inicio, DateOnly Fim) janelaAtual,
-            List<DateOnly> mesesBaseComDados, int diaCorte, decimal variacaoDaCategoria)
+            List<DateOnly> mesesBaseComDados, int diasAntecipacao, decimal variacaoDaCategoria)
     {
         var variacoes = new List<(Guid Id, string Nome, decimal Atual, decimal Media, decimal Delta)>();
         var grupos = lancamentos
@@ -302,7 +315,7 @@ public class RadarService
             var atual = Somar(grupo.ToList(), LancamentoTipo.Despesa, janelaAtual.Inicio, janelaAtual.Fim);
             var media = RadarCalculos.Media(mesesBaseComDados.Select(m =>
             {
-                var j = Janela(m, diaCorte);
+                var j = Janela(m, diasAntecipacao);
                 return Somar(grupo.ToList(), LancamentoTipo.Despesa, j.Inicio, j.Fim);
             }));
             variacoes.Add((grupo.Key, grupo.First().SubcategoriaNome ?? "(sem subcategoria)",
@@ -339,21 +352,17 @@ public class RadarService
         return (ordenadas, responsavel);
     }
 
-    private static (DateOnly Inicio, DateOnly Fim) Janela(DateOnly mes, int diaCorte)
-    {
-        var inicio = new DateOnly(mes.Year, mes.Month, 1);
-        var dias = DateTime.DaysInMonth(mes.Year, mes.Month);
-        return (inicio, new DateOnly(mes.Year, mes.Month, Math.Min(diaCorte, dias)));
-    }
-
-    /// <summary>Janela do mês inteiro (usada na tendência, no gráfico e no histórico).</summary>
-    private static (DateOnly Inicio, DateOnly Fim) JanelaMesCompleto(DateOnly mes)
-        => Janela(mes, DateTime.DaysInMonth(mes.Year, mes.Month));
+    /// <summary>
+    /// Janela do mês no Radar: a mesma do fluxo mensal (com antecipação), inclusive na
+    /// tendência, no gráfico e no histórico.
+    /// </summary>
+    private static (DateOnly Inicio, DateOnly Fim) Janela(DateOnly mes, int diasAntecipacao)
+        => JanelaFluxo.DeMes(mes, diasAntecipacao);
 
     /// <summary>Soma de um mês inteiro (usada na tendência, no gráfico e no histórico).</summary>
-    private static decimal SomarMes(List<RadarLinha> lancamentos, LancamentoTipo tipo, DateOnly mes)
+    private static decimal SomarMes(List<RadarLinha> lancamentos, LancamentoTipo tipo, DateOnly mes, int diasAntecipacao)
     {
-        var j = JanelaMesCompleto(mes);
+        var j = Janela(mes, diasAntecipacao);
         return Somar(lancamentos, tipo, j.Inicio, j.Fim);
     }
 
@@ -373,16 +382,16 @@ public class RadarService
             .Sum(l => Math.Abs(l.Valor));
 
     /// <summary>Aporte em investimentos de um mês inteiro (usado na série).</summary>
-    private static decimal SomarInvestidoMes(List<RadarLinha> lancamentos, DateOnly mes)
+    private static decimal SomarInvestidoMes(List<RadarLinha> lancamentos, DateOnly mes, int diasAntecipacao)
     {
-        var j = JanelaMesCompleto(mes);
+        var j = Janela(mes, diasAntecipacao);
         return SomarInvestido(lancamentos, j.Inicio, j.Fim);
     }
 
     /// <summary>Consumo de um mês inteiro (usado na série do consumo).</summary>
-    private static decimal SomarConsumoMes(List<RadarLinha> lancamentos, DateOnly mes)
+    private static decimal SomarConsumoMes(List<RadarLinha> lancamentos, DateOnly mes, int diasAntecipacao)
     {
-        var j = JanelaMesCompleto(mes);
+        var j = Janela(mes, diasAntecipacao);
         return SomarConsumo(lancamentos, j.Inicio, j.Fim);
     }
 
@@ -391,10 +400,10 @@ public class RadarService
             .Where(l => l.Tipo == tipo && l.Data >= inicio && l.Data <= fim)
             .Sum(l => tipo == LancamentoTipo.Despesa ? Math.Abs(l.Valor) : Math.Max(0m, l.Valor));
 
-    /// <summary>Um mês tem dados quando há qualquer lançamento dentro da sua janela truncada.</summary>
-    private static bool TemDados(List<RadarLinha> lancamentos, DateOnly mes, int diaCorte)
+    /// <summary>Um mês tem dados quando há qualquer lançamento dentro da sua janela cheia.</summary>
+    private static bool TemDados(List<RadarLinha> lancamentos, DateOnly mes, int diasAntecipacao)
     {
-        var j = Janela(mes, diaCorte);
+        var j = Janela(mes, diasAntecipacao);
         return lancamentos.Any(l => l.Data >= j.Inicio && l.Data <= j.Fim);
     }
 

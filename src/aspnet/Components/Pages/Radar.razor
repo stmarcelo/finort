@@ -41,8 +41,7 @@ else
     @if (_dados.MesParcial)
     {
         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
-            O mês atual está em andamento: os números consideram apenas os lançamentos de 1 a @_dados.DiaCorte.
-            A comparação usa o mesmo número de dias dos meses anteriores (limitado pelos dias de cada mês).
+            O período em andamento vai de @_dados.InicioPeriodo.ToString("dd/MM/yyyy", CulturaPtBr) a @_dados.FimPeriodo.ToString("dd/MM/yyyy", CulturaPtBr) — a mesma janela do fluxo mensal.
         </MudAlert>
     }
 
@@ -473,8 +472,8 @@ else
     };
 
     /// <summary>
-    /// Rótulo do ponto na série mensal. O mês em andamento é truncado no dia de corte e
-    /// aparece marcado como parcial, como no drill-down (RadarCategoriaDialog.razor:47).
+    /// Rótulo do ponto na série mensal. O período em andamento aparece marcado como
+    /// parcial, como no drill-down (RadarCategoriaDialog.razor:47).
     /// </summary>
     private static string RotuloSerie(RadarSerieMensal mes)
         => $"{MesAbrev(mes.Mes)}/{mes.Ano}{(mes.Parcial ? " (parcial)" : "")}";

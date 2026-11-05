@@ -47,6 +47,14 @@
             else
             {
                 <MudMoneyInput @bind-Value="_valorReserva" Label="Valor" Variant="@gVariant" Required="true" />
+                @if (MostrarImposto)
+                {
+                    <MudMoneyInput @bind-Value="_imposto" CasasDecimais="2"
+                                   Label="Imposto do resgate (opcional)" Variant="@gVariant" />
+                    <MudText Typo="Typo.caption" Class="mb-2">
+                        O resgate entra como receita pelo valor total e o imposto sai como despesa em Impostos › Imposto de resgate.
+                    </MudText>
+                }
             }
             @if (Tipo is MovimentoTipo.Compra or MovimentoTipo.Aporte)
             {
@@ -80,9 +88,11 @@
     private decimal? _quantidade;
     private decimal? _valorPorCota;
     private decimal? _valorReserva;
+    private decimal? _imposto;
     private decimal? _valorTotal;
     private decimal? _taxa;
     private bool _atualizando;
+    private bool MostrarImposto => Tipo == MovimentoTipo.Resgate;
     private bool MostrarTaxa => Tipo is MovimentoTipo.Compra or MovimentoTipo.Venda
         && TipoInvestimento is TipoInvestimento.Criptomoeda or TipoInvestimento.Dolar;
     private string RotuloTaxa => Tipo == MovimentoTipo.Venda
@@ -152,6 +162,7 @@
         if (!_form.IsValid || _data is null) return;
         if (!EhReserva && (_quantidade is null or <= 0 || _valorPorCota is null or <= 0 || _valorTotal is null or <= 0)) return;
         if (MostrarTaxa && _taxa is < 0) { Snackbar.Add("A taxa não pode ser negativa.", Severity.Error); return; }
+        if (MostrarImposto && _imposto is < 0) { Snackbar.Add("O imposto não pode ser negativo.", Severity.Error); return; }
         if (!EhReserva && Math.Abs(_quantidade!.Value * _valorPorCota!.Value + TaxaEfetiva - _valorTotal!.Value) > 0.01m)
         {
             Snackbar.Add("Quantidade, cota e total inconsistentes.", Severity.Error);
@@ -165,7 +176,8 @@
                 InvestimentoId, DateOnly.FromDateTime(_data.Value), Tipo,
                 _quantidade, _valorPorCota, _valorReserva,
                 lancarNaConta: !_preExistente,
-                taxa: MostrarTaxa ? _taxa : null);
+                taxa: MostrarTaxa ? _taxa : null,
+                imposto: MostrarImposto ? _imposto : null);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)

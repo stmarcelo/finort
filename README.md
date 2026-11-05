@@ -68,7 +68,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Vínculo com pessoa, categoria/subcategoria, conta, projeto e flag de reembolso.
 - Reembolso em despesa de conta: opção "Terá reembolso" (pessoa + data) cria automaticamente a receita espelho (mesma conta/categoria/observação, valor positivo, sem confirmação) — em repetições, uma receita por ocorrência com indicação de parcela (1/10...); a exclusão da despesa remove a receita espelho junto (bloqueada se ela estiver confirmada).
 - Confirmação item a item (conciliação com extrato) com guarda: lançamentos confirmados de meses fechados não podem ser editados/excluídos.
-- Filtros por conta, cartão, pessoa, tipo e mês; subtotais diários.
+- Filtros por conta, cartão, pessoa, categoria, tipo e mês; subtotais diários.
 - Foco automático no primeiro campo ao criar novo lançamento.
 
 ### Calculadora nos valores
@@ -78,6 +78,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 ### Cartões de crédito
 - CRUD com banco, últimos 4 dígitos, melhor dia de compra, dia de vencimento, limite e conta vinculada.
 - Fatura: conferência de itens, fechamento (exige todos confirmados), pagamento (cria débito na conta + cobre diferença em parcela futura), histórico e estorno.
+- Ao entrar na fatura de um cartão, uma fatura já fechada leva direto ao mês seguinte.
 - Entrada na fatura: desconta o valor do total da fatura (útil para estornos feitos pelo operador do cartão).
 - Reembolso: ao lançar despesa (ou entrada) com reembolso, cria item no cadastro de reembolsos (pessoa, cartão, parcela, valor, vencimento = vencimento da fatura menos 1 dia); a receita agregada por pessoa é gerada só no fechamento da fatura (conta + categoria escolhidas na hora); reabrir a fatura reverte. Entrada com reembolso gera valor negativo.
 - Edição de parcelado: ao editar a primeira parcela, as alterações são aplicadas a todas as parcelas futuras não confirmadas.
@@ -118,7 +119,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 ### Radar Financeiro (`/radar`)
 - Compara o mês atual com o **próprio histórico** (média dos 3 meses fechados anteriores) e aponta o que mudou: score de saúde financeira **0-100 com a composição explicável**, achados priorizados por impacto financeiro (🔴 crítico · 🟡 atenção · 🟢 melhorando) e as categorias com maior variação.
 - Cards de resumo: receitas, **consumo**, saldo do mês, comprometimento (consumo sobre as receitas) e o valor **investido** no mês.
-- Janela de histórico de 3, 6 ou 12 meses e filtro por pessoa. Mês em andamento é comparado com o **mesmo número de dias** dos meses anteriores (despesas de cartão entram pelo vencimento da fatura).
+- Janela de histórico de 3, 6 ou 12 meses e filtro por pessoa. O Radar usa a **mesma janela do fluxo mensal**: com dias de antecipação configurados, o mês considera de `M/(D+1)` até `(M+1)/D` — as despesas de cartão entram pelo vencimento da fatura, e as faturas que vencem no começo do mês seguinte já entram no mês.
 - **Aporte e compra de investimento não são tratados como gasto**: saem do consumo, não geram alerta e viram destaque positivo — o saldo do mês continua sendo o real (o investido vira patrimônio, visível no Dashboard).
 - Lançamentos com **reembolso** (despesa de cartão reembolsada e a receita do reembolso) ficam fora de todas as análises, assim como transferências entre contas.
 - Clique em uma categoria para ver o histórico mensal e as subcategorias que explicam a variação, com destaque da responsável.
@@ -128,6 +129,7 @@ Construída em **.NET 9 / Blazor Server**, interface responsiva com **MudBlazor*
 - Compra/venda: informe quantidade, valor por cota e valor total (campos interligados — ao informar o total, a cota é calculada). Na compra e na venda de criptomoeda e dólar há campo opcional de taxa, somado ao valor total.
 - Aporte/compra/venda/resgate geram o lançamento vinculado já confirmado; proventos (dividendo/rendimento) também.
 - Aporte/resgate para Reserva e CDB / Fundo; movimentações e proventos (dividendo, rendimento) geram lançamento vinculado.
+- No resgate de CDB e Reserva há um campo opcional de **imposto**: o resgate entra como receita pelo valor total e o imposto sai como despesa em `Impostos › Imposto de resgate` (subcategoria protegida).
 - Atualização inline de cotação, desfazer em cascata e registro de auditoria na exclusão.
 
 ### Projetos

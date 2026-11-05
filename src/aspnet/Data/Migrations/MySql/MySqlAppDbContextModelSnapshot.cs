@@ -397,10 +397,16 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<DateOnly>("Data")
                         .HasColumnType("date");
 
+                    b.Property<decimal?>("Imposto")
+                        .HasColumnType("decimal(65,30)");
+
                     b.Property<Guid>("InvestimentoId")
                         .HasColumnType("char(36)");
 
                     b.Property<Guid?>("LancamentoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("LancamentoImpostoId")
                         .HasColumnType("char(36)");
 
                     b.Property<decimal?>("Quantidade")
@@ -423,6 +429,8 @@ namespace Finort.Data.Migrations.MySql
                     b.HasIndex("InvestimentoId");
 
                     b.HasIndex("LancamentoId");
+
+                    b.HasIndex("LancamentoImpostoId");
 
                     b.ToTable("InvestimentosMovimentos");
                 });
@@ -1193,6 +1201,13 @@ namespace Finort.Data.Migrations.MySql
                             CategoriaId = new Guid("10000000-0000-0000-0000-000000000015"),
                             IsProtected = false,
                             Nome = "Assinaturas"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000060"),
+                            CategoriaId = new Guid("10000000-0000-0000-0000-000000000011"),
+                            IsProtected = true,
+                            Nome = "Imposto de resgate"
                         });
                 });
 
@@ -1252,9 +1267,16 @@ namespace Finort.Data.Migrations.MySql
                         .HasForeignKey("LancamentoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Finort.Models.Financeiro.Lancamento", "LancamentoImposto")
+                        .WithMany()
+                        .HasForeignKey("LancamentoImpostoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Investimento");
 
                     b.Navigation("Lancamento");
+
+                    b.Navigation("LancamentoImposto");
                 });
 
             modelBuilder.Entity("Finort.Models.Financeiro.InvestimentoProvento", b =>

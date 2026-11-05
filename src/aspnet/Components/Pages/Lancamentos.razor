@@ -43,6 +43,10 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="12" md="6" lg="3">
+                        <CategoriaSelect Label="Categoria" Placeholder="Todas" PermitirNovo="false"
+                                         @bind-Value="_filtroCategoria" />
+                    </MudItem>
+                    <MudItem xs="12" md="6" lg="3">
                         <div class="d-flex ga-2">
                             <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="FiltrarAsync">Filtrar</MudButton>
                             <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="LimparFiltro">Limpar filtro</MudButton>
@@ -186,6 +190,7 @@
     private Guid? _filtroCartao;
     private Guid? _filtroPessoa;
     private LancamentoTipo? _filtroTipo;
+    private Guid? _filtroCategoria;
     private int _anoNav;
     private int _mesNav;
 
@@ -193,7 +198,7 @@
 
     private bool TemFiltroAplicado
         => _filtroConta is not null || _filtroCartao is not null ||
-           _filtroPessoa is not null || _filtroTipo is not null;
+           _filtroPessoa is not null || _filtroTipo is not null || _filtroCategoria is not null;
 
     private bool _filtrosAplicados;
 
@@ -230,7 +235,7 @@
         _lancamentos = await LancamentoService.ListarAsync(
             semConta ? null : _filtroConta, _filtroTipo, _mesNav, _anoNav,
             confirmado: null, pessoaId: _filtroPessoa, cartaoId: _filtroCartao,
-            somenteSemConta: semConta);
+            somenteSemConta: semConta, categoriaId: _filtroCategoria);
 
         _rotulosRecorrencia = new();
         var grupos = _lancamentos.Where(l => l.RecorrenciaId.HasValue)
@@ -262,6 +267,7 @@
         _filtroCartao = null;
         _filtroPessoa = null;
         _filtroTipo = null;
+        _filtroCategoria = null;
         _filtrosAplicados = false;
         await IrParaHoje();
     }

@@ -26,6 +26,13 @@ public class InvestimentoMovimento
     /// <summary>Taxa de compra/venda (ex. corretora cripto ou IOF em dólar). Nulo/zero = sem taxa. Somada ao total apenas em Compra/Venda de Criptomoeda ou Dólar.</summary>
     public decimal? Taxa { get; set; }
 
+    /// <summary>Imposto do resgate (CDB / Reserva). Nulo/zero = sem imposto.</summary>
+    public decimal? Imposto { get; set; }
+
+    /// <summary>Lançamento de despesa do imposto gerado no resgate (link para o estorno).</summary>
+    public Guid? LancamentoImpostoId { get; set; }
+    public Lancamento? LancamentoImposto { get; set; }
+
     /// <summary>Valor total do movimento (qtd × cota + taxa, ou valor único na reserva).</summary>
     public decimal Valor { get; set; }
 
