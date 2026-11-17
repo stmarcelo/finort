@@ -147,6 +147,33 @@ public class CategoriaRelatorioServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Gerar_MediaMensal_ConsideraSomenteMesesComLancamentos()
+    {
+        var categoriaId = CategoriaId("Alimentação");
+        var contaId = ContaId();
+        Lancar(new(2026, 10, 5), -100m, categoriaId, contaId);
+        Lancar(new(2026, 11, 5), -50m, categoriaId, contaId);
+        await _ctx.Db.SaveChangesAsync();
+
+        var r = await _svc.GerarAsync(new(2026, 5, 1), new(2026, 11, 30), categoriaId, null);
+
+        Assert.Equal(-150m, r.TotalGeral);
+        Assert.Equal(2, r.Meses);
+        Assert.Equal(-75m, r.MediaMensal);
+    }
+
+    [Fact]
+    public async Task Gerar_SemLancamentos_MediaZero()
+    {
+        var categoriaId = CategoriaId("Alimentação");
+
+        var r = await _svc.GerarAsync(new(2026, 5, 1), new(2026, 11, 30), categoriaId, null);
+
+        Assert.Equal(0, r.Meses);
+        Assert.Equal(0m, r.MediaMensal);
+    }
+
+    [Fact]
     public async Task Gerar_DespesaDeCartao_EntraPeloVencimento()
     {
         var categoriaId = CategoriaId("Alimentação");

@@ -53,7 +53,6 @@ public class CategoriaRelatorioService
             : null;
 
         var totalGeral = lista.Sum(l => l.Valor);
-        var meses = Math.Max(1, ((fim.Year - inicio.Year) * 12) + fim.Month - inicio.Month + 1);
 
         var linhas = lista
             .GroupBy(l => new { Mes = new DateOnly(DataCriterio(l).Year, DataCriterio(l).Month, 1), l.PessoaId })
@@ -67,7 +66,12 @@ public class CategoriaRelatorioService
             .ThenBy(l => l.PessoaNome, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // A média é sobre os meses que efetivamente têm lançamentos, não sobre o
+        // intervalo do filtro (que pode incluir meses sem movimento).
+        var meses = linhas.Select(l => l.Mes).Distinct().Count();
+        var mediaMensal = meses == 0 ? 0m : totalGeral / meses;
+
         return new CategoriaRelatorio(inicio, fim, categoriaNome, subcategoriaNome,
-            totalGeral, totalGeral / meses, meses, linhas);
+            totalGeral, mediaMensal, meses, linhas);
     }
 }

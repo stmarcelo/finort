@@ -58,7 +58,7 @@ else
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-secondary);border-radius:12px;">
-                    <MudText Typo="Typo.caption" Class="mb-1">Média mensal (@_relatorio.Meses meses)</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-1">@TituloMediaMensal()</MudText>
                     <MudText Typo="Typo.h6" Style="@CorValor(_relatorio.MediaMensal)">
                         R$ @_relatorio.MediaMensal.ToString("N2")
                     </MudText>
@@ -147,6 +147,9 @@ else
         _subcategoriaId = null;
         _relatorio = null;
     }
+
+    private string TituloMediaMensal()
+        => _relatorio is { Meses: > 0 } r ? $"Média mensal ({r.Meses} meses)" : "Média mensal";
 
     private static string CorValor(decimal valor)
         => valor >= 0
