@@ -16,6 +16,9 @@
                        Date="@_data"
                        DateChanged="@((DateTime? d) => { _data = d; Validar(); })"
                        Required="true" />
+        <DataPicker Label="Prazo (opcional)" Variant="@gVariant" Clearable="true"
+                       Date="@_prazo"
+                       DateChanged="@((DateTime? d) => _prazo = d)" />
         <MudMoneyInput Label="Valor contratado" Variant="@gVariant"
                         @bind-Value="_valor" @bind-Value:after="Validar" Required="true" />
     </DialogContent>
@@ -33,6 +36,7 @@
     private Guid? _pessoaId;
     private string _descricao = "";
     private DateTime? _data;
+    private DateTime? _prazo;
     private decimal? _valor;
     private bool _podeSalvar;
 
@@ -42,6 +46,7 @@
         _pessoaId = Projeto.PessoaId;
         _descricao = Projeto.Descricao;
         _data = Projeto.DataContratacao.ToDateTime(TimeOnly.MinValue);
+        _prazo = Projeto.Prazo?.ToDateTime(TimeOnly.MinValue);
         _valor = Projeto.ValorContratado;
         Validar();
     }
@@ -68,14 +73,15 @@
         try
         {
             var data = DateOnly.FromDateTime(_data!.Value);
+            var prazo = _prazo.HasValue ? DateOnly.FromDateTime(_prazo.Value) : (DateOnly?)null;
             if (Projeto is null)
             {
-                var novo = await ProjetoService.CriarAsync(_descricao, data, _valor!.Value, _pessoaId!.Value);
+                var novo = await ProjetoService.CriarAsync(_descricao, data, _valor!.Value, _pessoaId!.Value, prazo);
                 MudDialog.Close(DialogResult.Ok(novo.Id));
             }
             else
             {
-                await ProjetoService.AtualizarAsync(Projeto, _descricao, data, _valor!.Value, _pessoaId!.Value);
+                await ProjetoService.AtualizarAsync(Projeto, _descricao, data, _valor!.Value, _pessoaId!.Value, prazo);
                 MudDialog.Close(DialogResult.Ok(Projeto.Id));
             }
         }

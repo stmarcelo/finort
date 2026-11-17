@@ -13,8 +13,8 @@ namespace Finort.Services;
 public sealed record PizzaFatia(string Rotulo, decimal Valor, double Percentual);
 public sealed record RelatorioLinha(DateOnly Data, string Tipo, string CategoriaSubcategoria, decimal Valor);
 public sealed record ProjetoRelatorio(
-    Projeto Projeto, string ProjetoNome, string PessoaNome, DateOnly DataContratacao, decimal ValorContratado,
-    bool Concluido, DateOnly? DataConclusao,
+    Projeto Projeto, string ProjetoNome, string PessoaNome, DateOnly DataContratacao, DateOnly? Prazo,
+    decimal ValorContratado, bool Concluido, DateOnly? DataConclusao,
     decimal TotalReceitas, decimal TotalDespesas, decimal Resultado, decimal PendenteReceber,
     IReadOnlyList<RelatorioLinha> Linhas, IReadOnlyList<PizzaFatia> DespesasPorCategoria,
     double? PercentualResultado, double? PercentualDespesas);
@@ -64,10 +64,25 @@ public class ProjetoRelatorioService
         double? percentualDespesas = receitas > 0 ? (double)despesas / (double)receitas * 100.0 : null;
 
         return new ProjetoRelatorio(projeto, projeto.Descricao, projeto.Pessoa?.Nome ?? "", projeto.DataContratacao,
-            projeto.ValorContratado, projeto.Concluido, projeto.DataConclusao,
+            projeto.Prazo, projeto.ValorContratado, projeto.Concluido, projeto.DataConclusao,
             receitas, despesas, receitas - despesas,
             Math.Max(0, projeto.ValorContratado - receitas), linhas, fatias,
             percentual, percentualDespesas);
+    }
+
+    /// <summary>
+    /// Duas linhas de identificação do projeto, compartilhadas pela tela e pelo PDF:
+    /// contratação/prazo e valor contratado/conclusão.
+    /// </summary>
+    public static IReadOnlyList<string> LinhasCabecalho(ProjetoRelatorio relatorio)
+    {
+        var contratacao = $"Contratação: {relatorio.DataContratacao:dd/MM/yyyy}"
+            + (relatorio.Prazo.HasValue ? $" — Prazo: {relatorio.Prazo.Value:dd/MM/yyyy}" : "");
+
+        var valor = $"Valor contratado: R$ {relatorio.ValorContratado:N2}"
+            + (relatorio.Concluido ? $" — Conclusão: {relatorio.DataConclusao:dd/MM/yyyy}" : "");
+
+        return [contratacao, valor];
     }
 
     public async Task<byte[]?> GerarPdfBytesAsync(Guid projetoId)
@@ -75,8 +90,9 @@ public class ProjetoRelatorioService
         var relatorio = await GerarAsync(projetoId);
         if (relatorio is null) return null;
         var agora = DateTime.Now;
-        var detalhes = $"Contratação: {relatorio.DataContratacao:dd/MM/yyyy} — Valor contratado: R$ {relatorio.ValorContratado:N2}"
-            + (relatorio.Concluido ? $" — Conclusão: {relatorio.DataConclusao:dd/MM/yyyy}" : "");
+        var linhasCabecalho = LinhasCabecalho(relatorio)
+            .Select(t => new RelatorioCabecalhoLinha(t, 10, "#666666"))
+            .ToList();
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -88,11 +104,9 @@ public class ProjetoRelatorioService
                 {
                     col.Item().Element(c => RelatorioPdfHeader.Cabecalho(c, "Relatório de projeto",
                         relatorio.ProjetoNome,
-                        new[]
-                        {
-                            new RelatorioCabecalhoLinha(relatorio.PessoaNome, 12, "#666666"),
-                            new RelatorioCabecalhoLinha(detalhes, 10, "#666666")
-                        },
+                        new[] { new RelatorioCabecalhoLinha(relatorio.PessoaNome, 12, "#666666") }
+                            .Concat(linhasCabecalho)
+                            .ToList(),
                         RelatorioPdfHeader.LogoPath(_env)));
                     col.Item().Height(10);
                 });

@@ -38,18 +38,19 @@ public class ProjetoService
     public Task<Projeto?> ObterAsync(Guid id)
         => _db.Projetos.FindAsync(id).AsTask();
 
-    public async Task<Projeto> CriarAsync(string descricao, DateOnly data, decimal valor, Guid pessoaId)
+    public async Task<Projeto> CriarAsync(string descricao, DateOnly data, decimal valor, Guid pessoaId, DateOnly? prazo = null)
     {
-        var projeto = new Projeto { Descricao = descricao, DataContratacao = data, ValorContratado = valor, PessoaId = pessoaId };
+        var projeto = new Projeto { Descricao = descricao, DataContratacao = data, Prazo = prazo, ValorContratado = valor, PessoaId = pessoaId };
         _db.Projetos.Add(projeto);
         await _db.SaveChangesAsync();
         return projeto;
     }
 
-    public async Task AtualizarAsync(Projeto projeto, string descricao, DateOnly data, decimal valor, Guid pessoaId)
+    public async Task AtualizarAsync(Projeto projeto, string descricao, DateOnly data, decimal valor, Guid pessoaId, DateOnly? prazo = null)
     {
         projeto.Descricao = descricao;
         projeto.DataContratacao = data;
+        projeto.Prazo = prazo;
         projeto.ValorContratado = valor;
         projeto.PessoaId = pessoaId;
         await _db.SaveChangesAsync();

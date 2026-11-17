@@ -660,6 +660,9 @@ namespace Finort.Data.Migrations.MySql
                     b.Property<Guid>("PessoaId")
                         .HasColumnType("char(36)");
 
+                    b.Property<DateOnly?>("Prazo")
+                        .HasColumnType("date");
+
                     b.Property<decimal>("ValorContratado")
                         .HasColumnType("decimal(65,30)");
 

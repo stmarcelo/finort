@@ -63,6 +63,13 @@ else
                         <MudText Typo="Typo.body2" Class="text-muted">Data contratação</MudText>
                         <MudText Typo="Typo.body2" Style="font-weight:600">@p.DataContratacao.ToString("dd/MM/yyyy")</MudText>
                     </MudStack>
+                    @if (p.Prazo.HasValue)
+                    {
+                        <MudStack Row Justify="Justify.SpaceBetween" Class="mt-1">
+                            <MudText Typo="Typo.body2" Class="text-muted">Prazo</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600">@p.Prazo.Value.ToString("dd/MM/yyyy")</MudText>
+                        </MudStack>
+                    }
                     @if (p.Concluido)
                     {
                         <MudStack Row Justify="Justify.SpaceBetween" Class="mt-1">

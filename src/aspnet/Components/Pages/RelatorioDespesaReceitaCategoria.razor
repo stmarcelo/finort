@@ -1,0 +1,162 @@
+@page "/relatorios/despesa-receita-por-categoria"
+@attribute [Authorize]
+@inherits AppComponentBase
+@inject CategoriaRelatorioService RelatorioService
+@inject ISnackbar Snackbar
+
+<PageTitle>Despesa/Receita por Categoria</PageTitle>
+
+<MudPaper Class="pa-4 mb-4 mt-4">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudText Typo="Typo.h5">Despesa/Receita por Categoria</MudText>
+    </MudStack>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        Receitas e despesas da categoria no período, somadas com sinal — valores positivos são saldo a favor e negativos, a pagar.
+    </MudText>
+    <MudGrid Spacing="2" Class="mt-2">
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Início" @bind-Date="_inicio" /></MudItem>
+        <MudItem xs="12" sm="2"><MudDatePicker Label="Fim" @bind-Date="_fim" /></MudItem>
+        <MudItem xs="12" sm="4">
+            <CategoriaSelect Label="Categoria" Placeholder="Selecione uma categoria" Required="true"
+                             PermitirNovo="false" @bind-Value="_categoriaId" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <SubcategoriaSelect Label="Subcategoria" Placeholder="Todas (opcional)"
+                                CategoriaId="_categoriaId" PermitirNovo="false" @bind-Value="_subcategoriaId" />
+        </MudItem>
+        <MudItem xs="12" Class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="CarregarAsync">Filtrar</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="LimparAsync">Limpar</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_relatorio is null)
+{
+    <MudAlert Severity="Severity.Info">Selecione uma categoria e clique em Filtrar para ver o relatório.</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-6 mb-4" Style="border-radius:18px;">
+        <MudText Typo="Typo.h5">@_relatorio.CategoriaNome</MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            Período: @_relatorio.Inicio.ToString("dd/MM/yyyy")–@_relatorio.Fim.ToString("dd/MM/yyyy")
+            @if (_relatorio.SubcategoriaNome is not null)
+            {
+                <span> · Subcategoria: @_relatorio.SubcategoriaNome</span>
+            }
+        </MudText>
+
+        <MudGrid Spacing="4" Class="mt-3">
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-primary);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Total geral</MudText>
+                    <MudText Typo="Typo.h6" Style="@CorValor(_relatorio.TotalGeral)">
+                        R$ @_relatorio.TotalGeral.ToString("N2")
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-4" Style="border-left:4px solid var(--mud-palette-secondary);border-radius:12px;">
+                    <MudText Typo="Typo.caption" Class="mb-1">Média mensal (@_relatorio.Meses meses)</MudText>
+                    <MudText Typo="Typo.h6" Style="@CorValor(_relatorio.MediaMensal)">
+                        R$ @_relatorio.MediaMensal.ToString("N2")
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Detalhamento por mês e pessoa</MudText>
+        @if (_relatorio.Linhas.Count > 0)
+        {
+            <MudTable Items="@_relatorio.Linhas" Hover="true" Breakpoint="Breakpoint.Sm"
+                      T="CategoriaLinha" Dense="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>Mês</MudTh>
+                    <MudTh>Pessoa</MudTh>
+                    <MudTh Style="text-align:right">Total</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Mes.ToString("MM/yyyy")</MudTd>
+                    <MudTd>
+                        @if (!string.IsNullOrEmpty(context.Cor))
+                        {
+                            <span style="@EstiloNomePessoa(context.Cor)">@context.PessoaNome</span>
+                        }
+                        else
+                        {
+                            @context.PessoaNome
+                        }
+                    </MudTd>
+                    <MudTd Style="text-align:right;">
+                        <span style="@CorValor(context.Total)">R$ @context.Total.ToString("N2")</span>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="pa-4">Sem lançamentos no período.</MudText>
+        }
+    </MudPaper>
+}
+
+@code {
+    private DateTime? _inicio;
+    private DateTime? _fim;
+    private Guid? _categoriaId;
+    private Guid? _subcategoriaId;
+    private CategoriaRelatorio? _relatorio;
+
+    protected override async Task OnInitializedAsync() => await AplicarPeriodoPadraoAsync();
+
+    private async Task AplicarPeriodoPadraoAsync()
+    {
+        var (inicio, fim) = await RelatorioService.PeriodoPadraoAsync();
+        _inicio = inicio.ToDateTime(TimeOnly.MinValue);
+        _fim = fim.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private async Task CarregarAsync()
+    {
+        if (!_inicio.HasValue || !_fim.HasValue || _inicio > _fim)
+        {
+            Snackbar.Add("Informe um período válido (início até o fim).", Severity.Error);
+            return;
+        }
+        if (!_categoriaId.HasValue || _categoriaId == Guid.Empty)
+        {
+            Snackbar.Add("Selecione uma categoria.", Severity.Error);
+            return;
+        }
+
+        if (_subcategoriaId == Guid.Empty) _subcategoriaId = null;
+        _relatorio = await RelatorioService.GerarAsync(
+            DateOnly.FromDateTime(_inicio.Value),
+            DateOnly.FromDateTime(_fim.Value),
+            _categoriaId.Value,
+            _subcategoriaId);
+    }
+
+    private async Task LimparAsync()
+    {
+        await AplicarPeriodoPadraoAsync();
+        _categoriaId = null;
+        _subcategoriaId = null;
+        _relatorio = null;
+    }
+
+    private static string CorValor(decimal valor)
+        => valor >= 0
+            ? "color:var(--mud-palette-success);font-weight:600;"
+            : "color:var(--mud-palette-error);font-weight:600;";
+
+    private static string? EstiloNomePessoa(string? cor)
+    {
+        if (string.IsNullOrEmpty(cor)) return null;
+        var hex = cor.StartsWith("#") ? cor : "#" + cor;
+        return $"color:{hex};font-weight:600;";
+    }
+}

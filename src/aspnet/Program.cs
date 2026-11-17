@@ -83,6 +83,7 @@ builder.Services.AddScoped<ProjetoService>();
 builder.Services.AddScoped<ProjetoRelatorioService>();
 builder.Services.AddScoped<ReceitaRelatorioService>();
 builder.Services.AddScoped<DespesaRelatorioService>();
+builder.Services.AddScoped<CategoriaRelatorioService>();
 builder.Services.AddScoped<ReembolsoRelatorioService>();
 builder.Services.AddScoped<BackupRestoreService>();
 builder.Services.AddScoped<LembreteService>();

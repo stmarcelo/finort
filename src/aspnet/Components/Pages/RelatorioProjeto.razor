@@ -20,13 +20,10 @@
             </MudButton>
         </MudStack>
         <MudText Typo="Typo.body2" Style="color:var(--mud-palette-grey-default)">@_relatorio.PessoaNome</MudText>
-        <MudText Typo="Typo.body2" Class="mt-1">
-            Contratação: @_relatorio.DataContratacao.ToString("dd/MM/yyyy") — Valor contratado: R$ @_relatorio.ValorContratado.ToString("N2")
-            @if (_relatorio.Concluido)
-            {
-                <span> — Conclusão: @( _relatorio.DataConclusao?.ToString("dd/MM/yyyy") ?? "—")</span>
-            }
-        </MudText>
+        @foreach (var linha in LinhasCabecalho)
+        {
+            <MudText Typo="Typo.body2" Class="mt-1">@linha</MudText>
+        }
 
         <MudGrid Spacing="4" Class="mt-3">
             <MudItem xs="12" sm="3">
@@ -121,6 +118,10 @@ else
     private ProjetoRelatorio? _relatorio;
 
     private string[] _labelsPizza => _relatorio?.DespesasPorCategoria.Select(f => f.Rotulo).ToArray() ?? [];
+
+    private IReadOnlyList<string> LinhasCabecalho => _relatorio is null
+        ? []
+        : ProjetoRelatorioService.LinhasCabecalho(_relatorio);
 
     protected override async Task OnInitializedAsync()
     {

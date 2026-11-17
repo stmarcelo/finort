@@ -651,6 +651,9 @@ namespace Finort.Data.Migrations
                     b.Property<Guid>("PessoaId")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateOnly?>("Prazo")
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("ValorContratado")
                         .HasColumnType("TEXT");
 

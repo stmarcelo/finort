@@ -10,6 +10,7 @@ public class Projeto
     public string Descricao { get; set; } = string.Empty;
 
     public DateOnly DataContratacao { get; set; }
+    public DateOnly? Prazo { get; set; }
     public decimal ValorContratado { get; set; }
 
     public bool Concluido { get; set; }
